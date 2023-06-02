@@ -10,6 +10,7 @@ add_executable (vbkup
     "BlockingQueue.cpp"
     "VolumeBlockAllocator.cpp"
     "VolumeBackup.cpp"
+    "BlockingQueue.cpp"
     "main.cpp"
 )
 

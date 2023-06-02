@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <string>
 
+#include "BlockingQueue.h"
+
 /*
  *volume backup/restore facade and common struct defines
  */
@@ -26,10 +28,17 @@ struct VolumeBackupConfig {
     CopyType    copyType;
 };
 
+// commpound struct used for hash/writer consuming
+struct VolumeConsumeBlock {
+    char*           ptr;
+    uint64_t        offset;
+    uint32_t        length
+};
+
 struct VolumeBackupContext {
     // immutable fields
-    std::string     prevChecksumBinPath;      // path of the checksum bin from previous copy
-    std::string     lastestChecksumBinPath;   // path of the checksum bin to write latest copy
+    //std::string     prevChecksumBinPath;      // path of the checksum bin from previous copy
+    //std::string     lastestChecksumBinPath;   // path of the checksum bin to write latest copy
     std::string     srcPath;
     uint32_t        blockSize;
     uint64_t        sessionOffset;
@@ -44,13 +53,8 @@ struct VolumeBackupContext {
 
     std::atomic<uint64_t>   bytesToWrite;
     std::atomic<uint64_t>   bytesWrited;
-};
 
-// commpound struct used for hash/writer consuming
-struct VolumeConsumeBlock {
-    char*           ptr;
-    uint64_t        offset;
-    uint32_t        length
+    BlockingQueue<VolumeConsumeBlock> hashingQueue;
 };
 
 #endif

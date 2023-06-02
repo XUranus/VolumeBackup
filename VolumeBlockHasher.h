@@ -2,9 +2,14 @@
 #ifndef VOLUME_BLOCK_HASHER_H
 #define VOLUME_BLOCK_HASHER_H
 
+#include <cstdint>
+#include <exception>
+#include <fstream>
 #include <memory>
+#include <new>
 #include <string>
-
+#include <thread>
+#include <vector>
 #include "VolumeBackup.h"
 
 enum HasherForwardMode {
@@ -16,13 +21,13 @@ enum HasherForwardMode {
 
 class VolumeBlockHasher {
 public:
-    VolumeBlockHasher(const std::string& );
+    ~VolumeBlockHasher();
 
-    std::unique_ptr<VolumeBlockHasher>  BuildDirectHasher(
-        std::shared_ptr<VolumeBackupContext>
+    static std::shared_ptr<VolumeBlockHasher>  BuildDirectHasher(
+        const std::string& checksumBinPath          // path of the checksum bin to write latest copy
     );
 
-    std::unique_ptr<VolumeBlockHasher>  BuildDiffHasher(
+    static std::shared_ptr<VolumeBlockHasher>  BuildDiffHasher(
         const std::string& prevChecksumBinPath,     // path of the checksum bin from previous copy
         const std::string& lastestChecksumBinPath   // path of the checksum bin to write latest copy
     );
@@ -30,31 +35,47 @@ public:
     bool Start();
 
 private:
-    void WorkThread();
+    void WorkerThread();
+
+    void SaveLatestChecksumBin();
+
+    // direct hasher constructor
+    VolumeBlockHasher(
+        const std::shared_ptr<VolumeBackupContext> context,
+        const std::string&  lastestChecksumBinPath,
+        uint32_t            singleChecksumSize,
+        char*               lastestChecksumTable,
+        uint64_t            lastestChecksumTableCapacity
+    );
+
+    // diff hasher constructor
+    VolumeBlockHasher(
+        const  std::shared_ptr<VolumeBackupContext> context,
+        const std::string&  prevChecksumBinPath,
+        const std::string&  lastestChecksumBinPath,
+        uint32_t            singleChecksumSize,
+        char*               prevChecksumTable,
+        uint64_t            prevChecksumTableSize,
+        char*               lastestChecksumTable,
+        uint64_t            lastestChecksumTableCapacity
+    );
 
 private:
-    const char*                             m_prevChecksumTable;    // immutabe
-    char*                                   m_lastestChecksumTable; // mutable, shared within worker
+    // mutable
+    char*                                   m_lastestChecksumTable;         // mutable, shared within worker
+    std::atomic<uint64_t>                   m_lastestChecksumTableSize;     // bytes writed
+    uint64_t                                m_lastestChecksumTableCapacity; // bytes allocated
+    std::shared_ptr<VolumeBackupContext>    m_context;                      // mutable, used for sync
 
-    HasherForwardMode                       m_forwardMode;          // imutable
-    std::shared_ptr<VolumeBackupContext>    m_context;              // mutable, used for sync
-    VolumeBackupConfig&                     m_config;               // imutable
+    // immutable
+    uint32_t                m_singleChecksumSize;
+    HasherForwardMode       m_forwardMode;
+    const char*             m_prevChecksumTable;
+    uint64_t                m_prevChecksumTableSize;    // size in bytes
+    std::string             m_prevChecksumBinPath;      // path of the checksum bin from previous copy
+    std::string             m_lastestChecksumBinPath;   // path of the checksum bin to write latest copy
+
+    std::vector<std::thread> m_workers;
 };
 
 #endif
-
-std::unique_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
-    const std::string &checksumBinPath)
- : m_forwardMode(HasherForwardMode::DIRECT)
-{
-    
-}
-
-std::unique_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
-    const std::string &prevChecksumBinPath,
-    const std::string &lastestChecksumBinPath)
- : m_forwardMode(HasherForwardMode::DIFF)
-{
-
-}
-
