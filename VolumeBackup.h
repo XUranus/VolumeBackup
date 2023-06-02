@@ -55,6 +55,7 @@ struct VolumeBackupContext {
     std::atomic<uint64_t>   bytesWrited;
 
     BlockingQueue<VolumeConsumeBlock> hashingQueue;
+    BlockingQueue<VolumeConsumeBlock> writeQueue;
 };
 
 #endif

@@ -1,5 +1,6 @@
 #include <cstring>
 #include <thread>
+#include <openssl/evp.h>
 
 #include "VolumeBlockHasher.h"
 
@@ -149,6 +150,43 @@ void VolumeBlockHasher::WorkerThread()
         }
         uint64_t index = (consumeBlock.offset - m_context->sessionOffset) / m_context->blockSize;
         
+        // compute latest hash
+        ComputeSHA256(
+            consumeBlock.ptr,
+            consumeBlock.length,
+            m_lastestChecksumTable + index * m_singleChecksumSize,
+            m_singleChecksumSize);
+
+        if (m_forwardMode == HasherForwardMode::DIFF) {
+            // diff with previous hash
+            // TODO::
+        }
+
+        m_context->writeQueue.Push(consumeBlock);
     }   
 }
 
+void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
+{
+    EVP_MD_CTX *mdctx;
+    const EVP_MD *md;
+    unsigned char mdValue[EVP_MAX_MD_SIZE];
+    unsigned int mdLen;
+
+    if ((md = EVP_get_digestbyname("SHA256")) == nullptr) {
+        std::cerr << "Unknown message digest SHA256" << std::endl;
+        return;
+    }
+
+    if ((mdctx = EVP_MD_CTX_new()) == nullptr) {
+        std::cerr << "Memory allocation failed" << std::endl;
+        return;
+    }
+
+    EVP_DigestInit_ex(mdctx, md, nullptr);
+    EVP_DigestUpdate(mdctx, data, len);
+    EVP_DigestFinal_ex(mdctx, mdValue, &mdLen);
+    assert(mdLen == outputLen);
+    memcpy(output, mdValue, mdLen);
+    EVP_MD_CTX_free(mdctx);
+}

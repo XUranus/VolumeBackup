@@ -37,6 +37,8 @@ public:
 private:
     void WorkerThread();
 
+    void ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen);
+
     void SaveLatestChecksumBin();
 
     // direct hasher constructor
