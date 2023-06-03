@@ -3,13 +3,13 @@ cmake_minimum_required (VERSION 3.8)
 project ("vbkup")
 
 add_executable (vbkup
-    "VolumeCopyReader.cpp"
-    "VolumeCopyWriter.cpp"
+    "VolumeBlockReader.cpp"
+    "VolumeBlockWriter.cpp"
     "VolumeBlockHasher.cpp"
+    "VolumeBackup.cpp"
     "BlockAllocator.cpp"
     "BlockingQueue.cpp"
-    "VolumeBlockAllocator.cpp"
-    "VolumeBackup.cpp"
+    "VolumeBackupContext.cpp"
     "BlockingQueue.cpp"
     "main.cpp"
 )

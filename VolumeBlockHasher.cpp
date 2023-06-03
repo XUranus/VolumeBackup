@@ -1,13 +1,17 @@
+#include <cstdint>
 #include <cstring>
 #include <thread>
 #include <openssl/evp.h>
-
+#include <cassert>
+#include "VolumeBackupContext.h"
 #include "VolumeBlockHasher.h"
 
 namespace {
     const uint64_t DEFAULT_CHECKSUM_TABLE_CAPACITY = 1024 * 1024 * 8; // 8MB
     const uint32_t SHA256_CHECKSUM_SIZE = 32;
 }
+
+using namespace volumebackup;
 
 // direct hasher constructor
 VolumeBlockHasher::VolumeBlockHasher(
@@ -143,12 +147,12 @@ bool VolumeBlockHasher::Start(uint32_t workerThreadNum)
 
 void VolumeBlockHasher::WorkerThread()
 {
-    VolumeConsumeBlock consumeBlock;
+    VolumeConsumeBlock consumeBlock{};
     while (true) {
         if (!m_context->hashingQueue.Pop(consumeBlock)) {
             break;; // pop failed, queue has been finished
         }
-        uint64_t index = (consumeBlock.offset - m_context->sessionOffset) / m_context->blockSize;
+        uint64_t index = (consumeBlock.offset - m_context->config.sessionOffset) / m_context->config.blockSize;
         
         // compute latest hash
         ComputeSHA256(
@@ -159,7 +163,11 @@ void VolumeBlockHasher::WorkerThread()
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash
-            // TODO::
+            uint32_t prevHash = reinterpret_cast<uint32_t*>(m_prevChecksumTable)[index];
+            uint32_t lastestHash = reinterpret_cast<uint32_t*>(m_lastestChecksumTable)[index];
+            if (prevHash == lastestHash) {
+                continue;
+            }
         }
 
         m_context->writeQueue.Push(consumeBlock);
@@ -174,12 +182,12 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
     unsigned int mdLen;
 
     if ((md = EVP_get_digestbyname("SHA256")) == nullptr) {
-        std::cerr << "Unknown message digest SHA256" << std::endl;
+        //std::cerr << "Unknown message digest SHA256" << std::endl;
         return;
     }
 
     if ((mdctx = EVP_MD_CTX_new()) == nullptr) {
-        std::cerr << "Memory allocation failed" << std::endl;
+        //std::cerr << "Memory allocation failed" << std::endl;
         return;
     }
 
@@ -189,4 +197,9 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
     assert(mdLen == outputLen);
     memcpy(output, mdValue, mdLen);
     EVP_MD_CTX_free(mdctx);
+}
+
+void VolumeBlockHasher::SaveLatestChecksumBin()
+{
+    // TODO:: save lastest checksum bin
 }

@@ -10,7 +10,10 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "VolumeBackup.h"
+
+#include "VolumeBackupContext.h"
+
+namespace volumebackup {
 
 enum HasherForwardMode {
     // direct move block to write queue after block checksum is computed
@@ -24,15 +27,17 @@ public:
     ~VolumeBlockHasher();
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDirectHasher(
+        std::shared_ptr<VolumeBackupContext> context,
         const std::string& checksumBinPath          // path of the checksum bin to write latest copy
     );
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDiffHasher(
+        std::shared_ptr<VolumeBackupContext> context,
         const std::string& prevChecksumBinPath,     // path of the checksum bin from previous copy
         const std::string& lastestChecksumBinPath   // path of the checksum bin to write latest copy
     );
 
-    bool Start();
+    bool Start(uint32_t workerThreadNum);
 
 private:
     void WorkerThread();
@@ -72,12 +77,14 @@ private:
     // immutable
     uint32_t                m_singleChecksumSize;
     HasherForwardMode       m_forwardMode;
-    const char*             m_prevChecksumTable;
+    char*                   m_prevChecksumTable;
     uint64_t                m_prevChecksumTableSize;    // size in bytes
     std::string             m_prevChecksumBinPath;      // path of the checksum bin from previous copy
     std::string             m_lastestChecksumBinPath;   // path of the checksum bin to write latest copy
 
     std::vector<std::thread> m_workers;
 };
+
+}
 
 #endif

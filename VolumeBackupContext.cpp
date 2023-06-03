@@ -1,6 +1,8 @@
 #include <cstring>
 #include <exception>
-#include "VolumeBlockAllocator.h"
+#include "VolumeBackupContext.h"
+
+using namespace volumebackup;
 
 VolumeBlockAllocator::VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum)
  : m_blockSize(blockSize), m_blockNum(blockNum)
@@ -44,4 +46,23 @@ void VolumeBlockAllocator::bfree(char* ptr)
     }
     throw std::runtime_error("bfree error: bad address");
     // err
+}
+
+
+
+bool VolumeBackupConfig::Validate() const
+{
+    // 1. validate volume and fetch volume size
+    try {
+        uint64_t volumeSize = volumebackup::ReadVolumeSize(blockDevicePath);
+    } catch (const std::exception& e) {
+        throw e;
+        return false;
+    }
+
+    // 2. validate blockSize
+    if (blockSize == 0 || blockSize % ONE_KB != 0 || blockSize > FOUR_MB) {
+        return false;
+    }
+    return true;
 }
