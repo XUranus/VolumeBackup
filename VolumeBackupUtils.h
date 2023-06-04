@@ -5,6 +5,7 @@
 #include <vector>
 
 namespace volumebackup {
+namespace util {
 
 struct VolumePartitionTableEntry {
     std::string filesystem;
@@ -31,4 +32,5 @@ std::string ReadVolumeLabel(const std::string& blockDevicePath);
 
 std::vector<VolumePartitionTableEntry> ReadVolumePartitionTable(const std::string& blockDevicePath);
 
+}
 }

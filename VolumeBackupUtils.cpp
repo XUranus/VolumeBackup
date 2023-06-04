@@ -13,7 +13,7 @@ extern "C" {
 
 using namespace volumebackup;
 
-std::runtime_error volumebackup::BuildRuntimeException(
+std::runtime_error volumebackup::util::BuildRuntimeException(
     const std::string& message,
     const std::string& blockDevice,
     uint32_t errcode)
@@ -23,7 +23,7 @@ std::runtime_error volumebackup::BuildRuntimeException(
     return std::runtime_error(label);
 }
 
-uint64_t volumebackup::ReadVolumeSize(const std::string& blockDevice)
+uint64_t volumebackup::util::ReadVolumeSize(const std::string& blockDevice)
 {
     int fd = ::open(blockDevice.c_str(), O_RDONLY);
     if (fd < 0) {
@@ -42,7 +42,7 @@ uint64_t volumebackup::ReadVolumeSize(const std::string& blockDevice)
     return size;
 }
 
-uint32_t volumebackup::ProcessorsNum()
+uint32_t volumebackup::util::ProcessorsNum()
 {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -69,22 +69,22 @@ static std::string ReadPosixBlockDeviceAttribute(const std::string& blockDeviceP
     return attributeValueString;
 }
 
-std::string volumebackup::ReadVolumeUUID(const std::string& blockDevicePath)
+std::string volumebackup::util::ReadVolumeUUID(const std::string& blockDevicePath)
 {
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "UUID");
 }
 
-std::string volumebackup::ReadVolumeType(const std::string& blockDevicePath)
+std::string volumebackup::util::ReadVolumeType(const std::string& blockDevicePath)
 {
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "TYPE");
 }
 
-std::string volumebackup::ReadVolumeLabel(const std::string& blockDevicePath)
+std::string volumebackup::util::ReadVolumeLabel(const std::string& blockDevicePath)
 {
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "LABEL");
 }
 
-std::vector<VolumePartitionTableEntry> volumebackup::ReadVolumePartitionTable(const std::string& blockDevicePath)
+std::vector<util::VolumePartitionTableEntry> volumebackup::util::ReadVolumePartitionTable(const std::string& blockDevicePath)
 {
     PedDevice* dev = nullptr;
     PedDisk* disk = nullptr;
