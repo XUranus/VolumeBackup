@@ -18,4 +18,5 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET vbkup PROPERTY CXX_STANDARD 11)
 endif()
 
-target_link_libraries(fsutil)
+# require linux-utils
+target_link_libraries(fsutil lblkid lparted)
