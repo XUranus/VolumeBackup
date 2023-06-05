@@ -64,6 +64,20 @@ struct VolumeConsumeBlock {
     uint32_t        length;
 };
 
+struct VolumeBackupSession {
+    const std::string blockDevicePath;
+
+};
+
+struct VolumeBackupTask {
+    std::string     blockDevicePath;
+    uint64_t        sessionOffset;
+    uint64_t        sessionSize;
+    std::string     checksumBinPath;
+    std::string     copyFilePath;
+    uint64_t        copyFileMappingOffset;
+};
+
 /*
  * |                    |<-------session------>|
  * |==========================================================| logical volume

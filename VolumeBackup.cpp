@@ -1,4 +1,5 @@
 #include <exception>
+#include <queue>
 #include <sys/types.h>
 #include <vector>
 
@@ -46,7 +47,7 @@ using namespace volumebackup::util;
  *                  |------0.1024.sha256.bin
  */
 
-bool StartFullBackupTask(
+bool SplitFullBackupTask(
 	const std::string& 	blockDevicePath,
 	const std::string&	outputCopyDataDirPath,
 	const std::string&	outputCopyMetaDirPath)
@@ -54,6 +55,9 @@ bool StartFullBackupTask(
     VolumePartitionTableEntry partitionEntry {};
     uint64_t volumeSize = 0;
     VolumeBackupContext context {};
+
+    uint64_t sessionSize = ONE_TB;
+    std::queue<VolumeBackupTask> taskQueue;
 
     // 1. check volume and retrive metadata
     try {
@@ -70,14 +74,45 @@ bool StartFullBackupTask(
     }
 
     // 2. split session
+    for (uint64_t sessionOffset = 0; sessionOffset < volumeSize; sessionOffset += sessionSize) {
+        VolumeBackupTask task {
+            blockDevicePath,
+            sessionOffset,
+            sessionSize,
+            checksumBinPath,
+            copyFilePath,
+            copyFileMappingOffset
+        };
+        taskQueue.push(task);
+    }
 
     // 3. start task
-    
-    auto reader = VolumeBlockReader::BuildCopyReader(
-        const std::string &copyFilePath,
-        uint64_t size,
-        std::shared_ptr<VolumeBackupContext> context)
-    return true;    
+    auto reader = VolumeBlockReader::BuildVolumeReader(
+        blockDevicePath,
+        sessionOffset,
+        sessionSize,
+        context
+    );
+
+    auto hasher = VolumeBlockHasher::BuildDirectHasher(
+        context,
+        checksumBinPath
+    );
+
+    auto writer = VolumeBlockWriter::BuildCopyWriter(
+        copyFilePath,
+        context
+    );
+
+    if (reader == nullptr || hasher == nullptr || writer == nullptr) {
+        return false;
+    }
+
+    if (!reader->Start() || hasher->Start() || writer->Start()) {
+        return false;
+    }
+      
+    return true;
 }
 
 bool StartIncrementBackupTask(

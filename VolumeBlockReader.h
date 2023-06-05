@@ -27,7 +27,8 @@ public:
     // build a reader reading from volume copy
     static std::shared_ptr<VolumeBlockReader> BuildCopyReader(
         const std::string& copyFilePath,
-        uint64_t size,
+        uint64_t offset,
+        uint64_t length,
         std::shared_ptr<VolumeBackupContext> context);
 
     bool Start();

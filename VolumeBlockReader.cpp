@@ -43,14 +43,15 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
 // build a reader reading from volume copy
 std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     const std::string& copyFilePath,
-    uint64_t size,
+    uint64_t offset,
+    uint64_t length,
     std::shared_ptr<VolumeBackupContext> context)
 {
     return std::make_shared<VolumeBlockReader>(
         VolumeBlockReader::SourceType::COPYFILE,
         copyFilePath,
-        0,
-        size,
+        offset,
+        length,
         context
     );
 }
