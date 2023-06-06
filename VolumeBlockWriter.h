@@ -19,13 +19,13 @@ public:
     };
 
     // build a writer writing to copy file
-    std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(
+    static std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(
         const std::string& copyFilePath,
         std::shared_ptr<VolumeBackupContext> context
     );
 
     // build a writer writing to volume
-    std::shared_ptr<VolumeBlockWriter> BuildVolumeWriter(
+    static std::shared_ptr<VolumeBlockWriter> BuildVolumeWriter(
         const std::string& blockDevicePath,
         std::shared_ptr<VolumeBackupContext> context
     );

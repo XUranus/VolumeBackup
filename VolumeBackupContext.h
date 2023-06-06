@@ -5,9 +5,13 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include "BlockingQueue.h"
+#include "VolumeBlockHasher.h"
+#include "VolumeBlockReader.h"
+#include "VolumeBlockWriter.h"
 
 namespace {
 
@@ -64,28 +68,6 @@ struct VolumeConsumeBlock {
     uint32_t        length;
 };
 
-struct VolumeBackupSession {
-    const std::string blockDevicePath;
-
-};
-
-struct VolumeBackupTask {
-    std::string     blockDevicePath;
-    uint64_t        sessionOffset;
-    uint64_t        sessionSize;
-    std::string     checksumBinPath;
-    std::string     copyFilePath;
-    uint64_t        copyFileMappingOffset;
-};
-
-/*
- * |                    |<-------session------>|
- * |==========================================================| logical volume
- * |        ...         |                      |    
- * 0              sessionOffset      sessionOffset + sessionSize
- *
- * each VolumeBackupContext corresponding to a volume <===> volume.part file backup session 
- */
 struct VolumeBackupContext {
     // immutable fields
     VolumeBackupConfig      config;
@@ -103,6 +85,27 @@ struct VolumeBackupContext {
     VolumeBlockAllocator              allocator;
     BlockingQueue<VolumeConsumeBlock> hashingQueue;
     BlockingQueue<VolumeConsumeBlock> writeQueue;
+};
+
+/*
+ * |                    |<-------session------>|
+ * |==========================================================| logical volume
+ * |        ...         |                      |    
+ * 0              sessionOffset      sessionOffset + sessionSize
+ *
+ * each VolumeBackupContext corresponding to a volume <===> volume.part file backup session 
+ */
+struct VolumeBackupSession {
+    std::string     blockDevicePath;
+    uint64_t        sessionOffset;
+    uint64_t        sessionSize;
+    std::string     checksumBinPath;
+    std::string     copyFilePath;
+    //uint64_t        copyFileMappingOffset;
+
+    std::shared_ptr<volumebackup::VolumeBlockReader> reader { nullptr };
+    std::shared_ptr<volumebackup::VolumeBlockHasher> hasher { nullptr };
+    std::shared_ptr<volumebackup::VolumeBlockWriter> writer { nullptr };
 };
 
 }

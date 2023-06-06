@@ -32,5 +32,9 @@ std::string ReadVolumeLabel(const std::string& blockDevicePath);
 
 std::vector<VolumePartitionTableEntry> ReadVolumePartitionTable(const std::string& blockDevicePath);
 
+std::string GetChecksumBinPath(const std::string& copyMetaDirPath, uint64_t sessionOffset, uint64_t sessionSize);
+
+std::string GetCopyFilePath(const std::string& copyDataDirPath, uint64_t sessionOffset, uint64_t sessionSize);
+
 }
 }

@@ -3,6 +3,7 @@
 #include <linux/fs.h>
 #include <unistd.h>
 #include <vector>
+#include <string>
 
 extern "C" {
     #include <blkid/blkid.h>
@@ -10,6 +11,14 @@ extern "C" {
 }
 
 #include "VolumeBackupUtils.h"
+
+namespace {
+#ifdef WIN32
+    constexpr auto SEPARATOR = "\\";
+#else
+    constexpr auto SEPARATOR = "/";
+#endif
+}
 
 using namespace volumebackup;
 
@@ -138,4 +147,22 @@ std::vector<util::VolumePartitionTableEntry> volumebackup::util::ReadVolumeParti
     ped_device_destroy(dev);
     ped_exception_leave_all();
     return partitionTable;
+}
+
+std::string volumebackup::util::GetChecksumBinPath(
+    const std::string& copyMetaDirPath,
+    uint64_t sessionOffset,
+    uint64_t sessionSize)
+{
+    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + ".sha256.meta.bin";
+    return copyMetaDirPath + SEPARATOR + filename;
+}
+
+std::string volumebackup::util::GetCopyFilePath(
+    const std::string& copyDataDirPath,
+    uint64_t sessionOffset,
+    uint64_t sessionSize)
+{
+    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + ".data.bin";
+    return copyDataDirPath + SEPARATOR + filename;
 }
