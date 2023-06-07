@@ -37,7 +37,7 @@ public:
         const std::string& lastestChecksumBinPath   // path of the checksum bin to write latest copy
     );
 
-    bool Start(uint32_t workerThreadNum);
+    bool Start(uint32_t workerThreadNum = DEFAULT_HASHER_NUM);
 
 private:
     void WorkerThread();

@@ -1,19 +1,16 @@
+#ifndef VOLUME_BACKUP_UTIL_H
+#define VOLUME_BACKUP_UTIL_H
+
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <exception>
 #include <vector>
 
+#include "VolumeBackupContext.h"
+
 namespace volumebackup {
 namespace util {
-
-struct VolumePartitionTableEntry {
-    std::string filesystem;
-    uint64_t    patitionNumber;
-    uint64_t    firstSector;
-    uint64_t    lastSector;
-    uint64_t    totalSectors;
-};
 
 std::runtime_error BuildRuntimeException(
     const std::string& message,
@@ -36,5 +33,11 @@ std::string GetChecksumBinPath(const std::string& copyMetaDirPath, uint64_t sess
 
 std::string GetCopyFilePath(const std::string& copyDataDirPath, uint64_t sessionOffset, uint64_t sessionSize);
 
+bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
+
+bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
+
 }
 }
+
+#endif

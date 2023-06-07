@@ -93,7 +93,7 @@ std::string volumebackup::util::ReadVolumeLabel(const std::string& blockDevicePa
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "LABEL");
 }
 
-std::vector<util::VolumePartitionTableEntry> volumebackup::util::ReadVolumePartitionTable(const std::string& blockDevicePath)
+std::vector<VolumePartitionTableEntry> volumebackup::util::ReadVolumePartitionTable(const std::string& blockDevicePath)
 {
     PedDevice* dev = nullptr;
     PedDisk* disk = nullptr;
@@ -130,7 +130,7 @@ std::vector<util::VolumePartitionTableEntry> volumebackup::util::ReadVolumeParti
             continue;  // Skip special partitions (like free space and extended partitions)
         }
 
-        VolumePartitionTableEntry entry;
+        VolumePartitionTableEntry entry {};
         entry.patitionNumber = part->num;
         entry.firstSector = part->geom.start;
         entry.lastSector = part->geom.end;
@@ -165,4 +165,20 @@ std::string volumebackup::util::GetCopyFilePath(
 {
     std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + ".data.bin";
     return copyDataDirPath + SEPARATOR + filename;
+}
+
+bool volumebackup::util::WriteVolumeCopyMeta(
+    const std::string& copyMetaDirPath,
+    const VolumeCopyMeta& volumeCopyMeta)
+{
+    // TODO:: implement
+    return true;
+}
+
+bool volumebackup::util::ReadVolumeCopyMeta(
+    const std::string& copyMetaDirPath,
+    VolumeCopyMeta& volumeCopyMeta)
+{
+    // TODO:: implement
+    return true;
 }

@@ -13,7 +13,16 @@
 #include "VolumeBlockReader.h"
 #include "VolumeBlockWriter.h"
 
-namespace {
+namespace volumebackup {
+
+const uint64_t ONE_KB = 1024;
+const uint64_t ONE_MB = 1024 * ONE_KB;
+const uint64_t ONE_GB = 1024 * ONE_MB;
+const uint64_t ONE_TB = 1024 * ONE_GB;
+
+const uint32_t DEFAULT_BLOCK_SIZE = 4 * ONE_MB;
+const uint64_t DEFAULT_SESSION_SIZE = ONE_TB;
+const uint32_t DEFAULT_HASHER_NUM = 8;
 
 // a fixed block allocator
 class VolumeBlockAllocator {
@@ -106,6 +115,25 @@ struct VolumeBackupSession {
     std::shared_ptr<volumebackup::VolumeBlockReader> reader { nullptr };
     std::shared_ptr<volumebackup::VolumeBlockHasher> hasher { nullptr };
     std::shared_ptr<volumebackup::VolumeBlockWriter> writer { nullptr };
+
+    bool Wait() const;
+};
+
+struct VolumePartitionTableEntry {
+    std::string filesystem;
+    uint64_t    patitionNumber;
+    uint64_t    firstSector;
+    uint64_t    lastSector;
+    uint64_t    totalSectors;
+};
+
+struct VolumeCopyMeta {
+    using Range = std::vector<std::pair<uint64_t, uint64_t>>;
+
+    uint64_t    size;
+    uint32_t    blockSize;
+    Range       slices;
+    VolumePartitionTableEntry partition;
 };
 
 }

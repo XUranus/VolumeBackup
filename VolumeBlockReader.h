@@ -1,5 +1,5 @@
-#ifndef VOLUME_COPY_READER_H
-#define VOLUME_COPY_READER_H
+#ifndef VOLUME_BLOCK_READER_H
+#define VOLUME_BLOCK_READER_H
 
 #include <cstdint>
 #include <string>

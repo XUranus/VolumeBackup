@@ -1,5 +1,8 @@
 #include <cstring>
 #include <exception>
+#include <thread>
+
+#include "VolumeBackupUtils.h"
 #include "VolumeBackupContext.h"
 
 using namespace volumebackup;
@@ -65,4 +68,22 @@ bool VolumeBackupConfig::Validate() const
         return false;
     }
     return true;
+}
+
+
+
+
+
+
+
+
+
+
+bool VolumeBackupSession::Wait() const
+{
+    return (
+        (reader == nullptr || reader->IsTerminated()) &&
+        (hasher == nullptr || writer->IsTerminated()) &&
+        (writer == nullptr || writer->IsTerminated()) &&
+    );
 }

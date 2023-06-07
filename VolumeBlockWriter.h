@@ -1,6 +1,6 @@
 
-#ifndef VOLUME_COPY_WRITER_H
-#define VOLUME_COPY_WRITER_H
+#ifndef VOLUME_BLOCK_WRITER_H
+#define VOLUME_BLOCK_WRITER_H
 
 #include "VolumeBackupContext.h"
 

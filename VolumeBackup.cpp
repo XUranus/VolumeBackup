@@ -48,55 +48,142 @@ using namespace volumebackup::util;
  *                  |------2048.1024.sha256.meta.bin
  */
 
-// TODO:: change this method from blocking to non-blocking
-bool SplitFullBackupTask(
+std::shared_ptr<VolumeBackupTask> BuildFullBackupTask(
 	const std::string& 	blockDevicePath,
 	const std::string&	outputCopyDataDirPath,
 	const std::string&	outputCopyMetaDirPath)
 {
-    VolumePartitionTableEntry partitionEntry {};
+    // 1. check volume size
     uint64_t volumeSize = 0;
-    uint64_t defaultSessionSize = ONE_TB;
-    std::queue<VolumeBackupSession> sessionQueue;
-
-    // 1. check volume and retrive metadata
     try {
         volumeSize = util::ReadVolumeSize(blockDevicePath);
+    } catch (std::exception& e) {
+        // TODO:: err e.what()
+        return nullptr;
+    }
+    if (volumeSize == 0) { // invalid volume
+        return nullptr;
+    }
+
+    // 2. TODO:: check dir existence
+    // outputCopyDataDirPath
+    // outputCopyMetaDirPath
+
+    return std::make_shared<VolumeBackupTask>(
+        blockDevicePath,
+        volumeSize,
+        outputCopyDataDirPath,
+        outputCopyMetaDirPath
+    );
+}
+
+
+VolumeBackupTask::VolumeBackupTask(
+    const std::string blockDevicePath,
+    uint64_t volumeSize,
+    const std::string outputCopyDataDirPath,
+    const std::string outputCopyMetaDirPath
+) : m_blockDevicePath(blockDevicePath),
+    m_volumeSize(volumeSize),
+    m_outputCopyDataDirPath(outputCopyDataDirPath),
+    m_outputCopyMetaDirPath(outputCopyMetaDirPath)
+{}
+
+VolumeBackupTask::~VolumeBackupTask()
+{}
+
+bool VolumeBackupTask::Start()
+{
+    if (m_status != TaskStatus::INIT) {
+        return false;
+    }
+    if (!Prepare()) {
+        m_status = TaskStatus::FAILED;
+        return false;
+    }
+    m_thread = std::thread(&VolumeBackupTask::ThreadFunc, this);
+    m_status = TaskStatus::RUNNING;
+    return true;
+}
+
+bool VolumeBackupTask::IsTerminated()
+{
+    return (
+        m_status == TaskStatus::ABORTED ||
+        m_status == TaskStatus::FAILED ||
+        m_status == TaskStatus::SUCCEED
+    );
+}
+
+TaskStatus VolumeBackupTask::GetStatus()
+{
+    return m_status;
+}
+
+bool VolumeBackupTask::Abort()
+{
+    m_abort = true;
+}
+
+// split session and save volume meta
+bool VolumeBackupTask::Prepare()
+{
+    // 1. retrive volume partition info
+    VolumePartitionTableEntry partitionEntry {};
+    try {
         std::vector<VolumePartitionTableEntry> partitionTable = util::ReadVolumePartitionTable(blockDevicePath);
         if (partitionTable.size() != 1) {
-            // TODO:: err
+            // TODO:: failed to read partition table, or has multiple volumes
             return false;
         }
-        partitionEntry = partitionTable.back();
+        partitionEntry =  partitionTable.back();
     } catch (std::exception& e) {
         // TODO:: err e.what()
         return false;
     }
 
+    VolumeCopyMeta volumeCopyMeta {};
+    volumeCopyMeta.size = m_volumeSize;
+    volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
+    volumeCopyMeta.partition = partitionEntry;
+
     // 2. split session
-    for (uint64_t sessionOffset = 0; sessionOffset < volumeSize;) {
-        uint64_t sessionSize = defaultSessionSize;
-        if (sessionOffset + defaultSessionSize >= volumeSize) {
-            sessionSize = volumeSize - sessionOffset;
+    for (uint64_t sessionOffset = 0; sessionOffset < m_volumeSize;) {
+        uint64_t sessionSize = DEFAULT_SESSION_SIZE;
+        if (sessionOffset + DEFAULT_SESSION_SIZE >= m_volumeSize) {
+            sessionSize = m_volumeSize - sessionOffset;
         }
-        std::string checksumBinPath = util::GetChecksumBinPath(outputCopyMetaDirPath, sessionOffset, sessionSize);
-        std::string copyFilePath = util::GetCopyFilePath(outputCopyDataDirPath, sessionOffset, sessionSize);
+        std::string checksumBinPath = util::GetChecksumBinPath(m_outputCopyMetaDirPath, sessionOffset, sessionSize);
+        std::string copyFilePath = util::GetCopyFilePath(m_outputCopyDataDirPath, sessionOffset, sessionSize);
         VolumeBackupSession session {
-            blockDevicePath,
+            m_blockDevicePath,
             sessionOffset,
             sessionSize,
             checksumBinPath,
             copyFilePath,
         };
-        sessionQueue.push(session);
+        volumeCopyMeta.slices.emplace_back(sessionOffset, sessionSize);
+        m_sessionQueue.push(session);
     }
 
-    // 3. start task in sequence
-    while (!sessionQueue.empty()) {
-        VolumeBackupSession session = sessionQueue.pop();
-        auto context = std::make_shared<VolumeBackupContext>(); // build context
+    if (!util::WriteVolumeCopyMeta(m_outputCopyMetaDirPath, volumeCopyMeta)) {
+        // TODO:: failed to write copy meta
+        return false;
+    }
+}
+
+void VolumeBackupTask::ThreadFunc()
+{
+    while (!m_sessionQueue.empty()) {
+        if (m_abort) {
+            m_status = TaskStatus::ABORTED;
+            return;
+        }
+        VolumeBackupSession session = m_sessionQueue.front();
+        m_sessionQueue.pop();
+        auto context = std::make_shared<VolumeBackupContext>(); // init new context
         session.reader = VolumeBlockReader::BuildVolumeReader(
-            blockDevicePath,
+            m_blockDevicePath,
             session.sessionOffset,
             session.sessionSize,
             context
@@ -110,31 +197,16 @@ bool SplitFullBackupTask(
             context
         );
         if (session.reader == nullptr || session.hasher == nullptr || session.writer == nullptr) {
-            return false;
+            m_status = TaskStatus::FAILED;
+            return;
         }
         if (!session.reader->Start() || session.hasher->Start() || session.writer->Start()) {
-            return false;
+            m_status = TaskStatus::FAILED;
+            return;
         }
-        session.wait(); // block the thread
+        session.Wait(); // block the thread
     }
-      
-    return true;
-}
-
-bool StartIncrementBackupTask(
-	const std::string& 	blockDevicePath,
-    const std::string&	prevCopyDataDirPath,
-	const std::string&	prevCopyMetaDirPath,
-	const std::string&	outputCopyDataDirPath,
-	const std::string&	outputCopyMetaDirPath)
-{
-    return true;    
-}
-
-bool StartRestoreTask(
-	const std::string&	copyDataDirPath,
-	const std::string&	copyMetaDirPath,
-    const std::string& 	blockDevicePath)
-{
-    return true;    
+    
+    m_status = TaskStatus::SUCCEED;
+    return;
 }

@@ -1,3 +1,5 @@
+#ifndef VOLUME_BLOCKING_QUEUE_H
+#define VOLUME_BLOCKING_QUEUE_H
 
 #include <cstddef>
 #include <queue>
@@ -81,3 +83,5 @@ std::size_t BlockingQueue<T>::Size()
     std::lock_guard<std::mutex> lk(m_mutex);
     return m_queue.size();
 }
+
+#endif
