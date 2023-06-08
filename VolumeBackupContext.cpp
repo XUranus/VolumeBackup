@@ -53,22 +53,22 @@ void VolumeBlockAllocator::bfree(char* ptr)
 
 
 
-bool VolumeBackupConfig::Validate() const
-{
-    // 1. validate volume and fetch volume size
-    try {
-        uint64_t volumeSize = volumebackup::ReadVolumeSize(blockDevicePath);
-    } catch (const std::exception& e) {
-        throw e;
-        return false;
-    }
+// bool VolumeBackupConfig::Validate() const
+// {
+//     // 1. validate volume and fetch volume size
+//     try {
+//         uint64_t volumeSize = volumebackup::ReadVolumeSize(blockDevicePath);
+//     } catch (const std::exception& e) {
+//         throw e;
+//         return false;
+//     }
 
-    // 2. validate blockSize
-    if (blockSize == 0 || blockSize % ONE_KB != 0 || blockSize > FOUR_MB) {
-        return false;
-    }
-    return true;
-}
+//     // 2. validate blockSize
+//     if (blockSize == 0 || blockSize % ONE_KB != 0 || blockSize > FOUR_MB) {
+//         return false;
+//     }
+//     return true;
+// }
 
 
 

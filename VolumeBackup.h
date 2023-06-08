@@ -8,7 +8,7 @@
 #include <queue>
 #include <memory>
 
-#include "VolumeBackupSession."
+#include "VolumeBackupContext.h"
 
 // volume backup application facade
 namespace volumebackup {
@@ -24,10 +24,7 @@ enum class TaskStatus {
 
 class VolumeBackupTask {
 public:
-    std::shared_ptr<VolumeBackupTask> BuildFullBackupTask(
-	const std::string& 	blockDevicePath,
-	const std::string&	outputCopyDataDirPath,
-	const std::string&	outputCopyMetaDirPath);
+    static std::shared_ptr<VolumeBackupTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
 
     ~VolumeBackupTask();
 
@@ -35,23 +32,16 @@ public:
     bool IsTerminated();
     TaskStatus GetStatus();
     bool Abort();
+    VolumeTaskStatistics GetStatistics();
 
 private:
-    VolumeBackupTask(
-        const std::string blockDevicePath,
-        uint64_t volumeSize,
-	    const std::string outputCopyDataDirPath,
-	    const std::string outputCopyMetaDirPath
-    );
+    VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);
     bool Prepare(); // split session and save meta
     void ThreadFunc();
-     
 
 private:
-    std::string 	m_blockDevicePath;
-	std::string	    m_outputCopyDataDirPath;
-	std::string 	m_outputCopyMetaDirPath;
-    uint64_t        m_volumeSize;
+    uint64_t            m_volumeSize;
+    VolumeBackupConfig  m_backupConfig;
 
     std::thread     m_thread;
     bool            m_abort { false }; // if aborted is invoked

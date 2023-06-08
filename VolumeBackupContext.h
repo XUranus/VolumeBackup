@@ -24,6 +24,43 @@ const uint32_t DEFAULT_BLOCK_SIZE = 4 * ONE_MB;
 const uint64_t DEFAULT_SESSION_SIZE = ONE_TB;
 const uint32_t DEFAULT_HASHER_NUM = 8;
 
+/*
+ *volume backup/restore facade and common struct defines
+ */
+
+enum class CopyType {
+    FULL,       // the copy contains a full volume
+    INCREMENT   // the copy is increment copy
+};
+
+// immutable config, used to build volume full/increment backup task
+struct VolumeBackupConfig {
+    CopyType        copyType;                               // type of target copy to be generated
+    std::string     blockDevicePath;                        // path of the block device (volume)
+    std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
+	std::string	    outputCopyDataDirPath;
+	std::string	    outputCopyMetaDirPath;
+    uint32_t        blockSize { DEFAULT_BLOCK_SIZE };       // [optional] default block size used for computing checksum
+    uint64_t        sessionSize { DEFAULT_SESSION_SIZE };   // defauly sesson size used to split session
+    uint64_t        hasherNum { DEFAULT_HASHER_NUM };       // hasher worker count, recommended set to the num of processors
+    bool            hasherEnabled { true };                 // if set to false, won't compute checksum
+};
+
+// immutable config, used to build volume restore task
+struct VolumeRestoreConfig {
+    CopyType        copyType;                               // type of the source copy to be restored from
+    std::string     blockDevicePath;                        // path of the block device (volume)
+    std::string	    copyDataDirPath;
+	std::string	    copyMetaDirPath;
+};
+
+// commpound struct used for hash/writer consuming
+struct VolumeConsumeBlock {
+    char*           ptr;
+    uint64_t        offset;
+    uint32_t        length;
+};
+
 // a fixed block allocator
 class VolumeBlockAllocator {
 public:
@@ -38,43 +75,6 @@ private:
     uint32_t    m_blockSize;
     uint32_t    m_blockNum;
     std::mutex  m_mutex;
-};
-
-/*
- *volume backup/restore facade and common struct defines
- */
-
-enum class ActionType {
-    BACKUP,     // backup a volume to a binary dump file copy
-    RESTORE     // restore a volume from a binary dump file copy
-};
-
-enum class CopyType {
-    FULL,       // the copy contains a full volume
-    INCREMENT   // the copy is increment copy
-};
-
-struct VolumeBackupConfig {
-    ActionType  actionType;
-    CopyType    copyType;
-
-    // immutable fields
-    //std::string     prevChecksumBinPath;      // path of the checksum bin from previous copy
-    //std::string     lastestChecksumBinPath;   // path of the checksum bin to write latest copy
-    std::string             srcPath;
-    uint32_t                blockSize;
-    uint64_t                sessionOffset;
-    uint64_t                sessionSize;
-    bool                    hasherEnabled { true };
-
-    bool Validate() const;
-};
-
-// commpound struct used for hash/writer consuming
-struct VolumeConsumeBlock {
-    char*           ptr;
-    uint64_t        offset;
-    uint32_t        length;
 };
 
 struct VolumeBackupContext {
@@ -117,6 +117,17 @@ struct VolumeBackupSession {
     std::shared_ptr<volumebackup::VolumeBlockWriter> writer { nullptr };
 
     bool Wait() const;
+};
+
+struct VolumeRestoreSession {
+    std::string     blockDevicePath;
+    uint64_t        sessionOffset;
+    uint64_t        sessionSize;
+    std::string     copyFilePath;
+    //uint64_t        copyFileMappingOffset;
+
+    std::shared_ptr<volumebackup::VolumeBlockReader> reader { nullptr };
+    std::shared_ptr<volumebackup::VolumeBlockWriter> writer { nullptr };
 };
 
 struct VolumePartitionTableEntry {

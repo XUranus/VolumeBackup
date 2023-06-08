@@ -48,17 +48,15 @@ using namespace volumebackup::util;
  *                  |------2048.1024.sha256.meta.bin
  */
 
-std::shared_ptr<VolumeBackupTask> BuildFullBackupTask(
-	const std::string& 	blockDevicePath,
-	const std::string&	outputCopyDataDirPath,
-	const std::string&	outputCopyMetaDirPath)
+
+std::shared_ptr<VolumeBackupTask> VolumeBackupTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)
 {
     // 1. check volume size
     uint64_t volumeSize = 0;
     try {
-        volumeSize = util::ReadVolumeSize(blockDevicePath);
+        volumeSize = util::ReadVolumeSize(backupConfig.blockDevicePath);
     } catch (std::exception& e) {
-        // TODO:: err e.what()
+        ERRLOG("retrive volume size got exception: %s", e.what());
         return nullptr;
     }
     if (volumeSize == 0) { // invalid volume
@@ -66,27 +64,20 @@ std::shared_ptr<VolumeBackupTask> BuildFullBackupTask(
     }
 
     // 2. TODO:: check dir existence
-    // outputCopyDataDirPath
-    // outputCopyMetaDirPath
+    if (!util::CheckDirectoryExistence(backupConfig.outputCopyDataDirPath) ||
+        !util::CheckDirectoryExistence(backupConfig.outputCopyMetaDirPath) ||
+        (backupConfig.copyType == CopyType::INCREMENT &&
+        !util::CheckDirectoryExistence(backupConfig.prevCopyMetaDirPath))) {
+        ERRLOG("failed to prepare copy directory");
+        return nullptr;
+    }
 
-    return std::make_shared<VolumeBackupTask>(
-        blockDevicePath,
-        volumeSize,
-        outputCopyDataDirPath,
-        outputCopyMetaDirPath
-    );
+    return std::make_shared<VolumeBackupTask>(backupConfig, volumeSize);
 }
 
 
-VolumeBackupTask::VolumeBackupTask(
-    const std::string blockDevicePath,
-    uint64_t volumeSize,
-    const std::string outputCopyDataDirPath,
-    const std::string outputCopyMetaDirPath
-) : m_blockDevicePath(blockDevicePath),
-    m_volumeSize(volumeSize),
-    m_outputCopyDataDirPath(outputCopyDataDirPath),
-    m_outputCopyMetaDirPath(outputCopyMetaDirPath)
+VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
+ : m_backupConfig(backupConfig), m_volumeSize(volumeSize)
 {}
 
 VolumeBackupTask::~VolumeBackupTask()

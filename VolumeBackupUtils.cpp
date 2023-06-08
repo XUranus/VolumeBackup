@@ -5,6 +5,8 @@
 #include <vector>
 #include <string>
 
+#include <filesystem>
+
 extern "C" {
     #include <blkid/blkid.h>
     #include <parted/parted.h>
@@ -49,6 +51,18 @@ uint64_t volumebackup::util::ReadVolumeSize(const std::string& blockDevice)
 
     ::close(fd);
     return size;
+}
+
+bool volumebackup::util::CheckDirectoryExistence(const std::string& path)
+{
+    try {
+        if (std::filesystem::is_directory(path)) {
+            return true;
+        }
+        return std::filesystem::create_directories(path);
+    } catch (const std::exception& e) {
+        return false;
+    }
 }
 
 uint32_t volumebackup::util::ProcessorsNum()

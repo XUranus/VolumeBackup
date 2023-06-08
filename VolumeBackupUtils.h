@@ -19,6 +19,8 @@ std::runtime_error BuildRuntimeException(
 
 uint64_t ReadVolumeSize(const std::string& blockDevice);
 
+bool CheckDirectoryExistence(const std::string& path);
+
 uint32_t ProcessorsNum();
 
 std::string ReadVolumeUUID(const std::string& blockDevicePath);
