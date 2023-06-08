@@ -7,11 +7,14 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <cstdio>
 
 #include "BlockingQueue.h"
 #include "VolumeBlockHasher.h"
 #include "VolumeBlockReader.h"
 #include "VolumeBlockWriter.h"
+
+#define ERRLOG  ::printf
 
 namespace volumebackup {
 
@@ -105,7 +108,6 @@ struct VolumeBackupContext {
  * each VolumeBackupContext corresponding to a volume <===> volume.part file backup session 
  */
 struct VolumeBackupSession {
-    std::string     blockDevicePath;
     uint64_t        sessionOffset;
     uint64_t        sessionSize;
     std::string     checksumBinPath;
@@ -116,7 +118,7 @@ struct VolumeBackupSession {
     std::shared_ptr<volumebackup::VolumeBlockHasher> hasher { nullptr };
     std::shared_ptr<volumebackup::VolumeBlockWriter> writer { nullptr };
 
-    bool Wait() const;
+    bool IsTerminated() const;
 };
 
 struct VolumeRestoreSession {

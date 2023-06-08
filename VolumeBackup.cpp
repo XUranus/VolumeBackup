@@ -1,7 +1,9 @@
+#include <chrono>
 #include <exception>
 #include <queue>
 #include <string>
 #include <sys/types.h>
+#include <thread>
 #include <vector>
 
 #include "VolumeBackupContext.h"
@@ -124,12 +126,12 @@ bool VolumeBackupTask::Prepare()
     try {
         std::vector<VolumePartitionTableEntry> partitionTable = util::ReadVolumePartitionTable(blockDevicePath);
         if (partitionTable.size() != 1) {
-            // TODO:: failed to read partition table, or has multiple volumes
+            ERRLOG("failed to read partition table, or has multiple volumes");
             return false;
         }
         partitionEntry =  partitionTable.back();
     } catch (std::exception& e) {
-        // TODO:: err e.what()
+        ERRLOG("read volume partition got exception: %s", e.what());
         return false;
     }
 
@@ -144,10 +146,9 @@ bool VolumeBackupTask::Prepare()
         if (sessionOffset + DEFAULT_SESSION_SIZE >= m_volumeSize) {
             sessionSize = m_volumeSize - sessionOffset;
         }
-        std::string checksumBinPath = util::GetChecksumBinPath(m_outputCopyMetaDirPath, sessionOffset, sessionSize);
-        std::string copyFilePath = util::GetCopyFilePath(m_outputCopyDataDirPath, sessionOffset, sessionSize);
+        std::string checksumBinPath = util::GetChecksumBinPath(m_backupConfig.outputCopyMetaDirPath, sessionOffset, sessionSize);
+        std::string copyFilePath = util::GetCopyFilePath(m_backupConfig.outputCopyDataDirPath, sessionOffset, sessionSize);
         VolumeBackupSession session {
-            m_blockDevicePath,
             sessionOffset,
             sessionSize,
             checksumBinPath,
@@ -157,8 +158,8 @@ bool VolumeBackupTask::Prepare()
         m_sessionQueue.push(session);
     }
 
-    if (!util::WriteVolumeCopyMeta(m_outputCopyMetaDirPath, volumeCopyMeta)) {
-        // TODO:: failed to write copy meta
+    if (!util::WriteVolumeCopyMeta(m_backupConfig.outputCopyMetaDirPath, volumeCopyMeta)) {
+        ERRLOG("failed to write copy meta to dir: %s", m_backupConfig.outputCopyMetaDirPath.c_str());
         return false;
     }
 }
@@ -174,7 +175,7 @@ void VolumeBackupTask::ThreadFunc()
         m_sessionQueue.pop();
         auto context = std::make_shared<VolumeBackupContext>(); // init new context
         session.reader = VolumeBlockReader::BuildVolumeReader(
-            m_blockDevicePath,
+            m_backupConfig.blockDevicePath,
             session.sessionOffset,
             session.sessionSize,
             context
@@ -195,7 +196,18 @@ void VolumeBackupTask::ThreadFunc()
             m_status = TaskStatus::FAILED;
             return;
         }
-        session.Wait(); // block the thread
+        // block the thread
+        while (true) {
+            if (m_abort) {
+                m_status = TaskStatus::ABORTED;
+                return;
+            }
+            if (session.IsTerminated())  {
+                break;
+            }
+            // TODO:: add statistics
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+        }
     }
     
     m_status = TaskStatus::SUCCEED;

@@ -79,7 +79,7 @@ void VolumeBlockAllocator::bfree(char* ptr)
 
 
 
-bool VolumeBackupSession::Wait() const
+bool VolumeBackupSession::IsTerminated() const
 {
     return (
         (reader == nullptr || reader->IsTerminated()) &&

@@ -22,17 +22,27 @@ enum class TaskStatus {
     FAILED      =  5
 };
 
+struct TaskStatistics {
+    uint64_t bytesToRead;
+    uint64_t bytesReaded;
+    uint64_t bytesToHash;
+    uint64_t bytesHashed;
+    uint64_t bytesToWrite;
+    uint64_t bytesWritten;
+};
+
 class VolumeBackupTask {
 public:
+    using SessionQueue = std::queue<volumebackup::VolumeBackupSession>;
+
     static std::shared_ptr<VolumeBackupTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
-
+    
     ~VolumeBackupTask();
-
-    bool Start();
-    bool IsTerminated();
-    TaskStatus GetStatus();
-    bool Abort();
-    VolumeTaskStatistics GetStatistics();
+    bool            Start();
+    bool            IsTerminated();
+    TaskStatus      GetStatus();
+    bool            Abort();
+    TaskStatistics  GetStatistics();
 
 private:
     VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);
@@ -46,8 +56,8 @@ private:
     std::thread     m_thread;
     bool            m_abort { false }; // if aborted is invoked
     TaskStatus      m_status { TaskStatus::INIT };
-
-    std::queue<volumebackup::VolumeBackupSession> m_sessionQueue;
+    SessionQueue    m_sessionQueue;
+    TaskStatistics  m_statistics;
 };
 
 }
