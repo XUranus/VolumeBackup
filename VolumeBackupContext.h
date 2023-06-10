@@ -1,7 +1,7 @@
 
 
-#ifndef VOLUME_BACKUP_CONTEXT_H
-#define VOLUME_BACKUP_CONTEXT_H
+#ifndef VOLUME_BACKUP_session_H
+#define VOLUME_BACKUP_session_H
 
 #include <atomic>
 #include <cstdint>
@@ -80,43 +80,40 @@ private:
     std::mutex  m_mutex;
 };
 
-struct VolumeBackupContext {
-    // immutable fields
-    VolumeBackupConfig      config;
-
-    // mutable fields
-    std::atomic<uint64_t>   bytesToRead;
-    std::atomic<uint64_t>   bytesReaded;
-    
-    std::atomic<uint64_t>   blocksToHash;
-    std::atomic<uint64_t>   blocksHashed;
-
-    std::atomic<uint64_t>   bytesToWrite;
-    std::atomic<uint64_t>   bytesWrited;
-
-    VolumeBlockAllocator              allocator;
-    BlockingQueue<VolumeConsumeBlock> hashingQueue;
-    BlockingQueue<VolumeConsumeBlock> writeQueue;
-};
-
 /*
  * |                    |<-------session------>|
  * |==========================================================| logical volume
  * |        ...         |                      |    
  * 0              sessionOffset      sessionOffset + sessionSize
  *
- * each VolumeBackupContext corresponding to a volume <===> volume.part file backup session 
+ * each VolumeBackupSession corresponding to a volume <===> volume.part file backup session 
  */
 struct VolumeBackupSession {
+    // immutable fields
+    std::shared_ptr<VolumeBackupConfig> config;
+
     uint64_t        sessionOffset;
     uint64_t        sessionSize;
     std::string     checksumBinPath;
     std::string     copyFilePath;
     //uint64_t        copyFileMappingOffset;
 
+    // mutable fields
     std::shared_ptr<volumebackup::VolumeBlockReader> reader { nullptr };
     std::shared_ptr<volumebackup::VolumeBlockHasher> hasher { nullptr };
     std::shared_ptr<volumebackup::VolumeBlockWriter> writer { nullptr };
+
+    // shared session
+    std::atomic<uint64_t>   bytesToRead;
+    std::atomic<uint64_t>   bytesRead;
+    std::atomic<uint64_t>   blocksToHash;
+    std::atomic<uint64_t>   blocksHashed;
+    std::atomic<uint64_t>   bytesToWrite;
+    std::atomic<uint64_t>   bytesWritten;
+
+    VolumeBlockAllocator              allocator;
+    BlockingQueue<VolumeConsumeBlock> hashingQueue;
+    BlockingQueue<VolumeConsumeBlock> writeQueue;
 
     bool IsTerminated() const;
 };
@@ -147,6 +144,18 @@ struct VolumeCopyMeta {
     uint32_t    blockSize;
     Range       slices;
     VolumePartitionTableEntry partition;
+};
+
+class StatefulTask {
+public:
+    void Abort() {
+        m_abort = true;
+        m_status = TaskStatus::ABORTING;
+    }
+    void GetStatus() const { return m_status; }
+protected:
+    TaskStatus  m_status { TaskStatus::INIT };
+    bool        m_abort { false };
 };
 
 }

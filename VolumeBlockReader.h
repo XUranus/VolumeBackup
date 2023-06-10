@@ -1,16 +1,17 @@
 #ifndef VOLUME_BLOCK_READER_H
 #define VOLUME_BLOCK_READER_H
 
+#include "VolumeBackupContext.h"
+
 #include <cstdint>
 #include <string>
 #include <memory>
 #include <thread>
-#include "VolumeBackupContext.h"
 
 namespace volumebackup {
 
 // read m_sourceLength bytes from block device/copy from m_sourceOffset
-class VolumeBlockReader {
+class VolumeBlockReader : public StatefulTask {
 public:
     enum SourceType {
         VOLUME,
@@ -22,37 +23,40 @@ public:
         const std::string& blockDevicePath,
         uint64_t offset,
         uint64_t length,
-        const std::shared_ptr<VolumeBackupContext> context);
+        std::shared_ptr<VolumeBackupSession> session);
 
     // build a reader reading from volume copy
     static std::shared_ptr<VolumeBlockReader> BuildCopyReader(
         const std::string& copyFilePath,
         uint64_t offset,
         uint64_t length,
-        std::shared_ptr<VolumeBackupContext> context);
+        std::shared_ptr<VolumeBackupSession> session);
 
     bool Start();
 
-private:
-    void ReaderThread();
+    ~VolumeBlockReader();
 
+private:
     VolumeBlockReader(
         SourceType sourceType,
         std::string sourcePath,
         uint64_t    sourceOffset,
         uint64_t    sourceLength,
-        std::shared_ptr<VolumeBackupContext> context
+        std::shared_ptr<VolumeBackupSession> session
     );
 
+    void ReaderThread();
+
 private:
+    // immutable fields
     SourceType  m_sourceType;
     std::string m_sourcePath;
     uint64_t    m_sourceOffset;
     uint64_t    m_sourceLength;
-    std::shared_ptr<VolumeBackupContext> m_context;
 
+    // mutable fields
+    std::shared_ptr<VolumeBackupSession> m_session;
     std::thread m_readerThread;
-    bool        m_failed { false };
 };
 
 }

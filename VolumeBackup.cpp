@@ -99,7 +99,7 @@ bool VolumeBackupTask::Start()
     return true;
 }
 
-bool VolumeBackupTask::IsTerminated()
+bool VolumeBackupTask::IsTerminated() const
 {
     return (
         m_status == TaskStatus::ABORTED ||
@@ -108,7 +108,7 @@ bool VolumeBackupTask::IsTerminated()
     );
 }
 
-TaskStatus VolumeBackupTask::GetStatus()
+TaskStatus VolumeBackupTask::GetStatus() const
 {
     return m_status;
 }
@@ -116,6 +116,11 @@ TaskStatus VolumeBackupTask::GetStatus()
 bool VolumeBackupTask::Abort()
 {
     m_abort = true;
+}
+
+bool VolumeBackupTask::GetStatistics() const
+{
+    return m_statistics;
 }
 
 // split session and save volume meta
@@ -173,20 +178,20 @@ void VolumeBackupTask::ThreadFunc()
         }
         VolumeBackupSession session = m_sessionQueue.front();
         m_sessionQueue.pop();
-        auto context = std::make_shared<VolumeBackupContext>(); // init new context
+        auto session = std::make_shared<VolumeBackupSession>(); // init new session
         session.reader = VolumeBlockReader::BuildVolumeReader(
             m_backupConfig.blockDevicePath,
             session.sessionOffset,
             session.sessionSize,
-            context
+            session
         );
         session.hasher = VolumeBlockHasher::BuildDirectHasher(
-            context,
+            session,
             session.checksumBinPath
         );
         session.writer = VolumeBlockWriter::BuildCopyWriter(
             session.copyFilePath,
-            context
+            session
         );
         if (session.reader == nullptr || session.hasher == nullptr || session.writer == nullptr) {
             m_status = TaskStatus::FAILED;

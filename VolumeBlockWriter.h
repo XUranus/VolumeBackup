@@ -11,7 +11,7 @@
 
 namespace volumebackup {
 
-class VolumeBlockWriter {
+class VolumeBlockWriter : public StatefulTask {
 public:
     enum TargetType {
         VOLUME,
@@ -20,34 +20,35 @@ public:
 
     // build a writer writing to copy file
     static std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(
-        const std::string& copyFilePath,
-        std::shared_ptr<VolumeBackupContext> context
+        std::shared_ptr<VolumeBackupSession> session
     );
 
     // build a writer writing to volume
     static std::shared_ptr<VolumeBlockWriter> BuildVolumeWriter(
-        const std::string& blockDevicePath,
-        std::shared_ptr<VolumeBackupContext> context
+        std::shared_ptr<VolumeBackupSession> session
     );
 
     bool Start();
+
+    ~VolumeBlockWriter();
 
 private:
     VolumeBlockWriter(
         TargetType targetType,
         const std::string& targetPath,
-        std::shared_ptr<VolumeBackupContext> context
+        std::shared_ptr<VolumeBackupSession> session
     );
 
     void WriterThread();
 
 private:
+    // immutable fields
     TargetType  m_targetType;
     std::string m_targetPath;
-    std::shared_ptr<VolumeBackupContext> m_context;  // mutable, used for sync
 
+    // mutable fields
+    std::shared_ptr<VolumeBackupSession> m_session;
     std::thread m_writerThread;
-    bool m_failed { false };
 };
 
 }

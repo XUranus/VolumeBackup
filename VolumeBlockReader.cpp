@@ -18,10 +18,6 @@
 #include "VolumeBlockReader.h"
 #include "VolumeBackupUtils.h"
 
-namespace {
-    const uint32_t DEFAULT_BUFFER_SIZE = 4 * 1024 * 1024; // 4MB 
-}
-
 using namespace volumebackup;
 
 // build a reader reading from volume (block device)
@@ -29,92 +25,120 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
     const std::string& blockDevicePath,
     uint64_t offset,
     uint64_t length,
-    const std::shared_ptr<VolumeBackupContext> context)
+    std::shared_ptr<VolumeBackupSession> session)
 {
     return std::make_shared<VolumeBlockReader>(
         VolumeBlockReader::SourceType::VOLUME,
         blockDevicePath,
         offset,
         length,
-        context
+        session
     );
 }
 
-// build a reader reading from volume copy
+// build a reader reading from volume copy file
 std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     const std::string& copyFilePath,
     uint64_t offset,
     uint64_t length,
-    std::shared_ptr<VolumeBackupContext> context)
+    std::shared_ptr<VolumeBackupSession> session)
 {
     return std::make_shared<VolumeBlockReader>(
         VolumeBlockReader::SourceType::COPYFILE,
         copyFilePath,
         offset,
         length,
-        context
+        session
     );
+}
+
+bool VolumeBlockReader::Start()
+{
+    if (m_status != TaskStatus::INIT) {
+        return false;
+    }
+    m_readerThread = std::thread(&VolumeBlockReader::ReaderThread, this);
+    m_status = TaskStatus::RUNNING;
+    return true;
+}
+
+VolumeBlockReader::~VolumeBlockReader() {
+    if (m_readerThread.joinable()) {
+        m_readerThread.join();
+    }
 }
 
 VolumeBlockReader::VolumeBlockReader(
     VolumeBlockReader::SourceType sourceType,
-    std::string sourcePath,
+    const std::string& sourcePath,
     uint64_t    sourceOffset,
     uint64_t    sourceLength,
-    std::shared_ptr<VolumeBackupContext> context
+    std::shared_ptr<VolumeBackupSession> session
 ) : m_sourceType(sourceType),
     m_sourcePath(sourcePath),
     m_sourceOffset(sourceOffset),
     m_sourceLength(sourceLength),
-    m_context(context)
+    m_session(session)
 {}
-
-bool VolumeBlockReader::Start()
-{
-    m_readerThread = std::thread(&VolumeBlockReader::ReaderThread, this);
-    return true;
-}
 
 void VolumeBlockReader::ReaderThread()
 {
     // Open the device file for reading
-    uint32_t bufferSize = m_context->config.blockSize;
+    uint32_t defaultBufferSize = m_session->config->blockSize;
     uint64_t currentOffset = m_sourceOffset;
-    int fd = ::open(m_sourcePath.c_str(), O_RDONLY);
     uint32_t nBytesToRead = 0;
-
+    int fd = ::open(m_sourcePath.c_str(), O_RDONLY);
     if (fd < 0) {
-        throw BuildRuntimeException("Failed to open the device file for read", m_sourcePath, errno);
-        m_failed = true;
+        ERRLOG("Failed to open %s for read, %d", m_sourcePath.c_str(), errno);
+        m_status = TaskStatus::FAILED;
         return;
     }
     
-    ::lseek(fd, m_sourceOffset, SEEK_SET);
-    m_context->bytesReaded += m_sourceLength;
+    ::lseek(fd, m_sourceOffset, SEEK_SET); // read from m_sourceOffset
+    m_session->bytesToRead += m_sourceLength;
 
-    while (m_sourceOffset + m_sourceLength < currentOffset) {
-        auto buffer = m_context->allocator.bmalloc();
+    while (true) {
+        if (m_abort) {
+            m_status = TaskStatus::ABORTED;
+            ::close(fd);
+            return;
+        }
+
+        if (m_sourceOffset + m_sourceLength <= currentOffset) {
+            // read completed
+            break;
+        }
+
+        char* buffer = m_session->allocator.bmalloc();
         if (buffer == nullptr) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
         nBytesToRead = static_cast<uint32_t>(std::min(
-            bufferSize,
-            static_cast<uint32_t>(currentOffset + bufferSize - (m_sourceOffset + m_sourceLength))));
+            defaultBufferSize,
+            static_cast<uint32_t>(currentOffset + defaultBufferSize - (m_sourceOffset + m_sourceLength))));
         int n = ::read(fd, buffer, nBytesToRead);
         if (n != nBytesToRead) { // read failed, size mismatch
             ::close(fd);
-            m_failed = true;
+            m_status = TaskStatus::FAILED;
             return;
         }
-        // read success
-        if (m_context->config.hasherEnabled) {
-            m_context->hashingQueue.Push(VolumeConsumeBlock { buffer, currentOffset, nBytesToRead});
+        // push readed block to queue (convert to reader offset to sessionOffset)
+        VolumeConsumeBlock consumeBlock {
+            buffer,
+            (currentOffset - m_sourceOffset + m_session->sessionOffset),
+            nBytesToRead
+        };
+        if (m_session->config->hasherEnabled) {
+            m_session->hashingQueue.Push(consumeBlock);
+        } else {
+            m_session->writeQueue.Push(consumeBlock);
         }
         currentOffset += static_cast<uint64_t>(nBytesToRead);
-        m_context->bytesReaded += static_cast<uint64_t>(nBytesToRead);
-
-        ::close(fd);
+        m_session->bytesRead += static_cast<uint64_t>(nBytesToRead);
     }
+    
+    m_status = TaskStatus::SUCCEED;
+    ::close(fd);
     return;
 }

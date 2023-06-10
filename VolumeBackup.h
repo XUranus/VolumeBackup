@@ -24,7 +24,7 @@ enum class TaskStatus {
 
 struct TaskStatistics {
     uint64_t bytesToRead;
-    uint64_t bytesReaded;
+    uint64_t bytesRead;
     uint64_t bytesToHash;
     uint64_t bytesHashed;
     uint64_t bytesToWrite;
@@ -39,10 +39,10 @@ public:
     
     ~VolumeBackupTask();
     bool            Start();
-    bool            IsTerminated();
-    TaskStatus      GetStatus();
+    bool            IsTerminated() const;
+    TaskStatus      GetStatus() const;
     bool            Abort();
-    TaskStatistics  GetStatistics();
+    TaskStatistics  GetStatistics() const;
 
 private:
     VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);

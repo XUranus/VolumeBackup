@@ -22,17 +22,17 @@ enum HasherForwardMode {
     DIFF
 };
 
-class VolumeBlockHasher {
+class VolumeBlockHasher : public StatefulTask {
 public:
     ~VolumeBlockHasher();
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDirectHasher(
-        std::shared_ptr<VolumeBackupContext> context,
+        std::shared_ptr<VolumeBackupSession> session,
         const std::string& checksumBinPath          // path of the checksum bin to write latest copy
     );
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDiffHasher(
-        std::shared_ptr<VolumeBackupContext> context,
+        std::shared_ptr<VolumeBackupSession> session,
         const std::string& prevChecksumBinPath,     // path of the checksum bin from previous copy
         const std::string& lastestChecksumBinPath   // path of the checksum bin to write latest copy
     );
@@ -46,33 +46,23 @@ private:
 
     void SaveLatestChecksumBin();
 
-    // direct hasher constructor
-    VolumeBlockHasher(
-        const std::shared_ptr<VolumeBackupContext> context,
-        const std::string&  lastestChecksumBinPath,
-        uint32_t            singleChecksumSize,
-        char*               lastestChecksumTable,
-        uint64_t            lastestChecksumTableCapacity
-    );
-
-    // diff hasher constructor
-    VolumeBlockHasher(
-        const  std::shared_ptr<VolumeBackupContext> context,
+    VolumeBlockHasher::VolumeBlockHasher(
+        std::shared_ptr<VolumeBackupSession> session,
+        HasherForwardMode   forwardMode,
         const std::string&  prevChecksumBinPath,
         const std::string&  lastestChecksumBinPath,
         uint32_t            singleChecksumSize,
         char*               prevChecksumTable,
         uint64_t            prevChecksumTableSize,
         char*               lastestChecksumTable,
-        uint64_t            lastestChecksumTableCapacity
+        uint64_t            lastestChecksumTableSize
     );
 
 private:
     // mutable
-    char*                                   m_lastestChecksumTable;         // mutable, shared within worker
-    std::atomic<uint64_t>                   m_lastestChecksumTableSize;     // bytes writed
-    uint64_t                                m_lastestChecksumTableCapacity; // bytes allocated
-    std::shared_ptr<VolumeBackupContext>    m_context;                      // mutable, used for sync
+    char*                                   m_lastestChecksumTable;     // mutable, shared within worker
+    uint64_t                                m_lastestChecksumTableSize; // bytes allocated
+    std::shared_ptr<VolumeBackupSession>    m_session;                  // mutable, used for sync
 
     // immutable
     uint32_t                m_singleChecksumSize;

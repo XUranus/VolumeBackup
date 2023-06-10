@@ -8,60 +8,10 @@
 
 namespace {
     const uint64_t DEFAULT_CHECKSUM_TABLE_CAPACITY = 1024 * 1024 * 8; // 8MB
-    const uint32_t SHA256_CHECKSUM_SIZE = 32;
+    const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 }
 
 using namespace volumebackup;
-
-// direct hasher constructor
-VolumeBlockHasher::VolumeBlockHasher(
-    const std::shared_ptr<VolumeBackupContext> context,
-    const std::string&  lastestChecksumBinPath,
-    uint32_t            singleChecksumSize,
-    char*               lastestChecksumTable,
-    uint64_t            lastestChecksumTableCapacity
-) : m_lastestChecksumBinPath(lastestChecksumBinPath),
-    m_forwardMode(HasherForwardMode::DIRECT)
-{
-    m_context = context;
-    m_lastestChecksumTable = lastestChecksumTable;
-
-    // disable previous checksum table
-    m_prevChecksumTable = nullptr;
-    m_prevChecksumTableSize = 0;
-
-    // lastest checksum table
-    m_singleChecksumSize = singleChecksumSize;
-    m_lastestChecksumTableSize = 0;
-    m_lastestChecksumTableCapacity = lastestChecksumTableCapacity;
-}
-
-// diff hasher constructor
-VolumeBlockHasher::VolumeBlockHasher(
-    const  std::shared_ptr<VolumeBackupContext> context,
-    const std::string&  prevChecksumBinPath,
-    const std::string&  lastestChecksumBinPath,
-    uint32_t            singleChecksumSize,
-    char*               prevChecksumTable,
-    uint64_t            prevChecksumTableSize,
-    char*               lastestChecksumTable,
-    uint64_t            lastestChecksumTableCapacity
-) : m_lastestChecksumBinPath(lastestChecksumBinPath),
-    m_prevChecksumBinPath(prevChecksumBinPath),
-    m_forwardMode(HasherForwardMode::DIFF)
-{
-    m_context = context;
-    m_singleChecksumSize = singleChecksumSize;
-
-    // 1. assign previous checksum table
-    m_prevChecksumTable = prevChecksumTable;
-    m_prevChecksumTableSize = prevChecksumTableSize;
-
-    // lastest checksum table
-    m_lastestChecksumTable = lastestChecksumTable;
-    m_lastestChecksumTableSize = 0;
-    m_lastestChecksumTableCapacity = lastestChecksumTableCapacity;
-}
 
 VolumeBlockHasher::~VolumeBlockHasher()
 {
@@ -71,69 +21,127 @@ VolumeBlockHasher::~VolumeBlockHasher()
         }
     }
     SaveLatestChecksumBin();
+    if (m_prevChecksumTable != nullptr) {
+        delete[] m_prevChecksumTable;
+        m_prevChecksumTable = nullptr;
+    }
+    if (m_lastestChecksumTable != nullptr) {
+        delete[] m_lastestChecksumTable;
+        m_lastestChecksumTable = nullptr;
+    }
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
-    std::shared_ptr<VolumeBackupContext> context,
+    std::shared_ptr<VolumeBackupSession> session,
     const std::string &checksumBinPath)
 {
-    // 1. check checksumBinPath, open and create
-    try {
-        std::ofstream checksumBinOut(checksumBinPath, std::ios::binary);
-        if (!checksumBinOut.is_open()) {
-            throw std::runtime_error("checksum bin file open failed");
-            return nullptr;
-        }
-        checksumBinOut.close();
-    } catch (const std::exception& e) {
-        // TODO:: print errno
-        return nullptr;
-    }
-
-    // 2. allocate for latest checksum table
-    uint64_t lastestChecksumTableCapacity = DEFAULT_CHECKSUM_TABLE_CAPACITY;
-    char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableCapacity];
+    // allocate for latest checksum table
+    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->config->blockSize);
+    uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
+    char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
     if (lastestChecksumTable == nullptr) {
-        throw std::runtime_error("insuficient memory for lastestChecksumTable");
+        ERRLOG("insuficient memory for lastestChecksumTable");
         return nullptr;
     }
-    memset(lastestChecksumTable, 0, sizeof(char) * lastestChecksumTableCapacity);
+    memset(lastestChecksumTable, 0, sizeof(char) * lastestChecksumTableSize);
 
     return std::make_shared<VolumeBlockHasher>(
-        context,
+        session,
+        HasherForwardMode::DIRECT,
+        "",
         checksumBinPath,
         SHA256_CHECKSUM_SIZE,
+        nullptr,
+        0,
         lastestChecksumTable,
-        lastestChecksumTableCapacity
+        lastestChecksumTableSize
     );
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
-    std::shared_ptr<VolumeBackupContext> context,
+    std::shared_ptr<VolumeBackupSession> session,
     const std::string &prevChecksumBinPath,
     const std::string &lastestChecksumBinPath)
 {
-    // 1. open previous checksumBinPath and check
-    try {
-        
-    } catch (const std::exception& e) {
+    // 1. allocate for latest checksum table
+    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->config->blockSize);
+    uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
+    char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
+    if (lastestChecksumTable == nullptr) {
+        ERRLOG("insuficient memory for lastestChecksumTable");
+        return nullptr;
+    }
+    memset(lastestChecksumTable, 0, sizeof(char) * lastestChecksumTableSize);
 
+    uint64_t prevChecksumTableSize = lastestChecksumTableSize; // TODO:: validate
+    char* prevChecksumTable = new(std::nothrow)char[prevChecksumTableSize];
+    if (prevChecksumTable == nullptr) {
+        ERRLOG("insuficient memory for prevChecksumTable");
+        delete[] lastestChecksumTable;
+        return nullptr;
+    }
+    memset(prevChecksumTable, 0, sizeof(char) * prevChecksumTableSize);
+
+    // 2. check previous prevChecksumBinPath, open and load
+    try {
+        std::ofstream checksumBinOut(prevChecksumBinPath, std::ios::binary);
+        if (!checksumBinOut.is_open()) {
+            ERRLOG("previos checksum bin file open failed, errno: %d", errno);
+            delete[] lastestChecksumTable;
+            delete[] prevChecksumTable;
+            return nullptr;
+        }
+        checksumBinOut.read(prevChecksumTable, prevChecksumTableSize); // TODO:: check success
+        checksumBinOut.close();
+    } catch (const std::exception& e) {
+        ERRLOG("failed to read previous checksum bin %s with exception %s", prevChecksumBinPath.c_str(), e.what());
+        delete[] lastestChecksumTable;
+        delete[] prevChecksumTable;
+        return nullptr;
     }
 
+    // TODO:: 3. validate previous checksum table size with current one
+
     return std::make_shared<VolumeBlockHasher>(
-        context,
+        session,
+        HasherForwardMode::DIFF,
+        prevChecksumBinPath,
+        lastestChecksumBinPath,
+        SHA256_CHECKSUM_SIZE,
+        prevChecksumTable,
+        prevChecksumTableSize,
+        lastestChecksumTable,
+        lastestChecksumTableSize
+    );
+}
+
+VolumeBlockHasher::VolumeBlockHasher(
+    std::shared_ptr<VolumeBackupSession> session,
+    HasherForwardMode   forwardMode,
     const std::string&  prevChecksumBinPath,
     const std::string&  lastestChecksumBinPath,
     uint32_t            singleChecksumSize,
     char*               prevChecksumTable,
     uint64_t            prevChecksumTableSize,
     char*               lastestChecksumTable,
-    uint64_t            lastestChecksumTableCapacity
-}
+    uint64_t            lastestChecksumTableSize
+) : m_session(session),
+    m_forwardMode(forwardMode)
+    m_prevChecksumBinPath(prevChecksumBinPath),
+    m_lastestChecksumBinPath(lastestChecksumBinPath),
+    m_singleChecksumSize(singleChecksumSize),
+    m_prevChecksumTable(prevChecksumTable),
+    m_prevChecksumTableSize(prevChecksumTableSize),
+    m_lastestChecksumTable(lastestChecksumTable),
+    m_lastestChecksumTableSize(lastestChecksumTableSize)
+{}
 
 
 bool VolumeBlockHasher::Start(uint32_t workerThreadNum)
 {
+    if (m_status != TaskStatus::INIT) {
+        return false;
+    }
     if (workerThreadNum == 0) { // invalid parameter
         return false;
     }
@@ -143,16 +151,24 @@ bool VolumeBlockHasher::Start(uint32_t workerThreadNum)
     for (int i = 0; i < workerThreadNum; i++) {
         m_workers.emplace_back(&VolumeBlockHasher::WorkerThread, this);
     }
+    m_status = TaskStatus::RUNNING;
+    return true;
 }
 
 void VolumeBlockHasher::WorkerThread()
 {
-    VolumeConsumeBlock consumeBlock{};
+    VolumeConsumeBlock consumeBlock {};
     while (true) {
-        if (!m_context->hashingQueue.Pop(consumeBlock)) {
-            break;; // pop failed, queue has been finished
+        if (m_abort) {
+            m_status = TaskStatus::ABORTED;
+            ::close(fd);
+            return;
         }
-        uint64_t index = (consumeBlock.offset - m_context->config.sessionOffset) / m_context->config.blockSize;
+
+        if (!m_session->hashingQueue.Pop(consumeBlock)) {
+            break; // queue has been finished
+        }
+        uint64_t index = (consumeBlock.offset - m_session->sessionOffset) / m_session->config->blockSize;
         
         // compute latest hash
         ComputeSHA256(
@@ -160,6 +176,8 @@ void VolumeBlockHasher::WorkerThread()
             consumeBlock.length,
             m_lastestChecksumTable + index * m_singleChecksumSize,
             m_singleChecksumSize);
+
+        m_session->blocksHashed += consumeBlock.length;
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash
@@ -170,24 +188,28 @@ void VolumeBlockHasher::WorkerThread()
             }
         }
 
-        m_context->writeQueue.Push(consumeBlock);
-    }   
+        m_session->bytesToWrite += consumeBlock.length;
+        m_session->writeQueue.Push(consumeBlock);
+    }
+
+    m_status = TaskStatus::SUCCEED;
+    return;
 }
 
 void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
 {
-    EVP_MD_CTX *mdctx;
-    const EVP_MD *md;
-    unsigned char mdValue[EVP_MAX_MD_SIZE];
+    EVP_MD_CTX *mdctx = nullptr;
+    EVP_MD *md = nullptr;
+    unsigned char mdValue[EVP_MAX_MD_SIZE] = { 0 };
     unsigned int mdLen;
 
     if ((md = EVP_get_digestbyname("SHA256")) == nullptr) {
-        //std::cerr << "Unknown message digest SHA256" << std::endl;
+        ERRLOG("Unknown message digest SHA256")l
         return;
     }
 
     if ((mdctx = EVP_MD_CTX_new()) == nullptr) {
-        //std::cerr << "Memory allocation failed" << std::endl;
+        ERRLOG("Memory allocation failed");
         return;
     }
 
@@ -197,9 +219,22 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
     assert(mdLen == outputLen);
     memcpy(output, mdValue, mdLen);
     EVP_MD_CTX_free(mdctx);
+    return;
 }
 
 void VolumeBlockHasher::SaveLatestChecksumBin()
 {
-    // TODO:: save lastest checksum bin
+    // save lastest checksum bin
+    try {
+        std::ofstream checksumBinFile(std::ios::binary | std::ios::trunc);
+        if (!checksumBinFile.open()) {
+            ERRLOG("failed to open checksum bin file %s", checksumBinFile.c_str());
+            return;
+        }
+        checksumBinFile.write(m_lastestChecksumTable, m_lastestChecksumTableSize);
+        checksumBinFile.close();
+    } catch (const std::exception& e) {
+        ERRLOG("save lastest checksum bin %s failed with exception: %s", m_lastestChecksumBinPath.c_str(), e.what());
+    }
+    return;
 }
