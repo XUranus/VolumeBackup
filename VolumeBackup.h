@@ -84,11 +84,11 @@ public:
     static std::shared_ptr<VolumeBackupTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
     VolumeBackupTask() {};
     
-    virtual bool            Start();
-    virtual bool            IsTerminated() const;
-    virtual TaskStatus      GetStatus() const;
-    virtual void            Abort();
-    virtual TaskStatistics  GetStatistics() const;
+    virtual bool            Start() = 0;
+    virtual bool            IsTerminated() const = 0;
+    virtual TaskStatus      GetStatus() const = 0;
+    virtual void            Abort() = 0;
+    virtual TaskStatistics  GetStatistics() const = 0;
 };
 
 }

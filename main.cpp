@@ -1,7 +1,10 @@
 #include <bits/stdc++.h>
 #include <chrono>
 #include <getopt.h>
-#include <thread>
+#include <iostream>
+#include <string>
+#include <unistd.h>
+#include <stdlib.h>
 
 #include "VolumeBackup.h"
 
@@ -26,10 +29,61 @@ using namespace volumebackup;
 //     return true;    
 // }
 
+void PrintHelp()
+{
+    std::cout << "vbkup -v volume -d datadir -m metadir" << std::endl;
+}
+
 int main(int argc, char** argv)
 {
+    int ch;
+    std::string blockDevicePath = "";
+    std::string copyDataDirPath = "";
+    std::string copyMetaDirPath = "";
+    while ((ch = getopt(argc, argv, "v:d:m:h")) != -1) {
+        switch (ch) {
+            case 'v' : {
+                blockDevicePath = optarg;
+                break;
+            }
+            case 'd' : {
+                copyDataDirPath = optarg;
+                break;
+            }
+            case 'm' : {
+                copyMetaDirPath = optarg;
+                break;
+            }
+            case 'h' : {
+                PrintHelp();
+                return 0;
+            }
+        }
+    }
+    if (blockDevicePath.empty() || copyDataDirPath.empty() || copyMetaDirPath.empty()) {
+        PrintHelp();
+        return 1;
+    } 
+    std::cout << "blockDevicePath: " << blockDevicePath << std::endl;
+    std::cout << "copyDataDirPath: " << copyDataDirPath << std::endl;
+    std::cout << "copyMetaDirPath: " << copyMetaDirPath << std::endl;
+
     VolumeBackupConfig backupConfig {};
+    backupConfig.copyType = CopyType::FULL;
+    backupConfig.blockDevicePath = blockDevicePath;
+    backupConfig.prevCopyMetaDirPath = "";
+    backupConfig.outputCopyDataDirPath = copyDataDirPath;
+    backupConfig.outputCopyMetaDirPath = copyMetaDirPath;
+    backupConfig.blockSize = DEFAULT_BLOCK_SIZE;
+    backupConfig.sessionSize = DEFAULT_SESSION_SIZE;
+    backupConfig.hasherNum = DEFAULT_HASHER_NUM;
+    backupConfig.hasherEnabled = true;
+
     std::shared_ptr<VolumeBackupTask> task = VolumeBackupTask::BuildBackupTask(backupConfig);
+    if (task == nullptr) {
+        std::cout << "failed to build backup task" << std::endl;
+        return 1;
+    }
     task->Start();
     while (!task->IsTerminated()) {
         TaskStatistics statistics =  task->GetStatistics();

@@ -112,6 +112,7 @@ bool VolumeBackupTaskImpl::Prepare()
         session.copyFilePath = copyFilePath;
         volumeCopyMeta.slices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
+        sessionOffset += sessionSize;
     }
 
     if (!util::WriteVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, volumeCopyMeta)) {
