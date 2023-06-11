@@ -15,7 +15,9 @@
 #include <cassert>
 #include <algorithm>
 
+#include "VolumeBackup.h"
 #include "VolumeBlockWriter.h"
+#include "VolumeBackupUtils.h"
 
 using namespace volumebackup;
 
@@ -39,7 +41,7 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
     std::string blockDevicePath = session->config->blockDevicePath;
     // check target block device
     if (util::IsBlockDeviceExists(blockDevicePath)) {
-        ERRLOG("block device % not exists", blockDevicePath.c_str());
+        ERRLOG("block device %s not exists", blockDevicePath.c_str());
         return nullptr;
     }
     return std::make_shared<VolumeBlockWriter>(
@@ -62,7 +64,7 @@ bool VolumeBlockWriter::Start()
 VolumeBlockWriter::~VolumeBlockWriter()
 {
     if (m_writerThread.joinable()) {
-        VolumeBlockWriter.join();
+        m_writerThread.join();
     }
 }
 
@@ -92,7 +94,7 @@ void VolumeBlockWriter::WriterThread()
             return;
         }
     
-        if (!m_session->hashingQueue.Pop(consumeBlock)) {
+        if (!m_session->hashingQueue->Pop(consumeBlock)) {
             break; // queue has been finished
         }
 
@@ -103,7 +105,7 @@ void VolumeBlockWriter::WriterThread()
         // 1. volume => file   (file writer),   writerOffset = volumeOffset - sessionOffset
         // 2. file   => volume (volume writer), writerOffset = volumeOffset
         if (m_targetType == TargetType::COPYFILE) {
-            writerOffset = volumeOffset - m_session.sessionOffset;
+            writerOffset = consumeBlock.volumeOffset - m_session->sessionOffset;
         }
         
         ::lseek(fd, writerOffset, SEEK_SET);
@@ -111,12 +113,12 @@ void VolumeBlockWriter::WriterThread()
         if (n != len) {
             m_status = TaskStatus::FAILED;
             ::close(fd);
-            m_session->allocator.bfree(buffer);
+            m_session->allocator->bfree(buffer);
             return;
         }
 
-        m_session->allocator.bfree(buffer);
-        m_session->bytesWritten += len;
+        m_session->allocator->bfree(buffer);
+        m_session->counter->bytesWritten += len;
     }
 
     m_status = TaskStatus::SUCCEED;

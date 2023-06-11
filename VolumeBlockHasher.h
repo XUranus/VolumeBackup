@@ -27,26 +27,16 @@ public:
     ~VolumeBlockHasher();
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDirectHasher(
-        std::shared_ptr<VolumeBackupSession> session,
-        const std::string& checksumBinPath          // path of the checksum bin to write latest copy
+        std::shared_ptr<VolumeBackupSession> session
     );
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDiffHasher(
-        std::shared_ptr<VolumeBackupSession> session,
-        const std::string& prevChecksumBinPath,     // path of the checksum bin from previous copy
-        const std::string& lastestChecksumBinPath   // path of the checksum bin to write latest copy
+        std::shared_ptr<VolumeBackupSession> session
     );
 
     bool Start(uint32_t workerThreadNum = DEFAULT_HASHER_NUM);
 
-private:
-    void WorkerThread();
-
-    void ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen);
-
-    void SaveLatestChecksumBin();
-
-    VolumeBlockHasher::VolumeBlockHasher(
+    VolumeBlockHasher(
         std::shared_ptr<VolumeBackupSession> session,
         HasherForwardMode   forwardMode,
         const std::string&  prevChecksumBinPath,
@@ -57,6 +47,13 @@ private:
         char*               lastestChecksumTable,
         uint64_t            lastestChecksumTableSize
     );
+
+private:
+    void WorkerThread();
+
+    void ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen);
+
+    void SaveLatestChecksumBin();
 
 private:
     // mutable

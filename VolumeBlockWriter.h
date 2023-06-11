@@ -32,13 +32,13 @@ public:
 
     ~VolumeBlockWriter();
 
-private:
     VolumeBlockWriter(
         TargetType targetType,
         const std::string& targetPath,
         std::shared_ptr<VolumeBackupSession> session
     );
 
+private:
     void WriterThread();
 
 private:

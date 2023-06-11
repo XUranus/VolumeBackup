@@ -1,7 +1,11 @@
 #include <bits/stdc++.h>
+#include <chrono>
 #include <getopt.h>
+#include <thread>
 
 #include "VolumeBackup.h"
+
+using namespace volumebackup;
 
 // bool StartIncrementBackupTask(
 // 	const std::string& 	blockDevicePath,
@@ -24,5 +28,12 @@
 
 int main(int argc, char** argv)
 {
-    Sta
+    VolumeBackupConfig backupConfig {};
+    std::shared_ptr<VolumeBackupTask> task = VolumeBackupTask::BuildBackupTask(backupConfig);
+    task->Start();
+    while (!task->IsTerminated()) {
+        TaskStatistics statistics =  task->GetStatistics();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    return 0;
 }

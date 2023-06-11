@@ -53,6 +53,16 @@ uint64_t volumebackup::util::ReadVolumeSize(const std::string& blockDevice)
     return size;
 }
 
+bool volumebackup::util::IsBlockDeviceExists(const std::string& blockDevicePath)
+{
+    try {
+        ReadVolumeSize(blockDevicePath);
+    } catch (...) {
+        return false;
+    }
+    return true;
+}
+
 bool volumebackup::util::CheckDirectoryExistence(const std::string& path)
 {
     try {

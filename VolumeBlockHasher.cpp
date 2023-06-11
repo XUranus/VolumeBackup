@@ -3,7 +3,9 @@
 #include <thread>
 #include <openssl/evp.h>
 #include <cassert>
+
 #include "VolumeBackupContext.h"
+#include "VolumeBackupUtils.h"
 #include "VolumeBlockHasher.h"
 
 namespace {
@@ -32,8 +34,7 @@ VolumeBlockHasher::~VolumeBlockHasher()
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
-    std::shared_ptr<VolumeBackupSession> session,
-    const std::string &checksumBinPath)
+    std::shared_ptr<VolumeBackupSession> session)
 {
     // allocate for latest checksum table
     uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->config->blockSize);
@@ -49,7 +50,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
         session,
         HasherForwardMode::DIRECT,
         "",
-        checksumBinPath,
+        session->lastestChecksumBinPath,
         SHA256_CHECKSUM_SIZE,
         nullptr,
         0,
@@ -59,10 +60,11 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
-    std::shared_ptr<VolumeBackupSession> session,
-    const std::string &prevChecksumBinPath,
-    const std::string &lastestChecksumBinPath)
+    std::shared_ptr<VolumeBackupSession> session)
 {
+    std::string prevChecksumBinPath = session->prevChecksumBinPath; // path of the checksum bin from previous copy
+    std::string lastestChecksumBinPath = session->lastestChecksumBinPath; // path of the checksum bin to write latest copy
+
     // 1. allocate for latest checksum table
     uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->config->blockSize);
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
@@ -84,15 +86,15 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
 
     // 2. check previous prevChecksumBinPath, open and load
     try {
-        std::ofstream checksumBinOut(prevChecksumBinPath, std::ios::binary);
-        if (!checksumBinOut.is_open()) {
+        std::ifstream checksumBinFile(prevChecksumBinPath, std::ios::binary);
+        if (!checksumBinFile.is_open()) {
             ERRLOG("previos checksum bin file open failed, errno: %d", errno);
             delete[] lastestChecksumTable;
             delete[] prevChecksumTable;
             return nullptr;
         }
-        checksumBinOut.read(prevChecksumTable, prevChecksumTableSize); // TODO:: check success
-        checksumBinOut.close();
+        checksumBinFile.read(prevChecksumTable, prevChecksumTableSize); // TODO:: check success
+        checksumBinFile.close();
     } catch (const std::exception& e) {
         ERRLOG("failed to read previous checksum bin %s with exception %s", prevChecksumBinPath.c_str(), e.what());
         delete[] lastestChecksumTable;
@@ -126,7 +128,7 @@ VolumeBlockHasher::VolumeBlockHasher(
     char*               lastestChecksumTable,
     uint64_t            lastestChecksumTableSize
 ) : m_session(session),
-    m_forwardMode(forwardMode)
+    m_forwardMode(forwardMode),
     m_prevChecksumBinPath(prevChecksumBinPath),
     m_lastestChecksumBinPath(lastestChecksumBinPath),
     m_singleChecksumSize(singleChecksumSize),
@@ -161,14 +163,13 @@ void VolumeBlockHasher::WorkerThread()
     while (true) {
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
-            ::close(fd);
             return;
         }
 
-        if (!m_session->hashingQueue.Pop(consumeBlock)) {
+        if (!m_session->hashingQueue->Pop(consumeBlock)) {
             break; // queue has been finished
         }
-        uint64_t index = (consumeBlock.offset - m_session->sessionOffset) / m_session->config->blockSize;
+        uint64_t index = (consumeBlock.volumeOffset - m_session->sessionOffset) / m_session->config->blockSize;
         
         // compute latest hash
         ComputeSHA256(
@@ -177,7 +178,7 @@ void VolumeBlockHasher::WorkerThread()
             m_lastestChecksumTable + index * m_singleChecksumSize,
             m_singleChecksumSize);
 
-        m_session->blocksHashed += consumeBlock.length;
+        m_session->counter->blocksHashed += consumeBlock.length;
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash
@@ -188,8 +189,8 @@ void VolumeBlockHasher::WorkerThread()
             }
         }
 
-        m_session->bytesToWrite += consumeBlock.length;
-        m_session->writeQueue.Push(consumeBlock);
+        m_session->counter->bytesToWrite += consumeBlock.length;
+        m_session->writeQueue->Push(consumeBlock);
     }
 
     m_status = TaskStatus::SUCCEED;
@@ -198,27 +199,27 @@ void VolumeBlockHasher::WorkerThread()
 
 void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
 {
-    EVP_MD_CTX *mdctx = nullptr;
-    EVP_MD *md = nullptr;
-    unsigned char mdValue[EVP_MAX_MD_SIZE] = { 0 };
-    unsigned int mdLen;
+    // EVP_MD_CTX *mdctx = nullptr;
+    // const EVP_MD *md = nullptr;
+    // unsigned char mdValue[EVP_MAX_MD_SIZE] = { 0 };
+    // unsigned int mdLen;
 
-    if ((md = EVP_get_digestbyname("SHA256")) == nullptr) {
-        ERRLOG("Unknown message digest SHA256")l
-        return;
-    }
+    // if ((md = EVP_get_digestbyname("SHA256")) == nullptr) {
+    //     ERRLOG("Unknown message digest SHA256");
+    //     return;
+    // }
 
-    if ((mdctx = EVP_MD_CTX_new()) == nullptr) {
-        ERRLOG("Memory allocation failed");
-        return;
-    }
+    // if ((mdctx = EVP_MD_CTX_new()) == nullptr) {
+    //     ERRLOG("Memory allocation failed");
+    //     return;
+    // }
 
-    EVP_DigestInit_ex(mdctx, md, nullptr);
-    EVP_DigestUpdate(mdctx, data, len);
-    EVP_DigestFinal_ex(mdctx, mdValue, &mdLen);
-    assert(mdLen == outputLen);
-    memcpy(output, mdValue, mdLen);
-    EVP_MD_CTX_free(mdctx);
+    // EVP_DigestInit_ex(mdctx, md, nullptr);
+    // EVP_DigestUpdate(mdctx, data, len);
+    // EVP_DigestFinal_ex(mdctx, mdValue, &mdLen);
+    // assert(mdLen == outputLen);
+    // memcpy(output, mdValue, mdLen);
+    // EVP_MD_CTX_free(mdctx);
     return;
 }
 
@@ -226,9 +227,9 @@ void VolumeBlockHasher::SaveLatestChecksumBin()
 {
     // save lastest checksum bin
     try {
-        std::ofstream checksumBinFile(std::ios::binary | std::ios::trunc);
-        if (!checksumBinFile.open()) {
-            ERRLOG("failed to open checksum bin file %s", checksumBinFile.c_str());
+        std::ofstream checksumBinFile(m_lastestChecksumBinPath, std::ios::binary | std::ios::trunc);
+        if (!checksumBinFile.is_open()) {
+            ERRLOG("failed to open checksum bin file %s", m_lastestChecksumBinPath.c_str());
             return;
         }
         checksumBinFile.write(m_lastestChecksumTable, m_lastestChecksumTableSize);

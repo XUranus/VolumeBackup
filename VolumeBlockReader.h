@@ -36,15 +36,15 @@ public:
 
     ~VolumeBlockReader();
 
-private:
     VolumeBlockReader(
         SourceType sourceType,
-        std::string sourcePath,
+        const std::string& sourcePath,
         uint64_t    sourceOffset,
         uint64_t    sourceLength,
         std::shared_ptr<VolumeBackupSession> session
     );
 
+private:
     void ReaderThread();
 
 private:

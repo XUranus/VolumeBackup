@@ -38,19 +38,20 @@ BlockingQueue<T>::BlockingQueue(std::size_t maxSize)
 template<typename T>
 bool BlockingQueue<T>::Push(const T &v)
 {
-    std::lock_guard<std::mutex> lk(m_mutex);
+    std::unique_lock<std::mutex> lk(m_mutex);
     if (m_finished) {
         return false;
     }
     m_notFull.wait(lk, [&](){ return m_queue.size() >= m_maxSize; });
     m_queue.push(v);
     m_notEmpty.notify_one();
+    return true;
 }
 
 template<typename T>
 bool BlockingQueue<T>::Pop(T &v)
 {
-    std::lock_guard<std::mutex> lk(m_mutex);
+    std::unique_lock<std::mutex> lk(m_mutex);
     m_notEmpty.wait(lk, [&](){ return m_queue.empty() && !m_finished; });
     if (m_queue.empty() && m_finished) {
         return false;

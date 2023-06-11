@@ -5,6 +5,10 @@
 #include "VolumeBackupUtils.h"
 #include "VolumeBackupContext.h"
 
+#include "VolumeBlockReader.h"
+#include "VolumeBlockWriter.h"
+#include "VolumeBlockHasher.h"
+
 using namespace volumebackup;
 
 VolumeBlockAllocator::VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum)
@@ -51,8 +55,6 @@ void VolumeBlockAllocator::bfree(char* ptr)
     // err
 }
 
-
-
 // bool VolumeBackupConfig::Validate() const
 // {
 //     // 1. validate volume and fetch volume size
@@ -70,20 +72,26 @@ void VolumeBlockAllocator::bfree(char* ptr)
 //     return true;
 // }
 
-
-
-
-
-
-
-
-
-
 bool VolumeBackupSession::IsTerminated() const
 {
     return (
         (reader == nullptr || reader->IsTerminated()) &&
         (hasher == nullptr || writer->IsTerminated()) &&
-        (writer == nullptr || writer->IsTerminated()) &&
+        (writer == nullptr || writer->IsTerminated())
     );
 }
+
+void VolumeBackupSession::Abort()
+{
+    if (reader != nullptr) {
+        reader->Abort();
+    }
+    if (hasher != nullptr) {
+        hasher->Abort();
+    }
+    if (writer != nullptr) {
+        writer->Abort();
+    }
+}
+
+

@@ -95,7 +95,7 @@ void VolumeBlockReader::ReaderThread()
     }
     
     ::lseek(fd, m_sourceOffset, SEEK_SET); // read from m_sourceOffset
-    m_session->bytesToRead += m_sourceLength;
+    m_session->counter->bytesToRead += m_sourceLength;
 
     while (true) {
         if (m_abort) {
@@ -109,7 +109,7 @@ void VolumeBlockReader::ReaderThread()
             break;
         }
 
-        char* buffer = m_session->allocator.bmalloc();
+        char* buffer = m_session->allocator->bmalloc();
         if (buffer == nullptr) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
@@ -130,12 +130,12 @@ void VolumeBlockReader::ReaderThread()
             nBytesToRead
         };
         if (m_session->config->hasherEnabled) {
-            m_session->hashingQueue.Push(consumeBlock);
+            m_session->hashingQueue->Push(consumeBlock);
         } else {
-            m_session->writeQueue.Push(consumeBlock);
+            m_session->writeQueue->Push(consumeBlock);
         }
         currentOffset += static_cast<uint64_t>(nBytesToRead);
-        m_session->bytesRead += static_cast<uint64_t>(nBytesToRead);
+        m_session->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
     }
     
     m_status = TaskStatus::SUCCEED;

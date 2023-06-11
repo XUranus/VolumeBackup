@@ -3,20 +3,19 @@ cmake_minimum_required (VERSION 3.8)
 project ("vbkup")
 
 add_executable (vbkup
+    "VolumeBackup.cpp"
+    "VolumeBackupImpl.cpp"
+    "VolumeBackupContext.cpp"
     "VolumeBlockReader.cpp"
     "VolumeBlockWriter.cpp"
     "VolumeBlockHasher.cpp"
-    "VolumeBackup.cpp"
-    "BlockAllocator.cpp"
-    "BlockingQueue.cpp"
-    "VolumeBackupSession.cpp"
-    "BlockingQueue.cpp"
+    "VolumeBackupUtils.cpp"
     "main.cpp"
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET vbkup PROPERTY CXX_STANDARD 11)
+  set_property(TARGET vbkup PROPERTY CXX_STANDARD 17)
 endif()
 
 # require linux-utils
-target_link_libraries(fsutil lblkid lparted)
+target_link_libraries(vbkup blkid parted)

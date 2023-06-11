@@ -7,9 +7,27 @@
 #include <exception>
 #include <vector>
 
-#include "VolumeBackupContext.h"
+#define ERRLOG  ::printf
 
 namespace volumebackup {
+
+struct VolumePartitionTableEntry {
+    std::string filesystem;
+    uint64_t    patitionNumber;
+    uint64_t    firstSector;
+    uint64_t    lastSector;
+    uint64_t    totalSectors;
+};
+
+struct VolumeCopyMeta {
+    using Range = std::vector<std::pair<uint64_t, uint64_t>>;
+
+    uint64_t    size;
+    uint32_t    blockSize;
+    Range       slices;
+    VolumePartitionTableEntry partition;
+};
+
 namespace util {
 
 std::runtime_error BuildRuntimeException(
@@ -18,6 +36,8 @@ std::runtime_error BuildRuntimeException(
     uint32_t errcode);
 
 uint64_t ReadVolumeSize(const std::string& blockDevice);
+
+bool IsBlockDeviceExists(const std::string& blockDevicePath);
 
 bool CheckDirectoryExistence(const std::string& path);
 
