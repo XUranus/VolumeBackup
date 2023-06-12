@@ -1,4 +1,3 @@
-#include <bits/stdc++.h>
 #include <chrono>
 #include <getopt.h>
 #include <iostream>
@@ -81,12 +80,20 @@ int main(int argc, char** argv)
 
     std::shared_ptr<VolumeBackupTask> task = VolumeBackupTask::BuildBackupTask(backupConfig);
     if (task == nullptr) {
-        std::cout << "failed to build backup task" << std::endl;
+        std::cerr << "failed to build backup task" << std::endl;
         return 1;
     }
     task->Start();
     while (!task->IsTerminated()) {
         TaskStatistics statistics =  task->GetStatistics();
+        std::cout
+            << "bytesToReaded: " << statistics.bytesToRead << "\n"
+            << "bytesRead: " << statistics.bytesRead << "\n"
+            << "bytesToHash: " << statistics.bytesToHash << "\n"
+            << "bytesHashed: " << statistics.bytesHashed << "\n"
+            << "bytesToWrite: " << statistics.bytesToWrite << "\n"
+            << "bytesWritten: " << statistics.bytesWritten
+            << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     return 0;

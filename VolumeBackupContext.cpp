@@ -2,6 +2,7 @@
 #include <exception>
 #include <thread>
 
+#include "Logger.h"
 #include "VolumeBackupUtils.h"
 #include "VolumeBackupContext.h"
 
@@ -74,6 +75,11 @@ void VolumeBlockAllocator::bfree(char* ptr)
 
 bool VolumeBackupSession::IsTerminated() const
 {
+    DBGLOG("check session terminated, reader: %d, hasher: %d, writer: %d",
+        reader == nullptr ? TaskStatus::SUCCEED : reader->GetStatus(),
+        hasher == nullptr ? TaskStatus::SUCCEED : hasher->GetStatus(),
+        writer == nullptr ? TaskStatus::SUCCEED : writer->GetStatus()
+    );
     return (
         (reader == nullptr || reader->IsTerminated()) &&
         (hasher == nullptr || hasher->IsTerminated()) &&

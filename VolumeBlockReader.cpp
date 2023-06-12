@@ -15,6 +15,7 @@
 #include <cassert>
 #include <algorithm>
 
+#include "Logger.h"
 #include "VolumeBlockReader.h"
 #include "VolumeBackupUtils.h"
 
@@ -96,8 +97,11 @@ void VolumeBlockReader::ReaderThread()
     
     ::lseek(fd, m_sourceOffset, SEEK_SET); // read from m_sourceOffset
     m_session->counter->bytesToRead += m_sourceLength;
+    DBGLOG("reader thread start, sourceOffset: %lu ", m_sourceOffset);
 
     while (true) {
+        DBGLOG("reader thread check, sourceOffset: %lu, sourceLength %lu, currentOffset: %lu",
+            m_sourceOffset, m_sourceLength, currentOffset);
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
             ::close(fd);
@@ -106,11 +110,13 @@ void VolumeBlockReader::ReaderThread()
 
         if (m_sourceOffset + m_sourceLength <= currentOffset) {
             // read completed
+            INFOLOG("reader read completed");
             break;
         }
 
         char* buffer = m_session->allocator->bmalloc();
         if (buffer == nullptr) {
+            DBGLOG("failed to malloc, retry in 100ms");
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
@@ -137,6 +143,7 @@ void VolumeBlockReader::ReaderThread()
         }
         currentOffset += static_cast<uint64_t>(nBytesToRead);
         m_session->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
+        m_sourceOffset += nBytesToRead;
     }
     
     m_status = TaskStatus::SUCCEED;

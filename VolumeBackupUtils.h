@@ -7,9 +7,7 @@
 #include <exception>
 #include <vector>
 
-#define INFOLOG(format, args...)  ::printf(format"\n", ##args)
-#define DBGLOG(format, args...)  ::printf(format"\n", ##args)
-#define ERRLOG(format, args...)  ::printf(format"\n", ##args)
+#include "Logger.h"
 
 namespace volumebackup {
 

@@ -16,6 +16,7 @@
 #include <cassert>
 #include <algorithm>
 
+#include "Logger.h"
 #include "VolumeBackup.h"
 #include "VolumeBlockWriter.h"
 #include "VolumeBackupUtils.h"
@@ -89,12 +90,14 @@ void VolumeBlockWriter::WriterThread()
         return;
     }
 
+    DBGLOG("writer thread start");
     while (true) {
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
             ::close(fd);
             return;
         }
+        DBGLOG("check writer thread");
     
         if (!m_session->hashingQueue->Pop(consumeBlock)) {
             break; // queue has been finished

@@ -10,6 +10,7 @@ add_executable (vbkup
     "VolumeBlockWriter.cpp"
     "VolumeBlockHasher.cpp"
     "VolumeBackupUtils.cpp"
+    "Logger.cpp"
     "main.cpp"
 )
 
