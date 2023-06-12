@@ -72,6 +72,7 @@ class StatefulTask {
 public:
     void Abort();
     TaskStatus GetStatus() const;
+    bool IsFailed() const;
     bool IsTerminated() const;
 
 protected:

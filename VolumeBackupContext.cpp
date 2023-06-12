@@ -76,8 +76,17 @@ bool VolumeBackupSession::IsTerminated() const
 {
     return (
         (reader == nullptr || reader->IsTerminated()) &&
-        (hasher == nullptr || writer->IsTerminated()) &&
+        (hasher == nullptr || hasher->IsTerminated()) &&
         (writer == nullptr || writer->IsTerminated())
+    );
+}
+
+bool VolumeBackupSession::IsFailed() const
+{
+    return (
+        (reader != nullptr && reader->IsFailed()) ||
+        (hasher != nullptr && hasher->IsFailed()) ||
+        (writer != nullptr && writer->IsFailed())
     );
 }
 

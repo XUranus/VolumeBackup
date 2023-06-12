@@ -139,7 +139,7 @@ VolumeBlockHasher::VolumeBlockHasher(
 {}
 
 
-bool VolumeBlockHasher::Start(uint32_t workerThreadNum)
+bool VolumeBlockHasher::Start(int workerThreadNum)
 {
     if (m_status != TaskStatus::INIT) {
         return false;
@@ -199,27 +199,27 @@ void VolumeBlockHasher::WorkerThread()
 
 void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
 {
-    // EVP_MD_CTX *mdctx = nullptr;
-    // const EVP_MD *md = nullptr;
-    // unsigned char mdValue[EVP_MAX_MD_SIZE] = { 0 };
-    // unsigned int mdLen;
+    EVP_MD_CTX *mdctx = nullptr;
+    const EVP_MD *md = nullptr;
+    unsigned char mdValue[EVP_MAX_MD_SIZE] = { 0 };
+    unsigned int mdLen;
 
-    // if ((md = EVP_get_digestbyname("SHA256")) == nullptr) {
-    //     ERRLOG("Unknown message digest SHA256");
-    //     return;
-    // }
+    if ((md = EVP_get_digestbyname("SHA256")) == nullptr) {
+        ERRLOG("Unknown message digest SHA256");
+        return;
+    }
 
-    // if ((mdctx = EVP_MD_CTX_new()) == nullptr) {
-    //     ERRLOG("Memory allocation failed");
-    //     return;
-    // }
+    if ((mdctx = EVP_MD_CTX_new()) == nullptr) {
+        ERRLOG("Memory allocation failed");
+        return;
+    }
 
-    // EVP_DigestInit_ex(mdctx, md, nullptr);
-    // EVP_DigestUpdate(mdctx, data, len);
-    // EVP_DigestFinal_ex(mdctx, mdValue, &mdLen);
-    // assert(mdLen == outputLen);
-    // memcpy(output, mdValue, mdLen);
-    // EVP_MD_CTX_free(mdctx);
+    EVP_DigestInit_ex(mdctx, md, nullptr);
+    EVP_DigestUpdate(mdctx, data, len);
+    EVP_DigestFinal_ex(mdctx, mdValue, &mdLen);
+    assert(mdLen == outputLen);
+    memcpy(output, mdValue, mdLen);
+    EVP_MD_CTX_free(mdctx);
     return;
 }
 

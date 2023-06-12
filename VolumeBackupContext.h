@@ -81,6 +81,7 @@ struct VolumeBackupSession {
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue { nullptr };
 
     bool IsTerminated() const;
+    bool IsFailed() const;
     void Abort();
 };
 

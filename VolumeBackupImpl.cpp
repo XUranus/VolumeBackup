@@ -31,7 +31,12 @@ VolumeBackupTaskImpl::VolumeBackupTaskImpl(const VolumeBackupConfig& backupConfi
 {}
 
 VolumeBackupTaskImpl::~VolumeBackupTaskImpl()
-{}
+{
+    DBGLOG("destroy VolumeBackupTaskImpl");
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
+}
 
 bool VolumeBackupTaskImpl::Start()
 {
@@ -39,6 +44,7 @@ bool VolumeBackupTaskImpl::Start()
         return false;
     }
     if (!Prepare()) {
+        ERRLOG("prepare task failed");
         m_status = TaskStatus::FAILED;
         return false;
     }
@@ -49,6 +55,7 @@ bool VolumeBackupTaskImpl::Start()
 
 bool VolumeBackupTaskImpl::IsTerminated() const
 {
+    DBGLOG("VolumeBackupTaskImpl::IsTerminated %d", m_status);
     return (
         m_status == TaskStatus::ABORTED ||
         m_status == TaskStatus::FAILED ||
@@ -124,6 +131,7 @@ bool VolumeBackupTaskImpl::Prepare()
 
 void VolumeBackupTaskImpl::ThreadFunc()
 {
+    DBGLOG("start task main thread");
     while (!m_sessionQueue.empty()) {
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
@@ -148,11 +156,27 @@ void VolumeBackupTaskImpl::ThreadFunc()
         );
         session->hasher = VolumeBlockHasher::BuildDirectHasher(session);
         session->writer = VolumeBlockWriter::BuildCopyWriter(session);
+        DBGLOG("start new session");
         if (session->reader == nullptr || session->hasher == nullptr || session->writer == nullptr) {
+            ERRLOG("session member nullptr! reader: %p hasher: %p writer: %p ", session->reader.get(), session->hasher.get(), session->writer.get());
             m_status = TaskStatus::FAILED;
             return;
         }
-        if (!session->reader->Start() || session->hasher->Start() || session->writer->Start()) {
+        DBGLOG("start session reader");
+        if (!session->reader->Start()) {
+            ERRLOG("session reader start failed");
+            m_status = TaskStatus::FAILED;
+            return;
+        }
+        DBGLOG("start session hasher");
+        if (!session->hasher->Start() ) {
+            ERRLOG("session hasher start failed");
+            m_status = TaskStatus::FAILED;
+            return;
+        }
+        DBGLOG("start session writer");
+        if (!session->writer->Start() ) {
+            ERRLOG("session writer start failed");
             m_status = TaskStatus::FAILED;
             return;
         }
@@ -161,6 +185,11 @@ void VolumeBackupTaskImpl::ThreadFunc()
             if (m_abort) {
                 session->Abort();
                 m_status = TaskStatus::ABORTED;
+                return;
+            }
+            if (session->IsFailed()) {
+                ERRLOG("session failed");
+                m_status = TaskStatus::FAILED;
                 return;
             }
             if (session->IsTerminated())  {

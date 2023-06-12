@@ -18,4 +18,4 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 # require linux-utils
-target_link_libraries(vbkup blkid parted)
+target_link_libraries(vbkup blkid parted crypto)

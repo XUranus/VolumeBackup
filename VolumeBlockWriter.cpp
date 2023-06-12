@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cerrno>
 #include <string>
 #include <iostream>
 #include <fcntl.h>
@@ -83,6 +84,7 @@ void VolumeBlockWriter::WriterThread()
     // open writer file handle
     int fd = ::open(m_targetPath.c_str() ,O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
     if (fd < 0) {
+        ERRLOG("open %s failed, errno: %d", m_targetPath.c_str(), errno);
         m_status = TaskStatus::FAILED;
         return;
     }
@@ -111,6 +113,7 @@ void VolumeBlockWriter::WriterThread()
         ::lseek(fd, writerOffset, SEEK_SET);
         int n = ::write(fd, buffer, len);
         if (n != len) {
+            ERRLOG("write %lu bytes failed, ret = %d", writerOffset, n);
             m_status = TaskStatus::FAILED;
             ::close(fd);
             m_session->allocator->bfree(buffer);

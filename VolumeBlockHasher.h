@@ -34,7 +34,7 @@ public:
         std::shared_ptr<VolumeBackupSession> session
     );
 
-    bool Start(uint32_t workerThreadNum = DEFAULT_HASHER_NUM);
+    bool Start(int workerThreadNum = DEFAULT_HASHER_NUM);
 
     VolumeBlockHasher(
         std::shared_ptr<VolumeBackupSession> session,

@@ -75,6 +75,11 @@ TaskStatus StatefulTask::GetStatus() const
     return m_status;
 }
 
+bool StatefulTask::IsFailed() const
+{
+    return m_status == TaskStatus::FAILED;
+}
+
 bool StatefulTask::IsTerminated() const
 {
     return (

@@ -119,6 +119,7 @@ void VolumeBlockReader::ReaderThread()
             static_cast<uint32_t>(currentOffset + defaultBufferSize - (m_sourceOffset + m_sourceLength))));
         int n = ::read(fd, buffer, nBytesToRead);
         if (n != nBytesToRead) { // read failed, size mismatch
+            ERRLOG("failed to read %u bytes, ret = %d", nBytesToRead, n);
             ::close(fd);
             m_status = TaskStatus::FAILED;
             return;
