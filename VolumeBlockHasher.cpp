@@ -4,6 +4,7 @@
 #include <openssl/evp.h>
 #include <cassert>
 
+#include "Logger.h"
 #include "VolumeBackupContext.h"
 #include "VolumeBackupUtils.h"
 #include "VolumeBlockHasher.h"
@@ -150,14 +151,17 @@ bool VolumeBlockHasher::Start(int workerThreadNum)
     if (!m_workers.empty()) { // already started
         return false;
     }
+    if (!m_session->config->hasherEnabled) {
+        WARNLOG("hasher not enabled, exit hasher directly");
+    }
     for (int i = 0; i < workerThreadNum; i++) {
-        m_workers.emplace_back(&VolumeBlockHasher::WorkerThread, this);
+        m_workers.emplace_back(&VolumeBlockHasher::WorkerThread, this, i);
     }
     m_status = TaskStatus::RUNNING;
     return true;
 }
 
-void VolumeBlockHasher::WorkerThread()
+void VolumeBlockHasher::WorkerThread(int workerIndex)
 {
     VolumeConsumeBlock consumeBlock {};
     while (true) {
@@ -192,7 +196,8 @@ void VolumeBlockHasher::WorkerThread()
         m_session->counter->bytesToWrite += consumeBlock.length;
         m_session->writeQueue->Push(consumeBlock);
     }
-
+    INFOLOG("hasher worker %d read completed successfully", workerIndex);
+    m_session->writeQueue->Finish();
     m_status = TaskStatus::SUCCEED;
     return;
 }
@@ -225,6 +230,7 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
 
 void VolumeBlockHasher::SaveLatestChecksumBin()
 {
+    DBGLOG("save sha256 checksum to %s", m_lastestChecksumBinPath.c_str());
     // save lastest checksum bin
     try {
         std::ofstream checksumBinFile(m_lastestChecksumBinPath, std::ios::binary | std::ios::trunc);

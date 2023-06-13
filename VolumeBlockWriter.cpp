@@ -99,7 +99,7 @@ void VolumeBlockWriter::WriterThread()
         }
         DBGLOG("check writer thread");
     
-        if (!m_session->hashingQueue->Pop(consumeBlock)) {
+        if (!m_session->writeQueue->Pop(consumeBlock)) {
             break; // queue has been finished
         }
 
@@ -129,7 +129,7 @@ void VolumeBlockWriter::WriterThread()
         m_session->allocator->bfree(buffer);
         m_session->counter->bytesWritten += len;
     }
-
+    INFOLOG("writer read completed successfully");
     m_status = TaskStatus::SUCCEED;
     ::close(fd);
     return;

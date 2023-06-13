@@ -58,8 +58,8 @@ bool VolumeBlockReader::Start()
     if (m_status != TaskStatus::INIT) {
         return false;
     }
-    m_readerThread = std::thread(&VolumeBlockReader::ReaderThread, this);
     m_status = TaskStatus::RUNNING;
+    m_readerThread = std::thread(&VolumeBlockReader::ReaderThread, this);
     return true;
 }
 
@@ -102,6 +102,7 @@ void VolumeBlockReader::ReaderThread()
     while (true) {
         DBGLOG("reader thread check, sourceOffset: %lu, sourceLength %lu, currentOffset: %lu",
             m_sourceOffset, m_sourceLength, currentOffset);
+            //sourceOffset: 0, sourceLength 524288000, currentOffset: 520093696
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
             ::close(fd);
@@ -110,7 +111,6 @@ void VolumeBlockReader::ReaderThread()
 
         if (m_sourceOffset + m_sourceLength <= currentOffset) {
             // read completed
-            INFOLOG("reader read completed");
             break;
         }
 
@@ -122,7 +122,7 @@ void VolumeBlockReader::ReaderThread()
         }
         nBytesToRead = static_cast<uint32_t>(std::min(
             defaultBufferSize,
-            static_cast<uint32_t>(currentOffset + defaultBufferSize - (m_sourceOffset + m_sourceLength))));
+            static_cast<uint32_t>(m_sourceOffset + m_sourceLength - currentOffset)));
         int n = ::read(fd, buffer, nBytesToRead);
         if (n != nBytesToRead) { // read failed, size mismatch
             ERRLOG("failed to read %u bytes, ret = %d", nBytesToRead, n);
@@ -147,8 +147,14 @@ void VolumeBlockReader::ReaderThread()
         m_session->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
         currentOffset += nBytesToRead;
     }
-    
+    // handle success
+    INFOLOG("reader read completed successfully");
     m_status = TaskStatus::SUCCEED;
     ::close(fd);
+    if (m_session->config->hasherEnabled) {
+        m_session->hashingQueue->Finish();
+    } else {
+        m_session->writeQueue->Finish();
+    }
     return;
 }

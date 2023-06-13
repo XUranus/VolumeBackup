@@ -48,8 +48,8 @@ bool VolumeBackupTaskImpl::Start()
         m_status = TaskStatus::FAILED;
         return false;
     }
-    m_thread = std::thread(&VolumeBackupTaskImpl::ThreadFunc, this);
     m_status = TaskStatus::RUNNING;
+    m_thread = std::thread(&VolumeBackupTaskImpl::ThreadFunc, this);
     return true;
 }
 

@@ -49,7 +49,7 @@ public:
     );
 
 private:
-    void WorkerThread();
+    void WorkerThread(int workerIndex);
 
     void ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen);
 
