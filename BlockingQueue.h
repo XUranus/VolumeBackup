@@ -1,6 +1,7 @@
 #ifndef VOLUME_BLOCKING_QUEUE_H
 #define VOLUME_BLOCKING_QUEUE_H
 
+#include "Logger.h"
 #include <cstddef>
 #include <queue>
 #include <mutex>
@@ -42,8 +43,9 @@ bool BlockingQueue<T>::Push(const T &v)
     if (m_finished) {
         return false;
     }
-    m_notFull.wait(lk, [&](){ return m_queue.size() >= m_maxSize; });
+    m_notFull.wait(lk, [&](){ return m_queue.size() < m_maxSize; });
     m_queue.push(v);
+    DBGLOG("Push one, size remain %d", m_queue.size());
     m_notEmpty.notify_one();
     return true;
 }
@@ -52,12 +54,13 @@ template<typename T>
 bool BlockingQueue<T>::Pop(T &v)
 {
     std::unique_lock<std::mutex> lk(m_mutex);
-    m_notEmpty.wait(lk, [&](){ return m_queue.empty() && !m_finished; });
+    m_notEmpty.wait(lk, [&](){ return !m_queue.empty() || m_finished; });
     if (m_queue.empty() && m_finished) {
         return false;
     }
     v = m_queue.front();
     m_queue.pop();
+    DBGLOG("Pop one, size remain %d", m_queue.size());
     m_notFull.notify_one();
     return true;
 }

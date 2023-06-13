@@ -5,6 +5,7 @@
 #include <cstring>
 #include <string>
 #include <chrono>
+#include <mutex>
 
 enum class LoggerLevel {
     DEBUG       = 0,
@@ -30,6 +31,8 @@ private:
 
 public:
     static Logger instance;
+private:
+    std::mutex m_mutex;
 };
 
 
@@ -50,6 +53,7 @@ static std::string TimestampSecondsToDate(uint64_t timestamp)
 template<class... Args>
 void Logger::WriteLog(LoggerLevel level, const char* function, int line, const char* format, Args... args)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     std::string date = TimestampSecondsToDate(std::chrono::system_clock::now().time_since_epoch().count() / std::chrono::system_clock::period::den);
     ::printf("[%s][", date.c_str());
     ::printf(format, args...);
