@@ -136,6 +136,8 @@ void VolumeBlockReader::ReaderThread()
             (currentOffset - m_sourceOffset + m_session->sessionOffset),
             nBytesToRead
         };
+        DBGLOG("reader push consume block (%p, %lu, %lu)",
+            consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
         if (m_session->config->hasherEnabled) {
             m_session->hashingQueue->Push(consumeBlock);
         } else {
@@ -143,7 +145,7 @@ void VolumeBlockReader::ReaderThread()
         }
         currentOffset += static_cast<uint64_t>(nBytesToRead);
         m_session->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
-        m_sourceOffset += nBytesToRead;
+        currentOffset += nBytesToRead;
     }
     
     m_status = TaskStatus::SUCCEED;

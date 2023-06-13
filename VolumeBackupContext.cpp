@@ -39,7 +39,9 @@ char* VolumeBlockAllocator::bmalloc()
     {
         if (!m_allocTable[i]) {
             m_allocTable[i] = true;
-            return m_pool + (m_blockSize * i);
+            char* ptr = m_pool + (m_blockSize * i);
+            DBGLOG("bmalloc index = %d, address = %p", i, ptr);
+            return ptr;
         }
     }
     return nullptr;
@@ -48,8 +50,10 @@ char* VolumeBlockAllocator::bmalloc()
 void VolumeBlockAllocator::bfree(char* ptr)
 {
     std::lock_guard<std::mutex> lk(m_mutex);
+    int index = (ptr - m_pool) / m_blockSize;
+    DBGLOG("bfree address = %p, index = %d", ptr, index);
     if ((ptr - m_pool) % m_blockSize == 0) {
-        m_allocTable[(ptr - m_pool) / m_blockSize] = false;
+        m_allocTable[index] = false;
         return;
     }
     throw std::runtime_error("bfree error: bad address");
@@ -89,6 +93,11 @@ bool VolumeBackupSession::IsTerminated() const
 
 bool VolumeBackupSession::IsFailed() const
 {
+    DBGLOG("check session failed, reader: %d, hasher: %d, writer: %d",
+        reader == nullptr ? TaskStatus::SUCCEED : reader->GetStatus(),
+        hasher == nullptr ? TaskStatus::SUCCEED : hasher->GetStatus(),
+        writer == nullptr ? TaskStatus::SUCCEED : writer->GetStatus()
+    );
     return (
         (reader != nullptr && reader->IsFailed()) ||
         (hasher != nullptr && hasher->IsFailed()) ||

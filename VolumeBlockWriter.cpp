@@ -104,8 +104,11 @@ void VolumeBlockWriter::WriterThread()
         }
 
         char* buffer = consumeBlock.ptr;
-        uint32_t len = consumeBlock.length;
         uint64_t writerOffset = consumeBlock.volumeOffset;
+        uint32_t len = consumeBlock.length;
+
+        DBGLOG("writer pop consume block (%p, %lu, %lu)",
+            consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
 
         // 1. volume => file   (file writer),   writerOffset = volumeOffset - sessionOffset
         // 2. file   => volume (volume writer), writerOffset = volumeOffset
