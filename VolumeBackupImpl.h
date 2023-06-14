@@ -37,7 +37,8 @@ private:
     bool            m_abort { false }; // if aborted is invoked
     TaskStatus      m_status { TaskStatus::INIT };
     SessionQueue    m_sessionQueue;
-    TaskStatistics  m_statistics;
+    TaskStatistics  m_statistics; // current total statistics
+    std::vector<TaskStatistics> m_historySessionStatistics;
 };
 
 }

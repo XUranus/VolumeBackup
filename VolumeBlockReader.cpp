@@ -145,7 +145,6 @@ void VolumeBlockReader::ReaderThread()
         }
         currentOffset += static_cast<uint64_t>(nBytesToRead);
         m_session->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
-        currentOffset += nBytesToRead;
     }
     // handle success
     INFOLOG("reader read completed successfully");
