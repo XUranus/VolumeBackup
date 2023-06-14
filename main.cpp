@@ -96,5 +96,6 @@ int main(int argc, char** argv)
             << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+    std::cout << "volume backup task completed!" << std::endl;
     return 0;
 }

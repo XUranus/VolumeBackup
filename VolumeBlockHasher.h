@@ -34,7 +34,7 @@ public:
         std::shared_ptr<VolumeBackupSession> session
     );
 
-    bool Start(int workerThreadNum = DEFAULT_HASHER_NUM);
+    bool Start();
 
     VolumeBlockHasher(
         std::shared_ptr<VolumeBackupSession> session,
@@ -55,6 +55,8 @@ private:
 
     void SaveLatestChecksumBin();
 
+    void HandleWorkerTerminate();
+
 private:
     // mutable
     char*                                   m_lastestChecksumTable;     // mutable, shared within worker
@@ -70,6 +72,8 @@ private:
     std::string             m_lastestChecksumBinPath;   // path of the checksum bin to write latest copy
 
     std::vector<std::thread> m_workers;
+    int                     m_workerThreadNum { DEFAULT_HASHER_NUM };
+    int                     m_workersRunning;
 };
 
 }

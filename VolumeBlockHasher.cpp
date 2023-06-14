@@ -18,12 +18,12 @@ using namespace volumebackup;
 
 VolumeBlockHasher::~VolumeBlockHasher()
 {
+    INFOLOG("finalize VolumeBlockHasher");
     for (std::thread& worker: m_workers) {
         if (worker.joinable()) {
             worker.join();
         }
     }
-    SaveLatestChecksumBin();
     if (m_prevChecksumTable != nullptr) {
         delete[] m_prevChecksumTable;
         m_prevChecksumTable = nullptr;
@@ -140,12 +140,12 @@ VolumeBlockHasher::VolumeBlockHasher(
 {}
 
 
-bool VolumeBlockHasher::Start(int workerThreadNum)
+bool VolumeBlockHasher::Start()
 {
     if (m_status != TaskStatus::INIT) {
         return false;
     }
-    if (workerThreadNum == 0) { // invalid parameter
+    if (m_workerThreadNum == 0) { // invalid parameter
         return false;
     }
     if (!m_workers.empty()) { // already started
@@ -154,10 +154,11 @@ bool VolumeBlockHasher::Start(int workerThreadNum)
     if (!m_session->config->hasherEnabled) {
         WARNLOG("hasher not enabled, exit hasher directly");
     }
-    for (int i = 0; i < workerThreadNum; i++) {
+    m_status = TaskStatus::RUNNING;
+    m_workersRunning = m_workerThreadNum;
+    for (int i = 0; i < m_workerThreadNum; i++) {
         m_workers.emplace_back(&VolumeBlockHasher::WorkerThread, this, i);
     }
-    m_status = TaskStatus::RUNNING;
     return true;
 }
 
@@ -166,7 +167,9 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
     VolumeConsumeBlock consumeBlock {};
     while (true) {
         if (m_abort) {
-            m_status = TaskStatus::ABORTED;
+            INFOLOG("hasher worker %d aborted", workerIndex);
+            m_workersRunning--;
+            HandleWorkerTerminate();
             return;
         }
 
@@ -197,8 +200,8 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
         m_session->writeQueue->Push(consumeBlock);
     }
     INFOLOG("hasher worker %d read completed successfully", workerIndex);
-    m_session->writeQueue->Finish();
-    m_status = TaskStatus::SUCCEED;
+    m_workersRunning--;
+    HandleWorkerTerminate();
     return;
 }
 
@@ -243,5 +246,18 @@ void VolumeBlockHasher::SaveLatestChecksumBin()
     } catch (const std::exception& e) {
         ERRLOG("save lastest checksum bin %s failed with exception: %s", m_lastestChecksumBinPath.c_str(), e.what());
     }
+    return;
+}
+
+void VolumeBlockHasher::HandleWorkerTerminate()
+{
+    if (m_workersRunning != 0) {
+        INFOLOG("left workers %d", m_workersRunning);
+        return;
+    }
+    INFOLOG("workers all completed");
+    m_session->writeQueue->Finish();
+    m_status = TaskStatus::SUCCEED;
+    SaveLatestChecksumBin();
     return;
 }
