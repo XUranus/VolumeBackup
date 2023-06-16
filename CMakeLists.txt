@@ -22,9 +22,10 @@ ENDIF()
 # require linux-utils
 TARGET_LINK_LIBRARIES(
     vbkup
+    # libblkid libparted openssl
     blkid
     parted
     crypto
-    
+    # third part dependency provided by XUranus
     minijson
 )
