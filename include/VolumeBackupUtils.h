@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Logger.h"
+#include "Json.h"
 
 namespace volumebackup {
 
@@ -26,6 +27,11 @@ struct VolumeCopyMeta {
     uint32_t    blockSize;
     Range       slices;
     VolumePartitionTableEntry partition;
+
+    SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(size, size);
+    SERIALIZE_FIELD(blockSize, blockSize);
+    SERIALIZE_SECTION_END
 };
 
 namespace util {

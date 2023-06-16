@@ -7,6 +7,7 @@ FILE(GLOB_RECURSE VOLUME_BACKUP_SOURCE "src/*.cpp")
 
 INCLUDE_DIRECTORIES(
     "include"
+    "module/minijson"
 )
 
 ADD_EXECUTABLE (vbkup
@@ -24,4 +25,6 @@ TARGET_LINK_LIBRARIES(
     blkid
     parted
     crypto
+    
+    minijson
 )

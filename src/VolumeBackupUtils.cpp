@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <fstream>
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 #include <unistd.h>
@@ -196,6 +197,15 @@ bool volumebackup::util::WriteVolumeCopyMeta(
     const VolumeCopyMeta& volumeCopyMeta)
 {
     // TODO:: implement
+    std::string jsonStr = xuranus::minijson::util::Serialize(const_cast<VolumeCopyMeta&>(volumeCopyMeta));
+    std::string filepath = copyMetaDirPath + "/" + "copymeta.json";
+    std::ofstream file(filepath);
+    if (!file.is_open()) {
+        ERRLOG("failed to open file %s to write json %s", filepath.c_str(), jsonStr.c_str());
+        return false;
+    }
+    file << jsonStr;
+    file.close();
     return true;
 }
 

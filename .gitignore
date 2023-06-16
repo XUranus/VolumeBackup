@@ -32,6 +32,4 @@
 *.app
 
 build/
-module/
-.gitmodules
-.vscode
+.vscode/
