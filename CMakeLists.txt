@@ -3,11 +3,13 @@ SET(CMAKE_BUILD_TYPE Debug)
 PROJECT ("vbkup")
 
 ADD_SUBDIRECTORY(module/minijson)
+ADD_SUBDIRECTORY(module/minilogger)
 FILE(GLOB_RECURSE VOLUME_BACKUP_SOURCE "src/*.cpp")
 
 INCLUDE_DIRECTORIES(
     "include"
     "module/minijson"
+    "module/minilogger"
 )
 
 ADD_EXECUTABLE (vbkup
@@ -28,4 +30,5 @@ TARGET_LINK_LIBRARIES(
     crypto
     # third part dependency provided by XUranus
     minijson
+    minilogger
 )

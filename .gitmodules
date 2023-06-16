@@ -1,3 +1,6 @@
 [submodule "module/minijson"]
 	path = module/minijson
 	url = git@github.com:XUranus/minijson.git
+[submodule "module/minilogger"]
+	path = module/minilogger
+	url = git@github.com:XUranus/minilogger.git
