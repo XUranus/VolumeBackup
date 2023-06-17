@@ -196,8 +196,7 @@ bool volumebackup::util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     const VolumeCopyMeta& volumeCopyMeta)
 {
-    // TODO:: implement
-    std::string jsonStr = xuranus::minijson::util::Serialize(const_cast<VolumeCopyMeta&>(volumeCopyMeta));
+    std::string jsonStr = xuranus::minijson::util::Serialize(volumeCopyMeta);
     std::string filepath = copyMetaDirPath + "/" + "copymeta.json";
     std::ofstream file(filepath);
     if (!file.is_open()) {

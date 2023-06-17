@@ -33,5 +33,6 @@
 
 build/
 .vscode/
-module/minjson
+.cache
+module/minijson
 module/minilogger

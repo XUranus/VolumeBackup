@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "Logger.h"
 #include "VolumeBackup.h"
 
 using namespace volumebackup;
@@ -67,6 +68,8 @@ int main(int argc, char** argv)
     std::cout << "copyDataDirPath: " << copyDataDirPath << std::endl;
     std::cout << "copyMetaDirPath: " << copyMetaDirPath << std::endl;
 
+    xuranus::minilogger::Logger::GetInstance().SetLogLevel(xuranus::minilogger::LoggerLevel::DEBUG);
+
     VolumeBackupConfig backupConfig {};
     backupConfig.copyType = CopyType::FULL;
     backupConfig.blockDevicePath = blockDevicePath;
@@ -89,8 +92,8 @@ int main(int argc, char** argv)
         std::cout
             << "bytesToReaded: " << statistics.bytesToRead << "\n"
             << "bytesRead: " << statistics.bytesRead << "\n"
-            << "bytesToHash: " << statistics.bytesToHash << "\n"
-            << "bytesHashed: " << statistics.bytesHashed << "\n"
+            << "blocksToHash: " << statistics.blocksToHash << "\n"
+            << "blocksHashed: " << statistics.blocksHashed << "\n"
             << "bytesToWrite: " << statistics.bytesToWrite << "\n"
             << "bytesWritten: " << statistics.bytesWritten
             << std::endl;

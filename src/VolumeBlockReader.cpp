@@ -102,7 +102,6 @@ void VolumeBlockReader::ReaderThread()
     while (true) {
         DBGLOG("reader thread check, sourceOffset: %lu, sourceLength %lu, currentOffset: %lu",
             m_sourceOffset, m_sourceLength, currentOffset);
-            //sourceOffset: 0, sourceLength 524288000, currentOffset: 520093696
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
             ::close(fd);
@@ -139,6 +138,7 @@ void VolumeBlockReader::ReaderThread()
         DBGLOG("reader push consume block (%p, %lu, %lu)",
             consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
         if (m_session->config->hasherEnabled) {
+            ++m_session->counter->blocksToHash;
             m_session->hashingQueue->Push(consumeBlock);
         } else {
             m_session->writeQueue->Push(consumeBlock);

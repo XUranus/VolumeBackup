@@ -19,6 +19,14 @@ struct VolumePartitionTableEntry {
     uint64_t    firstSector;
     uint64_t    lastSector;
     uint64_t    totalSectors;
+
+    SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(filesystem, filesystem);
+    SERIALIZE_FIELD(patitionNumber, patitionNumber);
+    SERIALIZE_FIELD(firstSector, firstSector);
+    SERIALIZE_FIELD(lastSector, lastSector);
+    SERIALIZE_FIELD(totalSectors, totalSectors);
+    SERIALIZE_SECTION_END
 };
 
 struct VolumeCopyMeta {
@@ -32,6 +40,8 @@ struct VolumeCopyMeta {
     SERIALIZE_SECTION_BEGIN
     SERIALIZE_FIELD(size, size);
     SERIALIZE_FIELD(blockSize, blockSize);
+    SERIALIZE_FIELD(slices, slices);
+    SERIALIZE_FIELD(partition, partition);
     SERIALIZE_SECTION_END
 };
 

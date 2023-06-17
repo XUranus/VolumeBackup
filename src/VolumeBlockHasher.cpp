@@ -185,7 +185,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             m_lastestChecksumTable + index * m_singleChecksumSize,
             m_singleChecksumSize);
 
-        m_session->counter->blocksHashed += consumeBlock.length;
+        ++m_session->counter->blocksHashed;
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash

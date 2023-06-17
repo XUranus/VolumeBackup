@@ -7,6 +7,7 @@
 #include <thread>
 #include <vector>
 
+#include "Logger.h"
 #include "VolumeBackup.h"
 #include "VolumeBackupContext.h"
 #include "VolumeBackupUtils.h"
@@ -63,9 +64,22 @@ bool VolumeBackupTaskImpl::IsTerminated() const
     );
 }
 
+
+TaskStatistics operator + (const TaskStatistics& statistic1, const TaskStatistics& statistic2)
+{
+    TaskStatistics res;
+    res.bytesToRead     = statistic1.bytesToRead + statistic2.bytesToRead;
+    res.bytesRead       = statistic1.bytesRead + statistic2.bytesRead;;
+    res.blocksToHash    = statistic1.blocksToHash + statistic2.blocksToHash;
+    res.blocksHashed    = statistic1.blocksHashed + statistic2.blocksHashed;
+    res.bytesToWrite    = statistic1.bytesToWrite + statistic2.bytesToWrite;
+    res.bytesWritten    = statistic1.bytesWritten + statistic2.bytesWritten;
+    return res;
+}
+
 TaskStatistics VolumeBackupTaskImpl::GetStatistics() const
 {
-    return m_statistics;
+    return m_completedSessionStatistics + m_currentSessionStatistics;
 }
 
 TaskStatus VolumeBackupTaskImpl::GetStatus() const
@@ -196,10 +210,34 @@ void VolumeBackupTaskImpl::ThreadFunc()
                 break;
             }
             // TODO:: add statistics
+            UpdateRunningSessionStatistics(session);
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
+        DBGLOG("sesion complete successfully");
+        UpdateCompletedSessionStatistics(session);
     }
     
     m_status = TaskStatus::SUCCEED;
     return;
+}
+
+void VolumeBackupTaskImpl::UpdateRunningSessionStatistics(std::shared_ptr<VolumeBackupSession> session)
+{
+    m_currentSessionStatistics.bytesToRead = session->counter->bytesToRead;
+    m_currentSessionStatistics.bytesRead = session->counter->bytesRead;
+    m_currentSessionStatistics.blocksToHash = session->counter->blocksToHash;
+    m_currentSessionStatistics.blocksHashed = session->counter->blocksHashed;
+    m_currentSessionStatistics.bytesToWrite = session->counter->bytesToWrite;
+    m_currentSessionStatistics.bytesWritten = session->counter->bytesWritten;
+}
+
+void VolumeBackupTaskImpl::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeBackupSession> session)
+{
+    m_completedSessionStatistics.bytesToRead += session->counter->bytesToRead;
+    m_completedSessionStatistics.bytesRead += session->counter->bytesRead;
+    m_completedSessionStatistics.blocksToHash += session->counter->blocksToHash;
+    m_completedSessionStatistics.blocksHashed += session->counter->blocksHashed;
+    m_completedSessionStatistics.bytesToWrite += session->counter->bytesToWrite;
+    m_completedSessionStatistics.bytesWritten += session->counter->bytesWritten;
+    memset(&m_currentSessionStatistics, 0, sizeof(TaskStatistics));
 }

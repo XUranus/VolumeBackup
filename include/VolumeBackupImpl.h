@@ -3,6 +3,7 @@
 
 #include "VolumeBackup.h"
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <exception>
@@ -28,6 +29,8 @@ public:
 private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
+    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
+    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
 
 private:
     uint64_t                                m_volumeSize;
@@ -37,8 +40,9 @@ private:
     bool            m_abort { false }; // if aborted is invoked
     TaskStatus      m_status { TaskStatus::INIT };
     SessionQueue    m_sessionQueue;
-    TaskStatistics  m_statistics; // current total statistics
-    std::vector<TaskStatistics> m_historySessionStatistics;
+    // statistics
+    TaskStatistics  m_currentSessionStatistics; // current running session statistics
+    TaskStatistics  m_completedSessionStatistics; // statistic sum of all completed session
 };
 
 }

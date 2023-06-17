@@ -62,8 +62,8 @@ enum class TaskStatus {
 struct TaskStatistics {
     uint64_t bytesToRead;
     uint64_t bytesRead;
-    uint64_t bytesToHash;
-    uint64_t bytesHashed;
+    uint64_t blocksToHash;
+    uint64_t blocksHashed;
     uint64_t bytesToWrite;
     uint64_t bytesWritten;
 };
