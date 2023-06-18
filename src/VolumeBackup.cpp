@@ -6,18 +6,19 @@ using namespace volumebackup;
 
 /*
  * backup copy folder herichical
+ * Example of sessionSize 1024, volumeSize 3072
  * 1. Full Copy
  *  ${CopyID}
  *       |
  *      ${UUID}
  *          |------data
- *          |       |------0.1024.data.bin
- *          |       |------1024.1024.data.bin
- *          |       |------2048.1024.data.bin
+ *          |       |------0.1024.data.full.bin
+ *          |       |------1024.1024.data.full.bin
+ *          |       |------2048.1024.data.full.bin
  *          |
  *          |------meta
  *                  |------fullcopy.meta.json
- *                  |------0.1024.sha256.bin
+ *                  |------0.1024.sha256.meta.bin
  *                  |------1024.1024.sha256.meta.bin
  *                  |------2048.1024.sha256.meta.bin
  *
@@ -26,9 +27,9 @@ using namespace volumebackup;
  *       |
  *      ${UUID}
  *          |------data (sparse file)
- *          |       |------0.1024.data.bin
- *          |       |------1024.1024.data.bin
- *          |       |------2048.1024.data.bin
+ *          |       |------0.1024.data.inc.bin
+ *          |       |------1024.1024.data.inc.bin
+ *          |       |------2048.1024.data.inc.bin
  *          |
  *          |------meta
  *                  |------incrementcopy.meta.json
@@ -36,7 +37,6 @@ using namespace volumebackup;
  *                  |------1024.1024.sha256.meta.bin
  *                  |------2048.1024.sha256.meta.bin
  */
-
 
 std::shared_ptr<VolumeBackupTask> VolumeBackupTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)
 {

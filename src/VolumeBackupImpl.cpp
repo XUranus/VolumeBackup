@@ -93,6 +93,11 @@ void VolumeBackupTaskImpl::Abort()
     m_status = TaskStatus::ABORTING;
 }
 
+bool VolumeBackupTaskImpl::IsIncrementBackup() const
+{
+    return m_backupConfig->copyType == CopyType::INCREMENT;
+}
+
 // split session and save volume meta
 bool VolumeBackupTaskImpl::Prepare()
 {
@@ -116,28 +121,107 @@ bool VolumeBackupTaskImpl::Prepare()
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
     volumeCopyMeta.partition = partitionEntry;
 
+    if (IsIncrementBackup()) {
+        // TODO:: validate increment backup meta
+    }
+
     // 2. split session
     for (uint64_t sessionOffset = 0; sessionOffset < m_volumeSize;) {
         uint64_t sessionSize = DEFAULT_SESSION_SIZE;
         if (sessionOffset + DEFAULT_SESSION_SIZE >= m_volumeSize) {
             sessionSize = m_volumeSize - sessionOffset;
         }
-        std::string lastestChecksumBinPath = util::GetChecksumBinPath(m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
-        std::string copyFilePath = util::GetCopyFilePath(m_backupConfig->outputCopyDataDirPath, sessionOffset, sessionSize);
+        std::string lastestChecksumBinPath = util::GetChecksumBinPath(
+            m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
+        std::string copyFilePath = util::GetCopyFilePath(
+            m_backupConfig->outputCopyDataDirPath, m_backupConfig->copyType, sessionOffset, sessionSize);
+        // for increment backup
+        std::string prevChecksumBinPath = "";
+        if (IsIncrementBackup()) {
+            prevChecksumBinPath = util::GetChecksumBinPath(m_backupConfig->prevCopyMetaDirPath, sessionOffset, sessionSize);
+        }
+
         VolumeBackupSession session {};
         session.config = m_backupConfig;
         session.sessionOffset = sessionOffset;
         session.sessionSize = sessionSize;
         session.lastestChecksumBinPath = lastestChecksumBinPath;
-        session.prevChecksumBinPath = "";
+        session.prevChecksumBinPath = prevChecksumBinPath;
         session.copyFilePath = copyFilePath;
         volumeCopyMeta.slices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
         sessionOffset += sessionSize;
     }
 
-    if (!util::WriteVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, volumeCopyMeta)) {
+    if (!util::WriteVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyType, volumeCopyMeta)) {
         ERRLOG("failed to write copy meta to dir: %s", m_backupConfig->outputCopyMetaDirPath.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool VolumeBackupTaskImpl::InitBackupSessionContext(std::shared_ptr<VolumeBackupSession> session) const
+{
+    DBGLOG("init backup session context");
+    // 1. init basic backup container
+    session->counter = std::make_shared<SessionCounter>();
+    session->allocator = std::make_shared<VolumeBlockAllocator>(session->config->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
+    session->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    
+    // 2. check and init reader
+    session->reader = VolumeBlockReader::BuildVolumeReader(
+        m_backupConfig->blockDevicePath,
+        session->sessionOffset,
+        session->sessionSize,
+        session
+    );
+    if (session->reader == nullptr) {
+        ERRLOG("backup session failed to init reader");
+        return false;
+    }
+
+    // 2. check and init hasher
+    if (IsIncrementBackup()) {
+        session->hasher = VolumeBlockHasher::BuildDiffHasher(session);
+    } else {
+        session->hasher = VolumeBlockHasher::BuildDirectHasher(session);
+    }
+    if (session->hasher == nullptr) {
+        ERRLOG("backup session failed to init hasher");
+        return false;
+    }
+
+    // 3. check and init writer
+    session->writer = VolumeBlockWriter::BuildCopyWriter(session);
+    if (session->writer == nullptr) {
+        ERRLOG("backup session failed to init writer");
+        return false;
+    }
+    return true;
+}
+
+bool VolumeBackupTaskImpl::StartBackupSession(std::shared_ptr<VolumeBackupSession> session) const
+{
+    DBGLOG("start backup session");
+    if (session->reader == nullptr || session->hasher == nullptr || session->writer == nullptr) {
+        ERRLOG("backup session member nullptr! reader: %p hasher: %p writer: %p ",
+            session->reader.get(), session->hasher.get(), session->writer.get());
+        return false;
+    }
+    DBGLOG("start backup session reader");
+    if (!session->reader->Start()) {
+        ERRLOG("backup session reader start failed");
+        return false;
+    }
+    DBGLOG("start backup session hasher");
+    if (!session->hasher->Start() ) {
+        ERRLOG("backup session hasher start failed");
+        return false;
+    }
+    DBGLOG("start backup session writer");
+    if (!session->writer->Start() ) {
+        ERRLOG("backup session writer start failed");
         return false;
     }
     return true;
@@ -156,44 +240,11 @@ void VolumeBackupTaskImpl::ThreadFunc()
         std::shared_ptr<VolumeBackupSession> session = std::make_shared<VolumeBackupSession>(m_sessionQueue.front());
         m_sessionQueue.pop();
 
-        // init session container context
-        session->counter = std::make_shared<SessionCounter>();
-        session->allocator = std::make_shared<VolumeBlockAllocator>(session->config->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
-        session->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-        session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+        if (!InitBackupSessionContext(session) || !StartBackupSession(session)) {
+            m_status = TaskStatus::FAILED;
+            return;
+        }
 
-        session->reader = VolumeBlockReader::BuildVolumeReader(
-            m_backupConfig->blockDevicePath,
-            session->sessionOffset,
-            session->sessionSize,
-            session
-        );
-        session->hasher = VolumeBlockHasher::BuildDirectHasher(session);
-        session->writer = VolumeBlockWriter::BuildCopyWriter(session);
-        DBGLOG("start new session");
-        if (session->reader == nullptr || session->hasher == nullptr || session->writer == nullptr) {
-            ERRLOG("session member nullptr! reader: %p hasher: %p writer: %p ", session->reader.get(), session->hasher.get(), session->writer.get());
-            m_status = TaskStatus::FAILED;
-            return;
-        }
-        DBGLOG("start session reader");
-        if (!session->reader->Start()) {
-            ERRLOG("session reader start failed");
-            m_status = TaskStatus::FAILED;
-            return;
-        }
-        DBGLOG("start session hasher");
-        if (!session->hasher->Start() ) {
-            ERRLOG("session hasher start failed");
-            m_status = TaskStatus::FAILED;
-            return;
-        }
-        DBGLOG("start session writer");
-        if (!session->writer->Start() ) {
-            ERRLOG("session writer start failed");
-            m_status = TaskStatus::FAILED;
-            return;
-        }
         // block the thread
         while (true) {
             if (m_abort) {

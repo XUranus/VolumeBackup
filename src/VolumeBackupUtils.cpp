@@ -1,3 +1,4 @@
+#include "VolumeBackup.h"
 #include <fcntl.h>
 #include <fstream>
 #include <sys/ioctl.h>
@@ -179,25 +180,36 @@ std::string volumebackup::util::GetChecksumBinPath(
     uint64_t sessionOffset,
     uint64_t sessionSize)
 {
-    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + ".sha256.meta.bin";
+    std::string suffix = ".sha256.meta.bin";
+    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + suffix;
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
 std::string volumebackup::util::GetCopyFilePath(
     const std::string& copyDataDirPath,
+    CopyType copyType,
     uint64_t sessionOffset,
     uint64_t sessionSize)
 {
-    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + ".data.bin";
+    std::string suffix = ".data.full.bin";
+    if (copyType == CopyType::INCREMENT) {
+        suffix = ".data.inc.bin";
+    }
+    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + suffix;
     return copyDataDirPath + SEPARATOR + filename;
 }
 
 bool volumebackup::util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
+    CopyType copyType,
     const VolumeCopyMeta& volumeCopyMeta)
 {
     std::string jsonStr = xuranus::minijson::util::Serialize(volumeCopyMeta);
-    std::string filepath = copyMetaDirPath + "/" + "copymeta.json";
+    std::string jsonFileName = "fullcopy.meta.json";
+    if (copyType == CopyType::INCREMENT) {
+        jsonFileName = "incrementcopy.meta.json";
+    }
+    std::string filepath = copyMetaDirPath + "/" + jsonFileName;
     std::ofstream file(filepath);
     if (!file.is_open()) {
         ERRLOG("failed to open file %s to write json %s", filepath.c_str(), jsonStr.c_str());

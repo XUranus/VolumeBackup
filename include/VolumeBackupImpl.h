@@ -29,6 +29,9 @@ public:
 private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
+    bool StartBackupSession(std::shared_ptr<VolumeBackupSession> session) const;
+    bool InitBackupSessionContext(std::shared_ptr<VolumeBackupSession> session) const;
+    bool IsIncrementBackup() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
 

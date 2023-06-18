@@ -89,7 +89,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
     try {
         std::ifstream checksumBinFile(prevChecksumBinPath, std::ios::binary);
         if (!checksumBinFile.is_open()) {
-            ERRLOG("previos checksum bin file open failed, errno: %d", errno);
+            ERRLOG("previous checksum bin file %s open failed, errno: %d", prevChecksumBinPath.c_str(), errno);
             delete[] lastestChecksumTable;
             delete[] prevChecksumTable;
             return nullptr;
@@ -192,6 +192,8 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             uint32_t prevHash = reinterpret_cast<uint32_t*>(m_prevChecksumTable)[index];
             uint32_t lastestHash = reinterpret_cast<uint32_t*>(m_lastestChecksumTable)[index];
             if (prevHash == lastestHash) {
+                // drop the block and free
+                m_session->allocator->bfree(consumeBlock.ptr);
                 continue;
             }
         }

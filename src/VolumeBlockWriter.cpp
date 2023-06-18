@@ -58,6 +58,10 @@ bool VolumeBlockWriter::Start()
     if (m_status != TaskStatus::INIT) {
         return false;
     }
+    if (!Prepare()) {
+        m_status = TaskStatus::FAILED;
+        return false;
+    }
     m_status = TaskStatus::RUNNING;
     m_writerThread = std::thread(&VolumeBlockWriter::WriterThread, this);
     return true;
@@ -67,6 +71,10 @@ VolumeBlockWriter::~VolumeBlockWriter()
 {
     if (m_writerThread.joinable()) {
         m_writerThread.join();
+    }
+    if (m_fd < 0) {
+        ::close(m_fd);
+        m_fd = -1;
     }
 }
 
@@ -79,22 +87,32 @@ VolumeBlockWriter::VolumeBlockWriter(
     m_session(session)
 {}
 
+bool VolumeBlockWriter::Prepare()
+{
+    // open writer target file handle
+    m_fd = ::open(m_targetPath.c_str() ,O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    if (m_fd < 0) {
+        ERRLOG("open %s failed, errno: %d", m_targetPath.c_str(), errno);
+        return false;
+    }
+
+    // truncate copy file to session size
+    if (m_targetType == TargetType::COPYFILE) {
+        DBGLOG("truncate target copy file %s to size %lu", m_targetPath.c_str(), m_session->sessionSize);
+        ::ftruncate(m_fd, m_session->sessionSize);
+        ::lseek(m_fd, 0, SEEK_SET);
+    }
+    return true;
+}
+
 void VolumeBlockWriter::WriterThread()
 {
     VolumeConsumeBlock consumeBlock {};
-    // open writer file handle
-    int fd = ::open(m_targetPath.c_str() ,O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    if (fd < 0) {
-        ERRLOG("open %s failed, errno: %d", m_targetPath.c_str(), errno);
-        m_status = TaskStatus::FAILED;
-        return;
-    }
-
     DBGLOG("writer thread start");
+
     while (true) {
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
-            ::close(fd);
             return;
         }
         DBGLOG("check writer thread");
@@ -116,12 +134,11 @@ void VolumeBlockWriter::WriterThread()
             writerOffset = consumeBlock.volumeOffset - m_session->sessionOffset;
         }
         
-        ::lseek(fd, writerOffset, SEEK_SET);
-        int n = ::write(fd, buffer, len);
+        ::lseek(m_fd, writerOffset, SEEK_SET);
+        int n = ::write(m_fd, buffer, len);
         if (n != len) {
             ERRLOG("write %lu bytes failed, ret = %d", writerOffset, n);
             m_status = TaskStatus::FAILED;
-            ::close(fd);
             m_session->allocator->bfree(buffer);
             return;
         }
@@ -131,6 +148,5 @@ void VolumeBlockWriter::WriterThread()
     }
     INFOLOG("writer read completed successfully");
     m_status = TaskStatus::SUCCEED;
-    ::close(fd);
     return;
 }

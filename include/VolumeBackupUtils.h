@@ -10,6 +10,7 @@
 // external logger/json library
 #include "Logger.h"
 #include "Json.h"
+#include "VolumeBackup.h"
 
 namespace volumebackup {
 
@@ -68,11 +69,20 @@ std::string ReadVolumeLabel(const std::string& blockDevicePath);
 
 std::vector<VolumePartitionTableEntry> ReadVolumePartitionTable(const std::string& blockDevicePath);
 
-std::string GetChecksumBinPath(const std::string& copyMetaDirPath, uint64_t sessionOffset, uint64_t sessionSize);
+std::string GetChecksumBinPath(
+    const std::string&      copyMetaDirPath,
+    uint64_t                sessionOffset,
+    uint64_t                sessionSize
+);
 
-std::string GetCopyFilePath(const std::string& copyDataDirPath, uint64_t sessionOffset, uint64_t sessionSize);
+std::string GetCopyFilePath(
+    const std::string&      copyDataDirPath,
+    volumebackup::CopyType  copyType,
+    uint64_t                sessionOffset,
+    uint64_t                sessionSize
+);
 
-bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
+bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, CopyType copyType, const VolumeCopyMeta& volumeCopyMeta);
 
 bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 

@@ -40,6 +40,7 @@ public:
 
 private:
     void WriterThread();
+    bool Prepare();
 
 private:
     // immutable fields
@@ -49,6 +50,7 @@ private:
     // mutable fields
     std::shared_ptr<VolumeBackupSession> m_session;
     std::thread m_writerThread;
+    int         m_fd { -1 };
 };
 
 }
