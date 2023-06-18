@@ -166,6 +166,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
 {
     VolumeConsumeBlock consumeBlock {};
     while (true) {
+        DBGLOG("hasher worker[%d] thread check", workerIndex);
         if (m_abort) {
             INFOLOG("hasher worker %d aborted", workerIndex);
             m_workersRunning--;

@@ -99,6 +99,10 @@ void VolumeBlockReader::ReaderThread()
     m_session->counter->bytesToRead += m_sourceLength;
     DBGLOG("reader thread start, sourceOffset: %lu ", m_sourceOffset);
 
+
+//[2023-06-18 20:25:18][DEBUG][reader thread check, sourceOffset: 0, sourceLength 41481732096, currentOffset: 2826960896][void volumebackup::VolumeBlockReader::ReaderThread():103][140314125665984]
+//[2023-06-18 20:25:18][DEBUG][reader push consume block (0x7f9d603ff010, 2826960896, 65536)][void volumebackup::VolumeBlockReader::ReaderThread():138][140314125665984]
+
     while (true) {
         DBGLOG("reader thread check, sourceOffset: %lu, sourceLength %lu, currentOffset: %lu",
             m_sourceOffset, m_sourceLength, currentOffset);
@@ -119,9 +123,11 @@ void VolumeBlockReader::ReaderThread()
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-        nBytesToRead = static_cast<uint32_t>(std::min(
-            defaultBufferSize,
-            static_cast<uint32_t>(m_sourceOffset + m_sourceLength - currentOffset)));
+        nBytesToRead = defaultBufferSize;
+        if (m_sourceOffset + m_sourceLength - currentOffset < defaultBufferSize) {
+            nBytesToRead = m_sourceOffset + m_sourceLength - currentOffset;
+        }
+        
         int n = ::read(fd, buffer, nBytesToRead);
         if (n != nBytesToRead) { // read failed, size mismatch
             ERRLOG("failed to read %u bytes, ret = %d", nBytesToRead, n);

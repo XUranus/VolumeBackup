@@ -260,8 +260,10 @@ void VolumeBackupTaskImpl::ThreadFunc()
             if (session->IsTerminated())  {
                 break;
             }
-            // TODO:: add statistics
-            UpdateRunningSessionStatistics(session);
+            DBGLOG("updateStatistics: bytesToReaded: %llu, bytesRead: %llu, blocksToHash: %llu, blocksHashed: %llu, bytesToWrite: %llu, bytesWritten: %llu",
+            session->counter->bytesToRead.load(), session->counter->bytesRead.load(),
+            session->counter->blocksToHash.load(), session->counter->blocksHashed.load(),
+            session->counter->bytesToWrite.load(), session->counter->bytesWritten.load());
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
         DBGLOG("sesion complete successfully");

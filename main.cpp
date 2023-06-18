@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "Logger.h"
 #include "VolumeBackup.h"
+#include "Logger.h"
 
 using namespace volumebackup;
 
@@ -51,14 +51,8 @@ int ExecVolumeBackup(
     task->Start();
     while (!task->IsTerminated()) {
         TaskStatistics statistics =  task->GetStatistics();
-        std::cout
-            << "bytesToReaded: " << statistics.bytesToRead << "\n"
-            << "bytesRead: " << statistics.bytesRead << "\n"
-            << "blocksToHash: " << statistics.blocksToHash << "\n"
-            << "blocksHashed: " << statistics.blocksHashed << "\n"
-            << "bytesToWrite: " << statistics.bytesToWrite << "\n"
-            << "bytesWritten: " << statistics.bytesWritten
-            << std::endl;
+        DBGLOG("checkStatistics: bytesToReaded: %llu, bytesRead: %llu, blocksToHash: %llu, blocksHashed: %llu, bytesToWrite: %llu, bytesWritten: %llu",
+            statistics.bytesToRead, statistics.bytesRead, statistics.blocksToHash, statistics.blocksHashed, statistics.bytesToWrite, statistics.bytesWritten);
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     std::cout << "volume backup task completed!" << std::endl;
