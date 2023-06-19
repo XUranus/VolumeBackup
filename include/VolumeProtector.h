@@ -91,13 +91,11 @@ public:
 class VolumeBackupTask : public VolumeTaskBase {
 public:
     static std::shared_ptr<VolumeBackupTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
-    VolumeBackupTask() {};
 };
 
 class VolumeRestoreTask : public VolumeTaskBase {
 public:
     static std::shared_ptr<VolumeRestoreTask> BuildRestoreTask(const VolumeBackupConfig& backupConfig);
-    VolumeRestoreTask() {};
 };
 
 }
