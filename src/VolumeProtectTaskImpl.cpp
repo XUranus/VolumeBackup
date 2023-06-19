@@ -8,17 +8,17 @@
 #include <vector>
 
 #include "Logger.h"
-#include "VolumeBackup.h"
-#include "VolumeBackupContext.h"
-#include "VolumeBackupUtils.h"
+#include "VolumeProtector.h"
+#include "VolumeProtectTaskContext.h"
+#include "VolumeUtils.h"
 #include "VolumeBlockReader.h"
 #include "VolumeBlockHasher.h"
 #include "VolumeBlockWriter.h"
 #include "BlockingQueue.h"
-#include "VolumeBackupImpl.h"
+#include "VolumeProtectTaskImpl.h"
 
-using namespace volumebackup;
-using namespace volumebackup::util;
+using namespace volumeprotect;
+using namespace volumeprotect::util;
 
 namespace {
     constexpr auto DEFAULT_ALLOCATOR_BLOCK_NUM = 32;

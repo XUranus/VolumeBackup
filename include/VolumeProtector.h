@@ -1,6 +1,6 @@
 
-#ifndef VOLUME_BACKUP_FACADE_H
-#define VOLUME_BACKUP_FACADE_H
+#ifndef VOLUME_PROTECT_FACADE_H
+#define VOLUME_PROTECT_FACADE_H
 
 #include <string>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include <memory>
 
 // volume backup application facade
-namespace volumebackup {
+namespace volumeprotect {
 
 const uint64_t ONE_KB = 1024;
 const uint64_t ONE_MB = 1024 * ONE_KB;
@@ -37,14 +37,13 @@ struct VolumeBackupConfig {
 	std::string	    outputCopyDataDirPath;
 	std::string	    outputCopyMetaDirPath;
     uint32_t        blockSize { DEFAULT_BLOCK_SIZE };       // [optional] default block size used for computing checksum
-    uint64_t        sessionSize { DEFAULT_SESSION_SIZE };   // defauly sesson size used to split session
+    uint64_t        sessionSize { DEFAULT_SESSION_SIZE };   // default sesson size used to split session
     uint64_t        hasherNum { DEFAULT_HASHER_NUM };       // hasher worker count, recommended set to the num of processors
     bool            hasherEnabled { true };                 // if set to false, won't compute checksum
 };
 
 // immutable config, used to build volume restore task
 struct VolumeRestoreConfig {
-    CopyType        copyType;                               // type of the source copy to be restored from
     std::string     blockDevicePath;                        // path of the block device (volume)
     std::string	    copyDataDirPath;
 	std::string	    copyMetaDirPath;
@@ -80,16 +79,25 @@ protected:
     bool        m_abort { false };
 };
 
-class VolumeBackupTask {
+class VolumeTaskBase {
 public:
-    static std::shared_ptr<VolumeBackupTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
-    VolumeBackupTask() {};
-    
     virtual bool            Start() = 0;
     virtual bool            IsTerminated() const = 0;
     virtual TaskStatus      GetStatus() const = 0;
     virtual void            Abort() = 0;
     virtual TaskStatistics  GetStatistics() const = 0;
+};
+
+class VolumeBackupTask : public VolumeTaskBase {
+public:
+    static std::shared_ptr<VolumeBackupTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
+    VolumeBackupTask() {};
+};
+
+class VolumeRestoreTask : public VolumeTaskBase {
+public:
+    static std::shared_ptr<VolumeRestoreTask> BuildRestoreTask(const VolumeBackupConfig& backupConfig);
+    VolumeRestoreTask() {};
 };
 
 }

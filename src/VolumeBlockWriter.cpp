@@ -17,11 +17,11 @@
 #include <algorithm>
 
 #include "Logger.h"
-#include "VolumeBackup.h"
+#include "VolumeProtector.h"
 #include "VolumeBlockWriter.h"
-#include "VolumeBackupUtils.h"
+#include "VolumeUtils.h"
 
-using namespace volumebackup;
+using namespace volumeprotect;
 
 // build a writer writing to copy file
 std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(

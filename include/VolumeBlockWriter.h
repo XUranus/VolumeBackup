@@ -2,14 +2,14 @@
 #ifndef VOLUME_BLOCK_WRITER_H
 #define VOLUME_BLOCK_WRITER_H
 
-#include "VolumeBackupContext.h"
+#include "VolumeProtectTaskContext.h"
 
 #include <iostream>
 #include <memory>
 #include <thread>
 #include <fstream>
 
-namespace volumebackup {
+namespace volumeprotect {
 
 class VolumeBlockWriter : public StatefulTask {
 public:

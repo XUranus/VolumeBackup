@@ -10,9 +10,9 @@
 // external logger/json library
 #include "Logger.h"
 #include "Json.h"
-#include "VolumeBackup.h"
+#include "VolumeProtector.h"
 
-namespace volumebackup {
+namespace volumeprotect {
 
 struct VolumePartitionTableEntry {
     std::string filesystem;
@@ -77,7 +77,7 @@ std::string GetChecksumBinPath(
 
 std::string GetCopyFilePath(
     const std::string&      copyDataDirPath,
-    volumebackup::CopyType  copyType,
+    volumeprotect::CopyType  copyType,
     uint64_t                sessionOffset,
     uint64_t                sessionSize
 );

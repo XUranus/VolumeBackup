@@ -1,7 +1,7 @@
-#ifndef VOLUME_BACKUP_TASK_IMPL_H
-#define VOLUME_BACKUP_TASK_IMPL_H
+#ifndef VOLUME_PROTECT_TASK_IMPL_H
+#define VOLUME_PROTECT_TASK_IMPL_H
 
-#include "VolumeBackup.h"
+#include "VolumeProtector.h"
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -9,10 +9,10 @@
 #include <exception>
 #include <vector>
 
-#include "VolumeBackup.h"
-#include "VolumeBackupContext.h"
+#include "VolumeProtector.h"
+#include "VolumeProtectTaskContext.h"
 
-namespace volumebackup {
+namespace volumeprotect {
 
 class VolumeBackupTaskImpl : public VolumeBackupTask {
 public:

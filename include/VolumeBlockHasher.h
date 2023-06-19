@@ -11,9 +11,9 @@
 #include <thread>
 #include <vector>
 
-#include "VolumeBackupContext.h"
+#include "VolumeProtectTaskContext.h"
 
-namespace volumebackup {
+namespace volumeprotect {
 
 enum HasherForwardMode {
     // direct move block to write queue after block checksum is computed

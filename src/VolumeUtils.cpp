@@ -1,4 +1,4 @@
-#include "VolumeBackup.h"
+#include "VolumeProtector.h"
 #include <fcntl.h>
 #include <fstream>
 #include <sys/ioctl.h>
@@ -14,7 +14,7 @@ extern "C" {
     #include <parted/parted.h>
 }
 
-#include "VolumeBackupUtils.h"
+#include "VolumeUtils.h"
 
 namespace {
 #ifdef WIN32
@@ -24,9 +24,9 @@ namespace {
 #endif
 }
 
-using namespace volumebackup;
+using namespace volumeprotect;
 
-std::runtime_error volumebackup::util::BuildRuntimeException(
+std::runtime_error volumeprotect::util::BuildRuntimeException(
     const std::string& message,
     const std::string& blockDevice,
     uint32_t errcode)
@@ -36,7 +36,7 @@ std::runtime_error volumebackup::util::BuildRuntimeException(
     return std::runtime_error(label);
 }
 
-uint64_t volumebackup::util::ReadVolumeSize(const std::string& blockDevice)
+uint64_t volumeprotect::util::ReadVolumeSize(const std::string& blockDevice)
 {
     int fd = ::open(blockDevice.c_str(), O_RDONLY);
     if (fd < 0) {
@@ -55,7 +55,7 @@ uint64_t volumebackup::util::ReadVolumeSize(const std::string& blockDevice)
     return size;
 }
 
-bool volumebackup::util::IsBlockDeviceExists(const std::string& blockDevicePath)
+bool volumeprotect::util::IsBlockDeviceExists(const std::string& blockDevicePath)
 {
     try {
         ReadVolumeSize(blockDevicePath);
@@ -65,7 +65,7 @@ bool volumebackup::util::IsBlockDeviceExists(const std::string& blockDevicePath)
     return true;
 }
 
-bool volumebackup::util::CheckDirectoryExistence(const std::string& path)
+bool volumeprotect::util::CheckDirectoryExistence(const std::string& path)
 {
     try {
         if (std::filesystem::is_directory(path)) {
@@ -77,7 +77,7 @@ bool volumebackup::util::CheckDirectoryExistence(const std::string& path)
     }
 }
 
-uint32_t volumebackup::util::ProcessorsNum()
+uint32_t volumeprotect::util::ProcessorsNum()
 {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -104,22 +104,22 @@ static std::string ReadPosixBlockDeviceAttribute(const std::string& blockDeviceP
     return attributeValueString;
 }
 
-std::string volumebackup::util::ReadVolumeUUID(const std::string& blockDevicePath)
+std::string volumeprotect::util::ReadVolumeUUID(const std::string& blockDevicePath)
 {
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "UUID");
 }
 
-std::string volumebackup::util::ReadVolumeType(const std::string& blockDevicePath)
+std::string volumeprotect::util::ReadVolumeType(const std::string& blockDevicePath)
 {
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "TYPE");
 }
 
-std::string volumebackup::util::ReadVolumeLabel(const std::string& blockDevicePath)
+std::string volumeprotect::util::ReadVolumeLabel(const std::string& blockDevicePath)
 {
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "LABEL");
 }
 
-std::vector<VolumePartitionTableEntry> volumebackup::util::ReadVolumePartitionTable(const std::string& blockDevicePath)
+std::vector<VolumePartitionTableEntry> volumeprotect::util::ReadVolumePartitionTable(const std::string& blockDevicePath)
 {
     PedDevice* dev = nullptr;
     PedDisk* disk = nullptr;
@@ -175,7 +175,7 @@ std::vector<VolumePartitionTableEntry> volumebackup::util::ReadVolumePartitionTa
     return partitionTable;
 }
 
-std::string volumebackup::util::GetChecksumBinPath(
+std::string volumeprotect::util::GetChecksumBinPath(
     const std::string& copyMetaDirPath,
     uint64_t sessionOffset,
     uint64_t sessionSize)
@@ -185,7 +185,7 @@ std::string volumebackup::util::GetChecksumBinPath(
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
-std::string volumebackup::util::GetCopyFilePath(
+std::string volumeprotect::util::GetCopyFilePath(
     const std::string& copyDataDirPath,
     CopyType copyType,
     uint64_t sessionOffset,
@@ -199,7 +199,7 @@ std::string volumebackup::util::GetCopyFilePath(
     return copyDataDirPath + SEPARATOR + filename;
 }
 
-bool volumebackup::util::WriteVolumeCopyMeta(
+bool volumeprotect::util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     CopyType copyType,
     const VolumeCopyMeta& volumeCopyMeta)
@@ -220,7 +220,7 @@ bool volumebackup::util::WriteVolumeCopyMeta(
     return true;
 }
 
-bool volumebackup::util::ReadVolumeCopyMeta(
+bool volumeprotect::util::ReadVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     VolumeCopyMeta& volumeCopyMeta)
 {

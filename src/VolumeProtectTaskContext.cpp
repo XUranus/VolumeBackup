@@ -3,14 +3,14 @@
 #include <thread>
 
 #include "Logger.h"
-#include "VolumeBackupUtils.h"
-#include "VolumeBackupContext.h"
+#include "VolumeUtils.h"
+#include "VolumeProtectTaskContext.h"
 
 #include "VolumeBlockReader.h"
 #include "VolumeBlockWriter.h"
 #include "VolumeBlockHasher.h"
 
-using namespace volumebackup;
+using namespace volumeprotect;
 
 VolumeBlockAllocator::VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum)
  : m_blockSize(blockSize), m_blockNum(blockNum)
@@ -64,7 +64,7 @@ void VolumeBlockAllocator::bfree(char* ptr)
 // {
 //     // 1. validate volume and fetch volume size
 //     try {
-//         uint64_t volumeSize = volumebackup::ReadVolumeSize(blockDevicePath);
+//         uint64_t volumeSize = volumeprotect::ReadVolumeSize(blockDevicePath);
 //     } catch (const std::exception& e) {
 //         throw e;
 //         return false;

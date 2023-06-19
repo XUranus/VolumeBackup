@@ -1,7 +1,7 @@
 
 
-#ifndef VOLUME_BACKUP_CONTEXT_H
-#define VOLUME_BACKUP_CONTEXT_H
+#ifndef VOLUME_PROTECT_TASK_CONTEXT_H
+#define VOLUME_PROTECT_TASK_CONTEXT_H
 
 #include <atomic>
 #include <cstdint>
@@ -9,10 +9,10 @@
 #include <string>
 #include <cstdio>
 
-#include "VolumeBackup.h"
+#include "VolumeProtector.h"
 #include "BlockingQueue.h"
 
-namespace volumebackup {
+namespace volumeprotect {
 
 class VolumeBlockReader;
 class VolumeBlockWriter;
@@ -67,7 +67,6 @@ struct VolumeBackupSession {
     std::string     lastestChecksumBinPath;
     std::string     prevChecksumBinPath;
     std::string     copyFilePath;
-    //uint64_t        copyFileMappingOffset;
 
     // mutable fields
     std::shared_ptr<VolumeBlockReader> reader { nullptr };
@@ -92,8 +91,8 @@ struct VolumeRestoreSession {
     std::string     copyFilePath;
     //uint64_t        copyFileMappingOffset;
 
-    std::shared_ptr<volumebackup::VolumeBlockReader> reader { nullptr };
-    std::shared_ptr<volumebackup::VolumeBlockWriter> writer { nullptr };
+    std::shared_ptr<volumeprotect::VolumeBlockReader> reader { nullptr };
+    std::shared_ptr<volumeprotect::VolumeBlockWriter> writer { nullptr };
 };
 
 }

@@ -5,8 +5,8 @@
 #include <cassert>
 
 #include "Logger.h"
-#include "VolumeBackupContext.h"
-#include "VolumeBackupUtils.h"
+#include "VolumeProtectTaskContext.h"
+#include "VolumeUtils.h"
 #include "VolumeBlockHasher.h"
 
 namespace {
@@ -14,7 +14,7 @@ namespace {
     const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 }
 
-using namespace volumebackup;
+using namespace volumeprotect;
 
 VolumeBlockHasher::~VolumeBlockHasher()
 {
