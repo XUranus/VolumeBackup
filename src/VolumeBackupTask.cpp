@@ -15,7 +15,7 @@
 #include "VolumeBlockHasher.h"
 #include "VolumeBlockWriter.h"
 #include "BlockingQueue.h"
-#include "VolumeProtectTaskImpl.h"
+#include "VolumeBackupTask.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::util;
@@ -25,21 +25,20 @@ namespace {
     constexpr auto DEFAULT_QUEUE_SIZE = 32;
 }
 
-VolumeBackupTaskImpl::VolumeBackupTaskImpl(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
+VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
  : m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig)),
-   m_volumeSize(volumeSize),
-   m_status(TaskStatus::INIT)
+   m_volumeSize(volumeSize)
 {}
 
-VolumeBackupTaskImpl::~VolumeBackupTaskImpl()
+VolumeBackupTask::~VolumeBackupTask()
 {
-    DBGLOG("destroy VolumeBackupTaskImpl");
+    DBGLOG("destroy VolumeBackupTask");
     if (m_thread.joinable()) {
         m_thread.join();
     }
 }
 
-bool VolumeBackupTaskImpl::Start()
+bool VolumeBackupTask::Start()
 {
     if (m_status != TaskStatus::INIT) {
         return false;
@@ -50,56 +49,22 @@ bool VolumeBackupTaskImpl::Start()
         return false;
     }
     m_status = TaskStatus::RUNNING;
-    m_thread = std::thread(&VolumeBackupTaskImpl::ThreadFunc, this);
+    m_thread = std::thread(&VolumeBackupTask::ThreadFunc, this);
     return true;
 }
 
-bool VolumeBackupTaskImpl::IsTerminated() const
-{
-    DBGLOG("VolumeBackupTaskImpl::IsTerminated %d", m_status);
-    return (
-        m_status == TaskStatus::ABORTED ||
-        m_status == TaskStatus::FAILED ||
-        m_status == TaskStatus::SUCCEED
-    );
-}
-
-
-TaskStatistics operator + (const TaskStatistics& statistic1, const TaskStatistics& statistic2)
-{
-    TaskStatistics res;
-    res.bytesToRead     = statistic1.bytesToRead + statistic2.bytesToRead;
-    res.bytesRead       = statistic1.bytesRead + statistic2.bytesRead;;
-    res.blocksToHash    = statistic1.blocksToHash + statistic2.blocksToHash;
-    res.blocksHashed    = statistic1.blocksHashed + statistic2.blocksHashed;
-    res.bytesToWrite    = statistic1.bytesToWrite + statistic2.bytesToWrite;
-    res.bytesWritten    = statistic1.bytesWritten + statistic2.bytesWritten;
-    return res;
-}
-
-TaskStatistics VolumeBackupTaskImpl::GetStatistics() const
+TaskStatistics VolumeBackupTask::GetStatistics() const
 {
     return m_completedSessionStatistics + m_currentSessionStatistics;
 }
 
-TaskStatus VolumeBackupTaskImpl::GetStatus() const
-{
-    return m_status;
-}
-
-void VolumeBackupTaskImpl::Abort()
-{
-    m_abort = true;
-    m_status = TaskStatus::ABORTING;
-}
-
-bool VolumeBackupTaskImpl::IsIncrementBackup() const
+bool VolumeBackupTask::IsIncrementBackup() const
 {
     return m_backupConfig->copyType == CopyType::INCREMENT;
 }
 
 // split session and save volume meta
-bool VolumeBackupTaskImpl::Prepare()
+bool VolumeBackupTask::Prepare()
 {
     std::string blockDevicePath = m_backupConfig->blockDevicePath;
     // 1. retrive volume partition info
@@ -160,7 +125,7 @@ bool VolumeBackupTaskImpl::Prepare()
     return true;
 }
 
-bool VolumeBackupTaskImpl::InitBackupSessionContext(std::shared_ptr<VolumeBackupSession> session) const
+bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeBackupSession> session) const
 {
     DBGLOG("init backup session context");
     // 1. init basic backup container
@@ -201,7 +166,7 @@ bool VolumeBackupTaskImpl::InitBackupSessionContext(std::shared_ptr<VolumeBackup
     return true;
 }
 
-bool VolumeBackupTaskImpl::StartBackupSession(std::shared_ptr<VolumeBackupSession> session) const
+bool VolumeBackupTask::StartBackupSession(std::shared_ptr<VolumeBackupSession> session) const
 {
     DBGLOG("start backup session");
     if (session->reader == nullptr || session->hasher == nullptr || session->writer == nullptr) {
@@ -227,7 +192,7 @@ bool VolumeBackupTaskImpl::StartBackupSession(std::shared_ptr<VolumeBackupSessio
     return true;
 }
 
-void VolumeBackupTaskImpl::ThreadFunc()
+void VolumeBackupTask::ThreadFunc()
 {
     DBGLOG("start task main thread");
     while (!m_sessionQueue.empty()) {
@@ -248,16 +213,16 @@ void VolumeBackupTaskImpl::ThreadFunc()
         // block the thread
         while (true) {
             if (m_abort) {
-                session->Abort();
+                AbortSession(session);
                 m_status = TaskStatus::ABORTED;
                 return;
             }
-            if (session->IsFailed()) {
+            if (IsSessionFailed(session)) {
                 ERRLOG("session failed");
                 m_status = TaskStatus::FAILED;
                 return;
             }
-            if (session->IsTerminated())  {
+            if (IsSessionTerminated(session))  {
                 break;
             }
             DBGLOG("updateStatistics: bytesToReaded: %llu, bytesRead: %llu, blocksToHash: %llu, blocksHashed: %llu, bytesToWrite: %llu, bytesWritten: %llu",
@@ -274,7 +239,7 @@ void VolumeBackupTaskImpl::ThreadFunc()
     return;
 }
 
-void VolumeBackupTaskImpl::UpdateRunningSessionStatistics(std::shared_ptr<VolumeBackupSession> session)
+void VolumeBackupTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeBackupSession> session)
 {
     m_currentSessionStatistics.bytesToRead = session->counter->bytesToRead;
     m_currentSessionStatistics.bytesRead = session->counter->bytesRead;
@@ -284,7 +249,7 @@ void VolumeBackupTaskImpl::UpdateRunningSessionStatistics(std::shared_ptr<Volume
     m_currentSessionStatistics.bytesWritten = session->counter->bytesWritten;
 }
 
-void VolumeBackupTaskImpl::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeBackupSession> session)
+void VolumeBackupTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeBackupSession> session)
 {
     m_completedSessionStatistics.bytesToRead += session->counter->bytesToRead;
     m_completedSessionStatistics.bytesRead += session->counter->bytesRead;
@@ -293,4 +258,45 @@ void VolumeBackupTaskImpl::UpdateCompletedSessionStatistics(std::shared_ptr<Volu
     m_completedSessionStatistics.bytesToWrite += session->counter->bytesToWrite;
     m_completedSessionStatistics.bytesWritten += session->counter->bytesWritten;
     memset(&m_currentSessionStatistics, 0, sizeof(TaskStatistics));
+}
+
+bool VolumeBackupTask::IsSessionTerminated(std::shared_ptr<VolumeBackupSession> session) const
+{
+    DBGLOG("check session terminated, reader: %d, hasher: %d, writer: %d",
+        session->reader == nullptr ? TaskStatus::SUCCEED : session->reader->GetStatus(),
+        session->hasher == nullptr ? TaskStatus::SUCCEED : session->hasher->GetStatus(),
+        session->writer == nullptr ? TaskStatus::SUCCEED : session->writer->GetStatus()
+    );
+    return (
+        (session->reader == nullptr || session->reader->IsTerminated()) &&
+        (session->hasher == nullptr || session->hasher->IsTerminated()) &&
+        (session->writer == nullptr || session->writer->IsTerminated())
+    );
+}
+
+bool VolumeBackupTask::IsSessionFailed(std::shared_ptr<VolumeBackupSession> session) const
+{
+    DBGLOG("check session failed, reader: %d, hasher: %d, writer: %d",
+        session->reader == nullptr ? TaskStatus::SUCCEED : session->reader->GetStatus(),
+        session->hasher == nullptr ? TaskStatus::SUCCEED : session->hasher->GetStatus(),
+        session->writer == nullptr ? TaskStatus::SUCCEED : session->writer->GetStatus()
+    );
+    return (
+        (session->reader != nullptr && session->reader->IsFailed()) ||
+        (session->hasher != nullptr && session->hasher->IsFailed()) ||
+        (session->writer != nullptr && session->writer->IsFailed())
+    );
+}
+
+void VolumeBackupTask::AbortSession(std::shared_ptr<VolumeBackupSession> session) const
+{
+    if (session->reader != nullptr) {
+        session->reader->Abort();
+    }
+    if (session->hasher != nullptr) {
+        session->hasher->Abort();
+    }
+    if (session->writer != nullptr) {
+        session->writer->Abort();
+    }
 }

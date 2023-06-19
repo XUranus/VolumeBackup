@@ -62,7 +62,7 @@ int ExecVolumeBackup(
     backupConfig.hasherNum = DEFAULT_HASHER_NUM;
     backupConfig.hasherEnabled = true;
 
-    std::shared_ptr<VolumeBackupTask> task = VolumeBackupTask::BuildBackupTask(backupConfig);
+    std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildBackupTask(backupConfig);
     if (task == nullptr) {
         std::cerr << "failed to build backup task" << std::endl;
         return 1;

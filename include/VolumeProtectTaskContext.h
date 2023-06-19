@@ -78,21 +78,24 @@ struct VolumeBackupSession {
     std::shared_ptr<VolumeBlockAllocator>               allocator { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue { nullptr };
-
-    bool IsTerminated() const;
-    bool IsFailed() const;
-    void Abort();
 };
 
 struct VolumeRestoreSession {
-    std::string     blockDevicePath;
+    // immutable fields
+    std::shared_ptr<VolumeRestoreConfig> config;
+
     uint64_t        sessionOffset;
     uint64_t        sessionSize;
     std::string     copyFilePath;
-    //uint64_t        copyFileMappingOffset;
 
-    std::shared_ptr<volumeprotect::VolumeBlockReader> reader { nullptr };
-    std::shared_ptr<volumeprotect::VolumeBlockWriter> writer { nullptr };
+    // mutable fields
+    std::shared_ptr<VolumeBlockReader> reader { nullptr };
+    std::shared_ptr<VolumeBlockWriter> writer { nullptr };
+
+    // shared container context
+    std::shared_ptr<SessionCounter>                     counter { nullptr };
+    std::shared_ptr<VolumeBlockAllocator>               allocator { nullptr };
+    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue { nullptr };
 };
 
 }

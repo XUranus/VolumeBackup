@@ -1,5 +1,6 @@
 #include "VolumeProtector.h"
-#include "VolumeProtectTaskImpl.h"
+#include "VolumeBackupTask.h"
+#include "VolumeRestoreTask.h"
 #include "VolumeUtils.h"
 
 using namespace volumeprotect;
@@ -38,7 +39,7 @@ using namespace volumeprotect;
  *                  |------2048.1024.sha256.meta.bin
  */
 
-std::shared_ptr<VolumeBackupTask> VolumeBackupTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)
+std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)
 {
     // 1. check volume size
     uint64_t volumeSize = 0;
@@ -52,7 +53,7 @@ std::shared_ptr<VolumeBackupTask> VolumeBackupTask::BuildBackupTask(const Volume
         return nullptr;
     }
 
-    // 2. TODO:: check dir existence
+    // 2. check dir existence
     if (!util::CheckDirectoryExistence(backupConfig.outputCopyDataDirPath) ||
         !util::CheckDirectoryExistence(backupConfig.outputCopyMetaDirPath) ||
         (backupConfig.copyType == CopyType::INCREMENT &&
@@ -61,7 +62,31 @@ std::shared_ptr<VolumeBackupTask> VolumeBackupTask::BuildBackupTask(const Volume
         return nullptr;
     }
 
-    return std::make_shared<VolumeBackupTaskImpl>(backupConfig, volumeSize);
+    return std::make_shared<VolumeBackupTask>(backupConfig, volumeSize);
+}
+    
+std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const VolumeRestoreConfig& restoreConfig)
+{
+    // 1. check volume size
+    uint64_t volumeSize = 0;
+    try {
+        volumeSize = util::ReadVolumeSize(restoreConfig.blockDevicePath);
+    } catch (std::exception& e) {
+        ERRLOG("retrive volume size got exception: %s", e.what());
+        return nullptr;
+    }
+    if (volumeSize == 0) { // invalid volume
+        return nullptr;
+    }
+
+    // 2. check dir existence
+    if (!util::CheckDirectoryExistence(restoreConfig.copyDataDirPath) ||
+        !util::CheckDirectoryExistence(restoreConfig.copyMetaDirPath)) {
+        ERRLOG("failed to prepare copy directory");
+        return nullptr;
+    }
+
+    return std::make_shared<VolumeRestoreTask>(restoreConfig, volumeSize);
 }
 
 void StatefulTask::Abort()
@@ -87,4 +112,16 @@ bool StatefulTask::IsTerminated() const
         m_status == TaskStatus::ABORTED ||
         m_status == TaskStatus::FAILED
     );
+}
+
+TaskStatistics TaskStatistics::operator+ (const TaskStatistics& statistic) const
+{
+    TaskStatistics res;
+    res.bytesToRead     = statistic.bytesToRead + this->bytesToRead;
+    res.bytesRead       = statistic.bytesRead + this->bytesRead;;
+    res.blocksToHash    = statistic.blocksToHash + this->blocksToHash;
+    res.blocksHashed    = statistic.blocksHashed + this->blocksHashed;
+    res.bytesToWrite    = statistic.bytesToWrite + this->bytesToWrite;
+    res.bytesWritten    = statistic.bytesWritten + this->bytesWritten;
+    return res;
 }

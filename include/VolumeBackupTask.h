@@ -1,7 +1,6 @@
-#ifndef VOLUME_PROTECT_TASK_IMPL_H
-#define VOLUME_PROTECT_TASK_IMPL_H
+#ifndef VOLUME_BACKUP_TASK_H
+#define VOLUME_BACKUP_TASK_H
 
-#include "VolumeProtector.h"
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -14,18 +13,15 @@
 
 namespace volumeprotect {
 
-class VolumeBackupTaskImpl : public VolumeBackupTask {
+class VolumeBackupTask : public VolumeProtectTask {
 public:
     using SessionQueue = std::queue<VolumeBackupSession>;
     
     bool            Start() override;
-    bool            IsTerminated() const override;
     TaskStatistics  GetStatistics() const override;
-    TaskStatus      GetStatus() const override;
-    void            Abort() override;
 
-    VolumeBackupTaskImpl(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);
-    ~VolumeBackupTaskImpl();
+    VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);
+    ~VolumeBackupTask();
 private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
@@ -34,14 +30,16 @@ private:
     bool IsIncrementBackup() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
+    bool IsSessionTerminated(std::shared_ptr<VolumeBackupSession> session) const;
+    bool IsSessionFailed(std::shared_ptr<VolumeBackupSession> session) const;
+    void AbortSession(std::shared_ptr<VolumeBackupSession> session) const;
 
 private:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeBackupConfig>     m_backupConfig;
 
     std::thread     m_thread;
-    bool            m_abort { false }; // if aborted is invoked
-    TaskStatus      m_status { TaskStatus::INIT };
+
     SessionQueue    m_sessionQueue;
     // statistics
     TaskStatistics  m_currentSessionStatistics; // current running session statistics

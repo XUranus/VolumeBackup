@@ -65,37 +65,30 @@ struct TaskStatistics {
     uint64_t blocksHashed;
     uint64_t bytesToWrite;
     uint64_t bytesWritten;
+
+    TaskStatistics operator+ (const TaskStatistics& taskStatistics) const;
 };
 
 class StatefulTask {
 public:
-    void Abort();
-    TaskStatus GetStatus() const;
-    bool IsFailed() const;
-    bool IsTerminated() const;
+    void        Abort();
+    TaskStatus  GetStatus() const;
+    bool        IsFailed() const;
+    bool        IsTerminated() const;
 
 protected:
     TaskStatus  m_status { TaskStatus::INIT };
     bool        m_abort { false };
 };
 
-class VolumeTaskBase {
+// base class of VolumeBackupTask and VolumeRestoreTask
+class VolumeProtectTask : public StatefulTask {
 public:
     virtual bool            Start() = 0;
-    virtual bool            IsTerminated() const = 0;
-    virtual TaskStatus      GetStatus() const = 0;
-    virtual void            Abort() = 0;
     virtual TaskStatistics  GetStatistics() const = 0;
-};
 
-class VolumeBackupTask : public VolumeTaskBase {
-public:
-    static std::shared_ptr<VolumeBackupTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
-};
-
-class VolumeRestoreTask : public VolumeTaskBase {
-public:
-    static std::shared_ptr<VolumeRestoreTask> BuildRestoreTask(const VolumeBackupConfig& backupConfig);
+    static std::shared_ptr<VolumeProtectTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
+    static std::shared_ptr<VolumeProtectTask> BuildRestoreTask(const VolumeRestoreConfig& restoreConfig);
 };
 
 }
