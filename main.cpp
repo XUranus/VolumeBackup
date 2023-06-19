@@ -1,6 +1,8 @@
 #include <chrono>
+#include <cstdlib>
 #include <getopt.h>
 #include <iostream>
+#include <ostream>
 #include <string>
 #include <unistd.h>
 #include <stdlib.h>
@@ -9,16 +11,17 @@
 #include "Logger.h"
 
 using namespace volumebackup;
+using namespace xuranus::minilogger;
 
 void PrintHelp()
 {
     std::cout << "vbkup -v volume -d datadir -m metadir [-p prevmetadir]" << std::endl;
 }
 
-int StartRestoreTask(
+int ExecVolumeRestore(
+    const std::string& 	blockDevicePath,
 	const std::string&	copyDataDirPath,
-	const std::string&	copyMetaDirPath,
-    const std::string& 	blockDevicePath)
+	const std::string&	copyMetaDirPath)
 {
     // TODO::implement it!
     std::cerr << "restore not implemented!" << std::endl;
@@ -61,12 +64,14 @@ int ExecVolumeBackup(
 
 int main(int argc, char** argv)
 {
-    int ch;
     std::string blockDevicePath = "";
     std::string copyDataDirPath = "";
     std::string copyMetaDirPath = "";
     std::string prevCopyMetaDirPath = "";
-    while ((ch = getopt(argc, argv, "v:d:m:p:h")) != -1) {
+    std::string logLevel = "INFO";
+    bool isRestore = false;
+    int ch = -1;
+    while ((ch = getopt(argc, argv, "v:d:m:p:h:r:l")) != -1) {
         switch (ch) {
             case 'v' : {
                 blockDevicePath = optarg;
@@ -84,6 +89,14 @@ int main(int argc, char** argv)
                 prevCopyMetaDirPath = optarg;
                 break;
             }
+            case 'r' : {
+                isRestore = true;
+                break;
+            }
+            case 'l' : {
+                logLevel = atoi(optarg);
+                break;
+            }
             case 'h' : {
                 PrintHelp();
                 return 0;
@@ -98,9 +111,18 @@ int main(int argc, char** argv)
     std::cout << "copyDataDirPath: " << copyDataDirPath << std::endl;
     std::cout << "copyMetaDirPath: " << copyMetaDirPath << std::endl;
     std::cout << "prevCopyMetaDirPath: " << prevCopyMetaDirPath << std::endl;
+    std::cout << "logLevel: " << logLevel << std::endl;
 
-    xuranus::minilogger::Logger::GetInstance().SetLogLevel(xuranus::minilogger::LoggerLevel::DEBUG);
-    if (prevCopyMetaDirPath.empty()) {
+    if (logLevel == "INFO") {
+        Logger::GetInstance().SetLogLevel(LoggerLevel::INFO);
+    } else if (logLevel == "DEBUG") {
+        Logger::GetInstance().SetLogLevel(LoggerLevel::DEBUG);
+    }
+
+    if (isRestore) {
+        std::cout << "Doing copy restore" << std::endl;
+        return ExecVolumeRestore(blockDevicePath, copyDataDirPath, copyMetaDirPath);
+    } else if (prevCopyMetaDirPath.empty()) {
         std::cout << "Doing full backup" << std::endl;
         return ExecVolumeBackup(CopyType::FULL, blockDevicePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
     } else {
