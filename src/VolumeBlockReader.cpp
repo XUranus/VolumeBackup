@@ -99,10 +99,6 @@ void VolumeBlockReader::ReaderThread()
     m_session->counter->bytesToRead += m_sourceLength;
     DBGLOG("reader thread start, sourceOffset: %lu ", m_sourceOffset);
 
-
-//[2023-06-18 20:25:18][DEBUG][reader thread check, sourceOffset: 0, sourceLength 41481732096, currentOffset: 2826960896][void volumeprotect::VolumeBlockReader::ReaderThread():103][140314125665984]
-//[2023-06-18 20:25:18][DEBUG][reader push consume block (0x7f9d603ff010, 2826960896, 65536)][void volumeprotect::VolumeBlockReader::ReaderThread():138][140314125665984]
-
     while (true) {
         DBGLOG("reader thread check, sourceOffset: %lu, sourceLength %lu, currentOffset: %lu",
             m_sourceOffset, m_sourceLength, currentOffset);

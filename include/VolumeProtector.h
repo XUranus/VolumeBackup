@@ -34,8 +34,8 @@ struct VolumeBackupConfig {
     CopyType        copyType;                               // type of target copy to be generated
     std::string     blockDevicePath;                        // path of the block device (volume)
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
-	std::string	    outputCopyDataDirPath;
-	std::string	    outputCopyMetaDirPath;
+    std::string	    outputCopyDataDirPath;
+    std::string	    outputCopyMetaDirPath;
     uint32_t        blockSize { DEFAULT_BLOCK_SIZE };       // [optional] default block size used for computing checksum
     uint64_t        sessionSize { DEFAULT_SESSION_SIZE };   // default sesson size used to split session
     uint64_t        hasherNum { DEFAULT_HASHER_NUM };       // hasher worker count, recommended set to the num of processors
@@ -46,7 +46,7 @@ struct VolumeBackupConfig {
 struct VolumeRestoreConfig {
     std::string     blockDevicePath;                        // path of the block device (volume)
     std::string	    copyDataDirPath;
-	std::string	    copyMetaDirPath;
+    std::string	    copyMetaDirPath;
 };
 
 enum class TaskStatus {
