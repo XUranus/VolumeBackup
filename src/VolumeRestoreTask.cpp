@@ -66,87 +66,87 @@ bool VolumeRestoreTask::IsIncrementCopy() const
 // split session and write back
 bool VolumeRestoreTask::Prepare()
 {
-//     std::string blockDevicePath = m_restoreConfig->blockDevicePath;
-//     // 1. retrive volume partition info
-//     VolumePartitionTableEntry partitionEntry {};
-//     try {
-//         std::vector<VolumePartitionTableEntry> partitionTable = util::ReadVolumePartitionTable(blockDevicePath);
-//         if (partitionTable.size() != 1) {
-//             ERRLOG("failed to read partition table, or has multiple volumes");
-//             return false;
-//         }
-//         partitionEntry =  partitionTable.back();
-//     } catch (std::exception& e) {
-//         ERRLOG("read volume partition got exception: %s", e.what());
-//         return false;
-//     }
+    std::string blockDevicePath = m_restoreConfig->blockDevicePath;
+    // 1. retrive volume partition info
+    // VolumePartitionTableEntry partitionEntry {};
+    // try {
+    //     std::vector<VolumePartitionTableEntry> partitionTable = util::ReadVolumePartitionTable(blockDevicePath);
+    //     if (partitionTable.size() != 1) {
+    //         ERRLOG("failed to read partition table, or has multiple volumes");
+    //         return false;
+    //     }
+    //     partitionEntry =  partitionTable.back();
+    // } catch (std::exception& e) {
+    //     ERRLOG("read volume partition got exception: %s", e.what());
+    //     return false;
+    // }
 
-//     VolumeCopyMeta volumeCopyMeta {};
-//     volumeCopyMeta.size = m_volumeSize;
-//     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
-//     volumeCopyMeta.partition = partitionEntry;
+    // VolumeCopyMeta volumeCopyMeta {};
+    // volumeCopyMeta.size = m_volumeSize;
+    // volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
+    // volumeCopyMeta.partition = partitionEntry;
 
-//     if (IsIncrementBackup()) {
-//         // TODO:: validate increment backup meta
-//     }
+    // if (IsIncrementBackup()) {
+    //     // TODO:: validate increment backup meta
+    // }
 
-//     // 2. split session
-//     for (uint64_t sessionOffset = 0; sessionOffset < m_volumeSize;) {
-//         uint64_t sessionSize = DEFAULT_SESSION_SIZE;
-//         if (sessionOffset + DEFAULT_SESSION_SIZE >= m_volumeSize) {
-//             sessionSize = m_volumeSize - sessionOffset;
-//         }
-//         std::string lastestChecksumBinPath = util::GetChecksumBinPath(
-//             m_restoreConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
-//         std::string copyFilePath = util::GetCopyFilePath(
-//             m_restoreConfig->outputCopyDataDirPath, m_restoreConfig->copyType, sessionOffset, sessionSize);
-//         // for increment backup
-//         std::string prevChecksumBinPath = "";
-//         if (IsIncrementBackup()) {
-//             prevChecksumBinPath = util::GetChecksumBinPath(m_restoreConfig->prevCopyMetaDirPath, sessionOffset, sessionSize);
-//         }
+    // 2. split session
+    // for (uint64_t sessionOffset = 0; sessionOffset < m_volumeSize;) {
+    //     uint64_t sessionSize = DEFAULT_SESSION_SIZE;
+    //     if (sessionOffset + DEFAULT_SESSION_SIZE >= m_volumeSize) {
+    //         sessionSize = m_volumeSize - sessionOffset;
+    //     }
+    //     std::string lastestChecksumBinPath = util::GetChecksumBinPath(
+    //         m_restoreConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
+    //     std::string copyFilePath = util::GetCopyFilePath(
+    //         m_restoreConfig->outputCopyDataDirPath, m_restoreConfig->copyType, sessionOffset, sessionSize);
+    //     // for increment backup
+    //     std::string prevChecksumBinPath = "";
+    //     if (IsIncrementBackup()) {
+    //         prevChecksumBinPath = util::GetChecksumBinPath(m_restoreConfig->prevCopyMetaDirPath, sessionOffset, sessionSize);
+    //     }
 
-//         VolumeRestoreSession session {};
-//         session.config = m_restoreConfig;
-//         session.sessionOffset = sessionOffset;
-//         session.sessionSize = sessionSize;
-//         session.lastestChecksumBinPath = lastestChecksumBinPath;
-//         session.prevChecksumBinPath = prevChecksumBinPath;
-//         session.copyFilePath = copyFilePath;
-//         volumeCopyMeta.slices.emplace_back(sessionOffset, sessionSize);
-//         m_sessionQueue.push(session);
-//         sessionOffset += sessionSize;
-//     }
+    //     VolumeRestoreSession session {};
+    //     session.config = m_restoreConfig;
+    //     session.sessionOffset = sessionOffset;
+    //     session.sessionSize = sessionSize;
+    //     session.lastestChecksumBinPath = lastestChecksumBinPath;
+    //     session.prevChecksumBinPath = prevChecksumBinPath;
+    //     session.copyFilePath = copyFilePath;
+    //     volumeCopyMeta.slices.emplace_back(sessionOffset, sessionSize);
+    //     m_sessionQueue.push(session);
+    //     sessionOffset += sessionSize;
+    // }
 
     return true;
 }
 
 bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeRestoreSession> session) const
 {
-    DBGLOG("init backup session context");
-    // 1. init basic backup container
-    session->counter = std::make_shared<SessionCounter>();
-    // session->allocator = std::make_shared<VolumeBlockAllocator>(session->config->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
-    session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    // DBGLOG("init backup session context");
+    // // 1. init basic backup container
+    // session->counter = std::make_shared<SessionCounter>();
+    // // session->allocator = std::make_shared<VolumeBlockAllocator>(session->config->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
+    // session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     
-    // 2. check and init reader
+    // // 2. check and init reader
     // session->reader = VolumeBlockReader::BuildCopyReader(
-    //     m_restoreConfig->blockDevicePath,
+    //     m_restoreConfig->,
     //     session->sessionOffset,
     //     session->sessionSize,
     //     session
     // );
-    if (session->reader == nullptr) {
-        ERRLOG("backup session failed to init reader");
-        return false;
-    }
+    // if (session->reader == nullptr) {
+    //     ERRLOG("backup session failed to init reader");
+    //     return false;
+    // }
 
-    // 3. check and init writer
-    //session->writer = VolumeBlockWriter::BuildVolumeWriter(session);
-    if (session->writer == nullptr) {
-        ERRLOG("backup session failed to init writer");
-        return false;
-    }
+    // // 3. check and init writer
+    // //session->writer = VolumeBlockWriter::BuildVolumeWriter(session);
+    // if (session->writer == nullptr) {
+    //     ERRLOG("backup session failed to init writer");
+    //     return false;
+    // }
     return true;
 }
 

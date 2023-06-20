@@ -33,12 +33,14 @@ struct VolumePartitionTableEntry {
 struct VolumeCopyMeta {
     using Range = std::vector<std::pair<uint64_t, uint64_t>>;
 
+    int         copyType;
     uint64_t    size;
     uint32_t    blockSize;
     Range       slices;
     VolumePartitionTableEntry partition;
 
     SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyType, copyType);
     SERIALIZE_FIELD(size, size);
     SERIALIZE_FIELD(blockSize, blockSize);
     SERIALIZE_FIELD(slices, slices);
@@ -82,7 +84,7 @@ std::string GetCopyFilePath(
     uint64_t                sessionSize
 );
 
-bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, CopyType copyType, const VolumeCopyMeta& volumeCopyMeta);
+bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
 
 bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 

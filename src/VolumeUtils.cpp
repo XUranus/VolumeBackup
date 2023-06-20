@@ -22,6 +22,7 @@ namespace {
 #else
     constexpr auto SEPARATOR = "/";
 #endif
+    constexpr auto VOLUME_COPY_META_JSON_FILENAME = "volumecopy.meta.json";
 }
 
 using namespace volumeprotect;
@@ -201,22 +202,25 @@ std::string volumeprotect::util::GetCopyFilePath(
 
 bool volumeprotect::util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
-    CopyType copyType,
     const VolumeCopyMeta& volumeCopyMeta)
 {
     std::string jsonStr = xuranus::minijson::util::Serialize(volumeCopyMeta);
-    std::string jsonFileName = "fullcopy.meta.json";
-    if (copyType == CopyType::INCREMENT) {
-        jsonFileName = "incrementcopy.meta.json";
-    }
-    std::string filepath = copyMetaDirPath + "/" + jsonFileName;
-    std::ofstream file(filepath);
-    if (!file.is_open()) {
-        ERRLOG("failed to open file %s to write json %s", filepath.c_str(), jsonStr.c_str());
+    std::string filepath = copyMetaDirPath + SEPARATOR + VOLUME_COPY_META_JSON_FILENAME;
+    try {
+        std::ofstream file(filepath);
+        if (!file.is_open()) {
+            ERRLOG("failed to open file %s to write copy meta json %s", filepath.c_str(), jsonStr.c_str());
+            return false;
+        }
+        file << jsonStr;
+        file.close();
+    } catch (const std::exception& e) {
+        ERRLOG("failed to write copy meta json %s, exception: %s", filepath.c_str(), e.what());
+        return false;
+    } catch (...) {
+        ERRLOG("failed to write copy meta json %s, exception caught", filepath.c_str());
         return false;
     }
-    file << jsonStr;
-    file.close();
     return true;
 }
 
@@ -224,6 +228,23 @@ bool volumeprotect::util::ReadVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     VolumeCopyMeta& volumeCopyMeta)
 {
-    // TODO:: implement
+    std::string filepath = copyMetaDirPath + SEPARATOR + VOLUME_COPY_META_JSON_FILENAME;
+    try {
+        std::ifstream file(filepath);
+        std::string jsonStr;
+        if (!file.is_open()) {
+            ERRLOG("failed to open file %s to read copy meta json %s", filepath.c_str(), jsonStr.c_str());
+            return false;
+        }
+        file >> jsonStr;
+        file.close();
+        xuranus::minijson::util::Deserialize(jsonStr, volumeCopyMeta);
+    } catch (const std::exception& e) {
+        ERRLOG("failed to read copy meta json %s, exception: %s", filepath.c_str(), e.what());
+        return false;
+    } catch (...) {
+        ERRLOG("failed to read copy meta json %s, exception caught", filepath.c_str());
+        return false;
+    }
     return true;
 }

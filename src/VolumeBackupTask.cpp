@@ -82,6 +82,7 @@ bool VolumeBackupTask::Prepare()
     }
 
     VolumeCopyMeta volumeCopyMeta {};
+    volumeCopyMeta.copyType = static_cast<int>(m_backupConfig->copyType);
     volumeCopyMeta.size = m_volumeSize;
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
     volumeCopyMeta.partition = partitionEntry;
@@ -118,7 +119,7 @@ bool VolumeBackupTask::Prepare()
         sessionOffset += sessionSize;
     }
 
-    if (!util::WriteVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyType, volumeCopyMeta)) {
+    if (!util::WriteVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, volumeCopyMeta)) {
         ERRLOG("failed to write copy meta to dir: %s", m_backupConfig->outputCopyMetaDirPath.c_str());
         return false;
     }

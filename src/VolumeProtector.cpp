@@ -18,7 +18,7 @@ using namespace volumeprotect;
  *          |       |------2048.1024.data.full.bin
  *          |
  *          |------meta
- *                  |------fullcopy.meta.json
+ *                  |------volumecopy.meta.json
  *                  |------0.1024.sha256.meta.bin
  *                  |------1024.1024.sha256.meta.bin
  *                  |------2048.1024.sha256.meta.bin
@@ -33,7 +33,7 @@ using namespace volumeprotect;
  *          |       |------2048.1024.data.inc.bin
  *          |
  *          |------meta
- *                  |------incrementcopy.meta.json
+ *                  |------volumecopy.meta.json
  *                  |------0.1024.sha256.meta.bin
  *                  |------1024.1024.sha256.meta.bin
  *                  |------2048.1024.sha256.meta.bin
