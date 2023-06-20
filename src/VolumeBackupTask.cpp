@@ -146,7 +146,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeBackupSess
         return false;
     }
 
-    // 2. check and init hasher
+    // 3. check and init hasher
     if (IsIncrementBackup()) {
         session->hasher = VolumeBlockHasher::BuildDiffHasher(session);
     } else {
@@ -157,7 +157,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeBackupSess
         return false;
     }
 
-    // 3. check and init writer
+    // 4. check and init writer
     session->writer = VolumeBlockWriter::BuildCopyWriter(session);
     if (session->writer == nullptr) {
         ERRLOG("backup session failed to init writer");
@@ -231,7 +231,7 @@ void VolumeBackupTask::ThreadFunc()
             session->counter->bytesToWrite.load(), session->counter->bytesWritten.load());
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
-        DBGLOG("sesion complete successfully");
+        DBGLOG("session complete successfully");
         UpdateCompletedSessionStatistics(session);
     }
     

@@ -25,11 +25,11 @@ public:
 private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
-    // bool StartBackupSession(std::shared_ptr<VolumeBackupSession> session) const;
-    // bool InitBackupSessionContext(std::shared_ptr<VolumeBackupSession> session) const;
+    bool StartRestoreSession(std::shared_ptr<VolumeRestoreSession> session) const;
+    bool InitRestoreSessionContext(std::shared_ptr<VolumeRestoreSession> session) const;
     bool IsIncrementCopy() const;
-    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
-    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeBackupSession> session);
+    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeRestoreSession> session);
+    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeRestoreSession> session);
 
 private:
     uint64_t                                m_volumeSize;
