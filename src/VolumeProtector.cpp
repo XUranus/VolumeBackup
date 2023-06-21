@@ -86,7 +86,7 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
         return nullptr;
     }
 
-    return std::make_shared<VolumeRestoreTask>(restoreConfig, volumeSize);
+    return std::make_shared<VolumeRestoreTask>(restoreConfig);
 }
 
 void StatefulTask::Abort()

@@ -20,7 +20,7 @@ public:
     bool            Start() override;
     TaskStatistics  GetStatistics() const override;
 
-    VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig, uint64_t volumeSize);
+    VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig);
     ~VolumeRestoreTask();
 private:
     bool Prepare(); // split session and save meta

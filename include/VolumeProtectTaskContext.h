@@ -87,6 +87,7 @@ struct VolumeRestoreSession {
     uint64_t        sessionOffset;
     uint64_t        sessionSize;
     std::string     copyFilePath;
+    uint32_t        blockSize;          // configured in copy meta json
 
     // mutable fields
     std::shared_ptr<VolumeBlockReader> reader { nullptr };

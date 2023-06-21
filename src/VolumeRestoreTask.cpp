@@ -25,9 +25,8 @@ namespace {
     constexpr auto DEFAULT_QUEUE_SIZE = 32;
 }
 
-VolumeRestoreTask::VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig, uint64_t volumeSize)
- : m_restoreConfig(std::make_shared<VolumeRestoreConfig>(restoreConfig)),
-   m_volumeSize(volumeSize)
+VolumeRestoreTask::VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig)
+ : m_restoreConfig(std::make_shared<VolumeRestoreConfig>(restoreConfig))
 {}
 
 VolumeRestoreTask::~VolumeRestoreTask()
@@ -67,71 +66,49 @@ bool VolumeRestoreTask::IsIncrementCopy() const
 bool VolumeRestoreTask::Prepare()
 {
     std::string blockDevicePath = m_restoreConfig->blockDevicePath;
-    // 1. retrive volume partition info
-    // VolumePartitionTableEntry partitionEntry {};
-    // try {
-    //     std::vector<VolumePartitionTableEntry> partitionTable = util::ReadVolumePartitionTable(blockDevicePath);
-    //     if (partitionTable.size() != 1) {
-    //         ERRLOG("failed to read partition table, or has multiple volumes");
-    //         return false;
-    //     }
-    //     partitionEntry =  partitionTable.back();
-    // } catch (std::exception& e) {
-    //     ERRLOG("read volume partition got exception: %s", e.what());
-    //     return false;
-    // }
+    
+    // 1. read copy meta json and validate volume
+    VolumeCopyMeta volumeCopyMeta {};
+    if (!util::ReadVolumeCopyMeta(m_restoreConfig->copyMetaDirPath, volumeCopyMeta)) {
+        ERRLOG("failed to write copy meta to dir: %s", m_restoreConfig->copyMetaDirPath.c_str());
+        return false;
+    }
 
-    // VolumeCopyMeta volumeCopyMeta {};
-    // volumeCopyMeta.size = m_volumeSize;
-    // volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
-    // volumeCopyMeta.partition = partitionEntry;
-
-    // if (IsIncrementBackup()) {
-    //     // TODO:: validate increment backup meta
-    // }
+    // TODO:: read volume info and validate
 
     // 2. split session
-    // for (uint64_t sessionOffset = 0; sessionOffset < m_volumeSize;) {
-    //     uint64_t sessionSize = DEFAULT_SESSION_SIZE;
-    //     if (sessionOffset + DEFAULT_SESSION_SIZE >= m_volumeSize) {
-    //         sessionSize = m_volumeSize - sessionOffset;
-    //     }
-    //     std::string lastestChecksumBinPath = util::GetChecksumBinPath(
-    //         m_restoreConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
-    //     std::string copyFilePath = util::GetCopyFilePath(
-    //         m_restoreConfig->outputCopyDataDirPath, m_restoreConfig->copyType, sessionOffset, sessionSize);
-    //     // for increment backup
-    //     std::string prevChecksumBinPath = "";
-    //     if (IsIncrementBackup()) {
-    //         prevChecksumBinPath = util::GetChecksumBinPath(m_restoreConfig->prevCopyMetaDirPath, sessionOffset, sessionSize);
-    //     }
+    uint64_t volumeSize = volumeCopyMeta.size;
+    CopyType copyType = static_cast<CopyType>(volumeCopyMeta.copyType);
+    for (const std::pair<uint64_t, uint64_t> slice: volumeCopyMeta.slices) {
+        uint64_t sessionSize = slice.second;
+        uint64_t sessionOffset = slice.first;
+        std::string copyFilePath = util::GetCopyFilePath(
+            m_restoreConfig->copyDataDirPath, copyType, sessionOffset, sessionSize);
 
-    //     VolumeRestoreSession session {};
-    //     session.config = m_restoreConfig;
-    //     session.sessionOffset = sessionOffset;
-    //     session.sessionSize = sessionSize;
-    //     session.lastestChecksumBinPath = lastestChecksumBinPath;
-    //     session.prevChecksumBinPath = prevChecksumBinPath;
-    //     session.copyFilePath = copyFilePath;
-    //     volumeCopyMeta.slices.emplace_back(sessionOffset, sessionSize);
-    //     m_sessionQueue.push(session);
-    //     sessionOffset += sessionSize;
-    // }
+        VolumeRestoreSession session {};
+        session.config = m_restoreConfig;
+        session.sessionOffset = sessionOffset;
+        session.sessionSize = sessionSize;
+        session.copyFilePath = copyFilePath;
+        session.blockSize = volumeCopyMeta.blockSize;
+
+        m_sessionQueue.push(session);
+    }
 
     return true;
 }
 
 bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeRestoreSession> session) const
 {
-    // DBGLOG("init backup session context");
-    // // 1. init basic backup container
-    // session->counter = std::make_shared<SessionCounter>();
-    // // session->allocator = std::make_shared<VolumeBlockAllocator>(session->config->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
-    // session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    DBGLOG("init backup session context");
+    // 1. init basic backup container
+    session->counter = std::make_shared<SessionCounter>();
+    session->allocator = std::make_shared<VolumeBlockAllocator>(session->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
+    session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     
-    // // 2. check and init reader
+    // 2. check and init reader
     // session->reader = VolumeBlockReader::BuildCopyReader(
-    //     m_restoreConfig->,
+    //     session->copyFilePath,
     //     session->sessionOffset,
     //     session->sessionSize,
     //     session
