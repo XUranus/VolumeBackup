@@ -35,10 +35,10 @@ VolumeBlockHasher::~VolumeBlockHasher()
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
-    std::shared_ptr<VolumeBackupSession> session)
+    std::shared_ptr<VolumeTaskSession> session)
 {
     // allocate for latest checksum table
-    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->config->blockSize);
+    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->blockSize);
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
     char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
     if (lastestChecksumTable == nullptr) {
@@ -61,13 +61,13 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
-    std::shared_ptr<VolumeBackupSession> session)
+    std::shared_ptr<VolumeTaskSession> session)
 {
     std::string prevChecksumBinPath = session->prevChecksumBinPath; // path of the checksum bin from previous copy
     std::string lastestChecksumBinPath = session->lastestChecksumBinPath; // path of the checksum bin to write latest copy
 
     // 1. allocate for latest checksum table
-    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->config->blockSize);
+    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->blockSize);
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
     char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
     if (lastestChecksumTable == nullptr) {
@@ -119,7 +119,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
 }
 
 VolumeBlockHasher::VolumeBlockHasher(
-    std::shared_ptr<VolumeBackupSession> session,
+    std::shared_ptr<VolumeTaskSession> session,
     HasherForwardMode   forwardMode,
     const std::string&  prevChecksumBinPath,
     const std::string&  lastestChecksumBinPath,
@@ -151,7 +151,7 @@ bool VolumeBlockHasher::Start()
     if (!m_workers.empty()) { // already started
         return false;
     }
-    if (!m_session->config->hasherEnabled) {
+    if (!m_session->hasherEnabled) {
         WARNLOG("hasher not enabled, exit hasher directly");
     }
     m_status = TaskStatus::RUNNING;
@@ -177,7 +177,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
         if (!m_session->hashingQueue->Pop(consumeBlock)) {
             break; // queue has been finished
         }
-        uint64_t index = (consumeBlock.volumeOffset - m_session->sessionOffset) / m_session->config->blockSize;
+        uint64_t index = (consumeBlock.volumeOffset - m_session->sessionOffset) / m_session->blockSize;
         
         // compute latest hash
         ComputeSHA256(

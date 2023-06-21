@@ -56,17 +56,20 @@ struct SessionCounter {
  * |        ...         |                      |    
  * 0              sessionOffset      sessionOffset + sessionSize
  *
- * each VolumeBackupSession corresponding to a volume <===> volume.part file backup session 
+ * each VolumeTaskSession corresponding to a volume <===> volume.part file backup/restore session 
  */
-struct VolumeBackupSession {
-    // immutable fields
-    std::shared_ptr<VolumeBackupConfig> config;
-
+struct VolumeTaskSession {
+    // immutable fields (common)
     uint64_t        sessionOffset;
     uint64_t        sessionSize;
+    uint32_t        blockSize;
+    bool            hasherEnabled;
+    std::string     blockDevicePath;
+    std::string     copyFilePath;
+
+    // immutable fields (for backup)
     std::string     lastestChecksumBinPath;
     std::string     prevChecksumBinPath;
-    std::string     copyFilePath;
 
     // mutable fields
     std::shared_ptr<VolumeBlockReader> reader { nullptr };
@@ -78,25 +81,10 @@ struct VolumeBackupSession {
     std::shared_ptr<VolumeBlockAllocator>               allocator { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue { nullptr };
-};
 
-struct VolumeRestoreSession {
-    // immutable fields
-    std::shared_ptr<VolumeRestoreConfig> config;
-
-    uint64_t        sessionOffset;
-    uint64_t        sessionSize;
-    std::string     copyFilePath;
-    uint32_t        blockSize;          // configured in copy meta json
-
-    // mutable fields
-    std::shared_ptr<VolumeBlockReader> reader { nullptr };
-    std::shared_ptr<VolumeBlockWriter> writer { nullptr };
-
-    // shared container context
-    std::shared_ptr<SessionCounter>                     counter { nullptr };
-    std::shared_ptr<VolumeBlockAllocator>               allocator { nullptr };
-    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue { nullptr };
+    bool IsTerminated() const;
+    bool IsFailed() const;
+    void Abort() const;
 };
 
 }

@@ -15,7 +15,7 @@ namespace volumeprotect {
 
 class VolumeRestoreTask : public VolumeProtectTask {
 public:
-    using SessionQueue = std::queue<VolumeRestoreSession>;
+    using SessionQueue = std::queue<VolumeTaskSession>;
     
     bool            Start() override;
     TaskStatistics  GetStatistics() const override;
@@ -25,12 +25,11 @@ public:
 private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
-    bool StartRestoreSession(std::shared_ptr<VolumeRestoreSession> session) const;
-    bool InitRestoreSessionContext(std::shared_ptr<VolumeRestoreSession> session) const;
+    bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
+    bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
     bool IsIncrementCopy() const;
-    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeRestoreSession> session);
-    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeRestoreSession> session);
-
+    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
+    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
 private:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeRestoreConfig>    m_restoreConfig;

@@ -20,12 +20,12 @@ public:
 
     // build a writer writing to copy file
     static std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(
-        std::shared_ptr<VolumeBackupSession> session
+        std::shared_ptr<VolumeTaskSession> session
     );
 
     // build a writer writing to volume
     static std::shared_ptr<VolumeBlockWriter> BuildVolumeWriter(
-        std::shared_ptr<VolumeBackupSession> session
+        std::shared_ptr<VolumeTaskSession> session
     );
 
     bool Start();
@@ -35,7 +35,7 @@ public:
     VolumeBlockWriter(
         TargetType targetType,
         const std::string& targetPath,
-        std::shared_ptr<VolumeBackupSession> session
+        std::shared_ptr<VolumeTaskSession> session
     );
 
 private:
@@ -48,7 +48,7 @@ private:
     std::string m_targetPath;
 
     // mutable fields
-    std::shared_ptr<VolumeBackupSession> m_session;
+    std::shared_ptr<VolumeTaskSession> m_session;
     std::thread m_writerThread;
     int         m_fd { -1 };
 };

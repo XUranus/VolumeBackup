@@ -26,7 +26,7 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
     const std::string& blockDevicePath,
     uint64_t offset,
     uint64_t length,
-    std::shared_ptr<VolumeBackupSession> session)
+    std::shared_ptr<VolumeTaskSession> session)
 {
     return std::make_shared<VolumeBlockReader>(
         VolumeBlockReader::SourceType::VOLUME,
@@ -42,7 +42,7 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     const std::string& copyFilePath,
     uint64_t offset,
     uint64_t length,
-    std::shared_ptr<VolumeBackupSession> session)
+    std::shared_ptr<VolumeTaskSession> session)
 {
     return std::make_shared<VolumeBlockReader>(
         VolumeBlockReader::SourceType::COPYFILE,
@@ -74,7 +74,7 @@ VolumeBlockReader::VolumeBlockReader(
     const std::string& sourcePath,
     uint64_t    sourceOffset,
     uint64_t    sourceLength,
-    std::shared_ptr<VolumeBackupSession> session
+    std::shared_ptr<VolumeTaskSession> session
 ) : m_sourceType(sourceType),
     m_sourcePath(sourcePath),
     m_sourceOffset(sourceOffset),
@@ -85,7 +85,7 @@ VolumeBlockReader::VolumeBlockReader(
 void VolumeBlockReader::ReaderThread()
 {
     // Open the device file for reading
-    uint32_t defaultBufferSize = m_session->config->blockSize;
+    uint32_t defaultBufferSize = m_session->blockSize;
     uint64_t currentOffset = m_sourceOffset;
     uint32_t nBytesToRead = 0;
     int fd = ::open(m_sourcePath.c_str(), O_RDONLY);
@@ -139,7 +139,7 @@ void VolumeBlockReader::ReaderThread()
         };
         DBGLOG("reader push consume block (%p, %lu, %lu)",
             consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
-        if (m_session->config->hasherEnabled) {
+        if (m_session->hasherEnabled) {
             ++m_session->counter->blocksToHash;
             m_session->hashingQueue->Push(consumeBlock);
         } else {
@@ -152,7 +152,7 @@ void VolumeBlockReader::ReaderThread()
     INFOLOG("reader read completed successfully");
     m_status = TaskStatus::SUCCEED;
     ::close(fd);
-    if (m_session->config->hasherEnabled) {
+    if (m_session->hasherEnabled) {
         m_session->hashingQueue->Finish();
     } else {
         m_session->writeQueue->Finish();

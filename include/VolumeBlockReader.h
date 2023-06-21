@@ -23,14 +23,14 @@ public:
         const std::string& blockDevicePath,
         uint64_t offset,
         uint64_t length,
-        std::shared_ptr<VolumeBackupSession> session);
+        std::shared_ptr<VolumeTaskSession> session);
 
     // build a reader reading from volume copy
     static std::shared_ptr<VolumeBlockReader> BuildCopyReader(
         const std::string& copyFilePath,
         uint64_t offset,
         uint64_t length,
-        std::shared_ptr<VolumeBackupSession> session);
+        std::shared_ptr<VolumeTaskSession> session);
 
     bool Start();
 
@@ -41,7 +41,7 @@ public:
         const std::string& sourcePath,
         uint64_t    sourceOffset,
         uint64_t    sourceLength,
-        std::shared_ptr<VolumeBackupSession> session
+        std::shared_ptr<VolumeTaskSession> session
     );
 
 private:
@@ -55,7 +55,7 @@ private:
     uint64_t    m_sourceLength;
 
     // mutable fields
-    std::shared_ptr<VolumeBackupSession> m_session;
+    std::shared_ptr<VolumeTaskSession> m_session;
     std::thread m_readerThread;
 };
 

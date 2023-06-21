@@ -25,7 +25,7 @@ using namespace volumeprotect;
 
 // build a writer writing to copy file
 std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
-    std::shared_ptr<VolumeBackupSession> session)
+    std::shared_ptr<VolumeTaskSession> session)
 {
     std::string copyFilePath = session->copyFilePath;
     // TODO:: check target copy file
@@ -38,9 +38,9 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
 
 // build a writer writing to volume
 std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
-    std::shared_ptr<VolumeBackupSession> session)
+    std::shared_ptr<VolumeTaskSession> session)
 {
-    std::string blockDevicePath = session->config->blockDevicePath;
+    std::string blockDevicePath = session->blockDevicePath;
     // check target block device
     if (util::IsBlockDeviceExists(blockDevicePath)) {
         ERRLOG("block device %s not exists", blockDevicePath.c_str());
@@ -81,7 +81,7 @@ VolumeBlockWriter::~VolumeBlockWriter()
 VolumeBlockWriter::VolumeBlockWriter(
     TargetType targetType,
     const std::string& targetPath,
-    std::shared_ptr<VolumeBackupSession> session
+    std::shared_ptr<VolumeTaskSession> session
 ) : m_targetType(targetType),
     m_targetPath(targetPath),
     m_session(session)

@@ -27,17 +27,17 @@ public:
     ~VolumeBlockHasher();
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDirectHasher(
-        std::shared_ptr<VolumeBackupSession> session
+        std::shared_ptr<VolumeTaskSession> session
     );
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDiffHasher(
-        std::shared_ptr<VolumeBackupSession> session
+        std::shared_ptr<VolumeTaskSession> session
     );
 
     bool Start();
 
     VolumeBlockHasher(
-        std::shared_ptr<VolumeBackupSession> session,
+        std::shared_ptr<VolumeTaskSession> session,
         HasherForwardMode   forwardMode,
         const std::string&  prevChecksumBinPath,
         const std::string&  lastestChecksumBinPath,
@@ -61,7 +61,7 @@ private:
     // mutable
     char*                                   m_lastestChecksumTable;     // mutable, shared within worker
     uint64_t                                m_lastestChecksumTableSize; // bytes allocated
-    std::shared_ptr<VolumeBackupSession>    m_session;                  // mutable, used for sync
+    std::shared_ptr<VolumeTaskSession>    m_session;                  // mutable, used for sync
 
     // immutable
     uint32_t                m_singleChecksumSize;

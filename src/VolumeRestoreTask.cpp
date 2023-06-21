@@ -85,12 +85,13 @@ bool VolumeRestoreTask::Prepare()
         std::string copyFilePath = util::GetCopyFilePath(
             m_restoreConfig->copyDataDirPath, copyType, sessionOffset, sessionSize);
 
-        VolumeRestoreSession session {};
-        session.config = m_restoreConfig;
+        VolumeTaskSession session {};
+        session.blockDevicePath = blockDevicePath;
+        session.hasherEnabled = false;
+        session.blockSize = volumeCopyMeta.blockSize;
         session.sessionOffset = sessionOffset;
         session.sessionSize = sessionSize;
         session.copyFilePath = copyFilePath;
-        session.blockSize = volumeCopyMeta.blockSize;
 
         m_sessionQueue.push(session);
     }
@@ -98,36 +99,36 @@ bool VolumeRestoreTask::Prepare()
     return true;
 }
 
-bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeRestoreSession> session) const
+bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const
 {
-    DBGLOG("init backup session context");
-    // 1. init basic backup container
+    DBGLOG("init restore session context");
+    // 1. init basic restore container
     session->counter = std::make_shared<SessionCounter>();
     session->allocator = std::make_shared<VolumeBlockAllocator>(session->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     
     // 2. check and init reader
-    // session->reader = VolumeBlockReader::BuildCopyReader(
-    //     session->copyFilePath,
-    //     session->sessionOffset,
-    //     session->sessionSize,
-    //     session
-    // );
-    // if (session->reader == nullptr) {
-    //     ERRLOG("backup session failed to init reader");
-    //     return false;
-    // }
+    session->reader = VolumeBlockReader::BuildCopyReader(
+        session->copyFilePath,
+        0,
+        session->sessionSize,
+        session
+    );
+    if (session->reader == nullptr) {
+        ERRLOG("restore session failed to init reader");
+        return false;
+    }
 
     // // 3. check and init writer
-    // //session->writer = VolumeBlockWriter::BuildVolumeWriter(session);
-    // if (session->writer == nullptr) {
-    //     ERRLOG("backup session failed to init writer");
-    //     return false;
-    // }
+    session->writer = VolumeBlockWriter::BuildVolumeWriter(session);
+    if (session->writer == nullptr) {
+        ERRLOG("restore session failed to init writer");
+        return false;
+    }
     return true;
 }
 
-bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeRestoreSession> session) const
+bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const
 {
     DBGLOG("start restore session");
     if (session->reader == nullptr || session->writer == nullptr) {
@@ -137,7 +138,7 @@ bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeRestoreSession
     }
     DBGLOG("start restore session reader");
     if (!session->reader->Start()) {
-        ERRLOG("backup session reader start failed");
+        ERRLOG("restore session reader start failed");
         return false;
     }
     DBGLOG("start restore session writer");
@@ -158,7 +159,7 @@ void VolumeRestoreTask::ThreadFunc()
         }
 
         // pop a session from session queue to init a new session
-        std::shared_ptr<VolumeRestoreSession> session = std::make_shared<VolumeRestoreSession>(m_sessionQueue.front());
+        std::shared_ptr<VolumeTaskSession> session = std::make_shared<VolumeTaskSession>(m_sessionQueue.front());
         m_sessionQueue.pop();
 
         if (!InitRestoreSessionContext(session) || !StartRestoreSession(session)) {
@@ -168,19 +169,19 @@ void VolumeRestoreTask::ThreadFunc()
 
         // block the thread
         while (true) {
-            // if (m_abort) {
-            //     AbortSession(session);
-            //     m_status = TaskStatus::ABORTED;
-            //     return;
-            // }
-            // if (IsSessionFailed(session)) {
-            //     ERRLOG("session failed");
-            //     m_status = TaskStatus::FAILED;
-            //     return;
-            // }
-            // if (IsSessionTerminated(session))  {
-            //     break;
-            // }
+            if (m_abort) {
+                session->Abort();
+                m_status = TaskStatus::ABORTED;
+                return;
+            }
+            if (session->IsFailed()) {
+                ERRLOG("session failed");
+                m_status = TaskStatus::FAILED;
+                return;
+            }
+            if (session->IsTerminated())  {
+                break;
+            }
             DBGLOG("updateStatistics: bytesToReaded: %llu, bytesRead: %llu, bytesToWrite: %llu, bytesWritten: %llu",
             session->counter->bytesToRead.load(), session->counter->bytesRead.load(),
             session->counter->bytesToWrite.load(), session->counter->bytesWritten.load());
@@ -194,7 +195,7 @@ void VolumeRestoreTask::ThreadFunc()
     return;
 }
 
-void VolumeRestoreTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeRestoreSession> session)
+void VolumeRestoreTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
 {
     m_currentSessionStatistics.bytesToRead = session->counter->bytesToRead;
     m_currentSessionStatistics.bytesRead = session->counter->bytesRead;
@@ -204,7 +205,7 @@ void VolumeRestoreTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeRes
     m_currentSessionStatistics.bytesWritten = session->counter->bytesWritten;
 }
 
-void VolumeRestoreTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeRestoreSession> session)
+void VolumeRestoreTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
 {
     m_completedSessionStatistics.bytesToRead += session->counter->bytesToRead;
     m_completedSessionStatistics.bytesRead += session->counter->bytesRead;
