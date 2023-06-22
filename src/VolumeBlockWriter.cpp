@@ -42,7 +42,7 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
 {
     std::string blockDevicePath = session->blockDevicePath;
     // check target block device
-    if (util::IsBlockDeviceExists(blockDevicePath)) {
+    if (!util::IsBlockDeviceExists(blockDevicePath)) {
         ERRLOG("block device %s not exists", blockDevicePath.c_str());
         return nullptr;
     }
@@ -90,17 +90,24 @@ VolumeBlockWriter::VolumeBlockWriter(
 bool VolumeBlockWriter::Prepare()
 {
     // open writer target file handle
-    m_fd = ::open(m_targetPath.c_str() ,O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    if (m_fd < 0) {
-        ERRLOG("open %s failed, errno: %d", m_targetPath.c_str(), errno);
-        return false;
-    }
-
-    // truncate copy file to session size
     if (m_targetType == TargetType::COPYFILE) {
+        m_fd = ::open(m_targetPath.c_str() ,O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+        if (m_fd < 0) {
+            ERRLOG("open copy file %s failed, errno: %d", m_targetPath.c_str(), errno);
+            return false;
+        }
+        // truncate copy file to session size
         DBGLOG("truncate target copy file %s to size %lu", m_targetPath.c_str(), m_session->sessionSize);
         ::ftruncate(m_fd, m_session->sessionSize);
         ::lseek(m_fd, 0, SEEK_SET);
+    }
+    
+    if (m_targetType == TargetType::VOLUME) {
+        m_fd = ::open(m_targetPath.c_str(), O_RDWR);
+        if (m_fd < 0) {
+            ERRLOG("open block device %s failed, errno: %d", m_targetPath.c_str(), errno);
+            return false;
+        }
     }
     return true;
 }

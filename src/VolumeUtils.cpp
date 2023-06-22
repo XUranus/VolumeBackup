@@ -48,7 +48,7 @@ uint64_t volumeprotect::util::ReadVolumeSize(const std::string& blockDevice)
     uint64_t size = 0;
     if (::ioctl(fd, BLKGETSIZE64, &size) < 0) {
         close(fd);
-        throw BuildRuntimeException("rror getting block device size", blockDevice, errno);
+        throw BuildRuntimeException("Error getting block device size", blockDevice, errno);
         return 0;
     }
 

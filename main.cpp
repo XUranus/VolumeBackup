@@ -28,19 +28,19 @@ int ExecVolumeRestore(
     restoreConfig.copyDataDirPath = copyDataDirPath;
     restoreConfig.copyMetaDirPath = copyMetaDirPath;
 
-    // std::shared_ptr<VolumeRestoreTask> task = VolumeRestoreTask::BuildRestoreTask(restoreConfig);
-    // if (task == nullptr) {
-    //     std::cerr << "failed to build restore task" << std::endl;
-    //     return 1;
-    // }
-    // task->Start();
-    // while (!task->IsTerminated()) {
-    //     TaskStatistics statistics =  task->GetStatistics();
-    //     DBGLOG("checkStatistics: bytesToReaded: %llu, bytesRead: %llu, blocksToHash: %llu, blocksHashed: %llu, bytesToWrite: %llu, bytesWritten: %llu",
-    //         statistics.bytesToRead, statistics.bytesRead, statistics.blocksToHash, statistics.blocksHashed, statistics.bytesToWrite, statistics.bytesWritten);
-    //     std::this_thread::sleep_for(std::chrono::seconds(1));
-    // }
-    // std::cout << "volume restore task completed!" << std::endl;
+    std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildRestoreTask(restoreConfig);
+    if (task == nullptr) {
+        std::cerr << "failed to build restore task" << std::endl;
+        return 1;
+    }
+    task->Start();
+    while (!task->IsTerminated()) {
+        TaskStatistics statistics =  task->GetStatistics();
+        DBGLOG("checkStatistics: bytesToReaded: %llu, bytesRead: %llu, blocksToHash: %llu, blocksHashed: %llu, bytesToWrite: %llu, bytesWritten: %llu",
+            statistics.bytesToRead, statistics.bytesRead, statistics.blocksToHash, statistics.blocksHashed, statistics.bytesToWrite, statistics.bytesWritten);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    std::cout << "volume restore task completed!" << std::endl;
     return 0;    
 }
 
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     std::string copyDataDirPath = "";
     std::string copyMetaDirPath = "";
     std::string prevCopyMetaDirPath = "";
-    std::string logLevel = "INFO";
+    std::string logLevel = "DEBUG";
     bool isRestore = false;
     int ch = -1;
     while ((ch = getopt(argc, argv, "v:d:m:p:h:r:l")) != -1) {
@@ -110,7 +110,7 @@ int main(int argc, char** argv)
                 break;
             }
             case 'l' : {
-                logLevel = atoi(optarg);
+                logLevel = optarg;
                 break;
             }
             case 'h' : {

@@ -80,8 +80,9 @@ bool VolumeRestoreTask::Prepare()
     uint64_t volumeSize = volumeCopyMeta.size;
     CopyType copyType = static_cast<CopyType>(volumeCopyMeta.copyType);
     for (const std::pair<uint64_t, uint64_t> slice: volumeCopyMeta.slices) {
-        uint64_t sessionSize = slice.second;
         uint64_t sessionOffset = slice.first;
+        uint64_t sessionSize = slice.second;
+        INFOLOG("Size = %llu sessionOffset %d sessionSize %d", volumeSize, sessionOffset, sessionSize);
         std::string copyFilePath = util::GetCopyFilePath(
             m_restoreConfig->copyDataDirPath, copyType, sessionOffset, sessionSize);
 
