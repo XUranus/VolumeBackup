@@ -1,8 +1,11 @@
 #include <cstdint>
 #include <cstring>
 #include <thread>
-#include <openssl/evp.h>
 #include <cassert>
+
+#ifdef __linux__
+#include <openssl/evp.h>
+#endif
 
 #include "Logger.h"
 #include "VolumeProtectTaskContext.h"
@@ -208,6 +211,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
     return;
 }
 
+#ifdef __linux__
 void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
 {
     EVP_MD_CTX *mdctx = nullptr;
@@ -233,6 +237,15 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
     EVP_MD_CTX_free(mdctx);
     return;
 }
+#endif
+
+#ifdef _WIN32
+void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
+{
+    static_assert(false, "ComputeSHA256 not implement on windows!");
+}
+#endif
+
 
 void VolumeBlockHasher::SaveLatestChecksumBin()
 {

@@ -1,13 +1,17 @@
+#ifdef __linux__
+#include <fcntl.h> 
+#include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#endif
+
 #include <algorithm>
 #include <cerrno>
 #include <string>
 #include <iostream>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <linux/fs.h>
 #include <thread>
 #include <chrono>
-#include <unistd.h>
 #include <cstring>
 #include <cstdint>
 #include <stdexcept>

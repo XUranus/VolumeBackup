@@ -1,19 +1,29 @@
-#include "VolumeProtector.h"
+#include <vector>
+#include <string>
+#include <fstream>
+#include <filesystem>
+
+#ifdef __linux__
 #include <fcntl.h>
 #include <fstream>
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 #include <unistd.h>
-#include <vector>
-#include <string>
-
-#include <filesystem>
-
 extern "C" {
     #include <blkid/blkid.h>
     #include <parted/parted.h>
 }
+#endif
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define UNICODE /* foring using WCHAR on windows */
+#include <Windows.h>
+#include <locale>
+#include <codecvt>
+#endif
+
+#include "VolumeProtector.h"
 #include "VolumeUtils.h"
 
 namespace {
@@ -27,6 +37,23 @@ namespace {
 
 using namespace volumeprotect;
 
+#ifdef _WIN32
+static std::wstring Utf8ToUtf16(const std::string& str)
+{
+    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+    std::wstring_convert<ConvertTypeX> converterX;
+    std::wstring wstr = converterX.from_bytes(str);
+    return wstr;
+}
+
+static td::string Utf16ToUtf8(const std::wstring& wstr)
+{
+    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+    std::wstring_convert<ConvertTypeX> converterX;
+    return converterX.to_bytes(wstr);
+}
+#endif
+
 std::runtime_error volumeprotect::util::BuildRuntimeException(
     const std::string& message,
     const std::string& blockDevice,
@@ -37,6 +64,7 @@ std::runtime_error volumeprotect::util::BuildRuntimeException(
     return std::runtime_error(label);
 }
 
+#ifdef __linux__
 uint64_t volumeprotect::util::ReadVolumeSize(const std::string& blockDevice)
 {
     int fd = ::open(blockDevice.c_str(), O_RDONLY);
@@ -55,6 +83,20 @@ uint64_t volumeprotect::util::ReadVolumeSize(const std::string& blockDevice)
     ::close(fd);
     return size;
 }
+#endif
+
+#ifdef _WIN32
+uint64_t volumeprotect::util::ReadVolumeSize(const std::string& volumePath)
+    std::wstring wVolumePath = Utf8ToUtf16(volumePath);
+    ULARGE_INTEGER totalSize {};
+
+    if (::GetDiskFreeSpaceExW(&wVolumePath, nullptr, &totalSize, nullptr)) {
+        return totalSize.QuadPart;
+    }
+    throw BuildRuntimeException("Error GetDiskFreeSpaceEx", volumePath, ::GetLastError());
+}
+#endif
+
 
 bool volumeprotect::util::IsBlockDeviceExists(const std::string& blockDevicePath)
 {
@@ -78,11 +120,25 @@ bool volumeprotect::util::CheckDirectoryExistence(const std::string& path)
     }
 }
 
+#ifdef __linux
 uint32_t volumeprotect::util::ProcessorsNum()
 {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
+#endif
 
+#ifdef _WIN32
+uint32_t volumeprotect::util::ProcessorsNum()
+{
+    SYSTEM_INFO systemInfo;
+    ::GetSystemInfo(&systemInfo);
+    
+    DWORD processorCount = systemInfo.dwNumberOfProcessors;
+    return processorCount;
+}
+#endif
+
+#ifdef __linux__
 static std::string ReadPosixBlockDeviceAttribute(const std::string& blockDevicePath, const std::string& attributeName)
 {
     const char* devname = blockDevicePath.c_str();
@@ -104,22 +160,31 @@ static std::string ReadPosixBlockDeviceAttribute(const std::string& blockDeviceP
     blkid_free_probe(pr);
     return attributeValueString;
 }
+#endif
+
 
 std::string volumeprotect::util::ReadVolumeUUID(const std::string& blockDevicePath)
 {
+#ifdef __linux__
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "UUID");
+#endif
 }
 
 std::string volumeprotect::util::ReadVolumeType(const std::string& blockDevicePath)
 {
+#ifdef __linux__
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "TYPE");
+#endif
 }
 
 std::string volumeprotect::util::ReadVolumeLabel(const std::string& blockDevicePath)
 {
+#ifdef __linux__
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "LABEL");
+#endif
 }
 
+#ifdef __linux__
 std::vector<VolumePartitionTableEntry> volumeprotect::util::ReadVolumePartitionTable(const std::string& blockDevicePath)
 {
     PedDevice* dev = nullptr;
@@ -175,6 +240,7 @@ std::vector<VolumePartitionTableEntry> volumeprotect::util::ReadVolumePartitionT
     ped_exception_leave_all();
     return partitionTable;
 }
+#endif
 
 std::string volumeprotect::util::GetChecksumBinPath(
     const std::string& copyMetaDirPath,
