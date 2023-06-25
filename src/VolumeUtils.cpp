@@ -16,13 +16,15 @@ extern "C" {
 #endif
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
 #define UNICODE /* foring using WCHAR on windows */
+#define NOGDI
 #include <Windows.h>
 #include <locale>
 #include <codecvt>
 #endif
 
+#include "Logger.h"
 #include "VolumeProtector.h"
 #include "VolumeUtils.h"
 
@@ -38,20 +40,20 @@ namespace {
 using namespace volumeprotect;
 
 #ifdef _WIN32
-static std::wstring Utf8ToUtf16(const std::string& str)
-{
-    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
-    std::wstring_convert<ConvertTypeX> converterX;
-    std::wstring wstr = converterX.from_bytes(str);
-    return wstr;
-}
+// static std::wstring Utf8ToUtf16(const std::string& str)
+// {
+//     using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+//     std::wstring_convert<ConvertTypeX> converterX;
+//     std::wstring wstr = converterX.from_bytes(str);
+//     return wstr;
+// }
 
-static td::string Utf16ToUtf8(const std::wstring& wstr)
-{
-    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
-    std::wstring_convert<ConvertTypeX> converterX;
-    return converterX.to_bytes(wstr);
-}
+// static std::string Utf16ToUtf8(const std::wstring& wstr)
+// {
+//     using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+//     std::wstring_convert<ConvertTypeX> converterX;
+//     return converterX.to_bytes(wstr);
+// }
 #endif
 
 std::runtime_error volumeprotect::util::BuildRuntimeException(
@@ -87,13 +89,15 @@ uint64_t volumeprotect::util::ReadVolumeSize(const std::string& blockDevice)
 
 #ifdef _WIN32
 uint64_t volumeprotect::util::ReadVolumeSize(const std::string& volumePath)
-    std::wstring wVolumePath = Utf8ToUtf16(volumePath);
-    ULARGE_INTEGER totalSize {};
+{
+    // std::wstring wVolumePath = Utf8ToUtf16(volumePath);
+    // ULARGE_INTEGER totalSize {};
 
-    if (::GetDiskFreeSpaceExW(&wVolumePath, nullptr, &totalSize, nullptr)) {
-        return totalSize.QuadPart;
-    }
-    throw BuildRuntimeException("Error GetDiskFreeSpaceEx", volumePath, ::GetLastError());
+    // if (::GetDiskFreeSpaceExW(wVolumePath.c_str(), nullptr, &totalSize, nullptr)) {
+    //     return totalSize.QuadPart;
+    // }
+    // throw BuildRuntimeException("Error GetDiskFreeSpaceEx", volumePath, ::GetLastError());
+    return 0;
 }
 #endif
 
@@ -130,11 +134,12 @@ uint32_t volumeprotect::util::ProcessorsNum()
 #ifdef _WIN32
 uint32_t volumeprotect::util::ProcessorsNum()
 {
-    SYSTEM_INFO systemInfo;
-    ::GetSystemInfo(&systemInfo);
+    // SYSTEM_INFO systemInfo;
+    // ::GetSystemInfo(&systemInfo);
     
-    DWORD processorCount = systemInfo.dwNumberOfProcessors;
-    return processorCount;
+    // DWORD processorCount = systemInfo.dwNumberOfProcessors;
+    // return processorCount;
+    return 1;
 }
 #endif
 
@@ -163,26 +168,43 @@ static std::string ReadPosixBlockDeviceAttribute(const std::string& blockDeviceP
 #endif
 
 
+
+#ifdef __linux__
 std::string volumeprotect::util::ReadVolumeUUID(const std::string& blockDevicePath)
 {
-#ifdef __linux__
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "UUID");
-#endif
 }
 
 std::string volumeprotect::util::ReadVolumeType(const std::string& blockDevicePath)
 {
-#ifdef __linux__
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "TYPE");
-#endif
 }
 
 std::string volumeprotect::util::ReadVolumeLabel(const std::string& blockDevicePath)
 {
-#ifdef __linux__
     return ReadPosixBlockDeviceAttribute(blockDevicePath, "LABEL");
-#endif
 }
+#endif
+
+#ifdef _WIN32
+std::string volumeprotect::util::ReadVolumeUUID(const std::string& blockDevicePath)
+{
+    // TODO
+    return "";
+}
+
+std::string volumeprotect::util::ReadVolumeType(const std::string& blockDevicePath)
+{
+    // TODO
+    return "";
+}
+
+std::string volumeprotect::util::ReadVolumeLabel(const std::string& blockDevicePath)
+{
+    // TODO
+    return "";
+}
+#endif
 
 #ifdef __linux__
 std::vector<VolumePartitionTableEntry> volumeprotect::util::ReadVolumePartitionTable(const std::string& blockDevicePath)

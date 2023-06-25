@@ -1,11 +1,13 @@
 #include <chrono>
 #include <cstdlib>
-#include <getopt.h>
 #include <iostream>
 #include <ostream>
 #include <string>
+
+#ifdef __linux__
+#include <getopt.h>
 #include <unistd.h>
-#include <stdlib.h>
+#endif
 
 #include "VolumeProtector.h"
 #include "Logger.h"
@@ -86,6 +88,8 @@ int main(int argc, char** argv)
     std::string prevCopyMetaDirPath = "";
     std::string logLevel = "DEBUG";
     bool isRestore = false;
+
+#ifdef __linux__
     int ch = -1;
     while ((ch = getopt(argc, argv, "v:d:m:p:h:r:l")) != -1) {
         switch (ch) {
@@ -119,6 +123,8 @@ int main(int argc, char** argv)
             }
         }
     }
+#endif
+
     if (blockDevicePath.empty() || copyDataDirPath.empty() || copyMetaDirPath.empty()) {
         PrintHelp();
         return 1;

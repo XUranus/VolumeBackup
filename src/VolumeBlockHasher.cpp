@@ -242,7 +242,7 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
 #ifdef _WIN32
 void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
 {
-    static_assert(false, "ComputeSHA256 not implement on windows!");
+    // TODO
 }
 #endif
 

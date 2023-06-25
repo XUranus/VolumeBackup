@@ -86,6 +86,7 @@ VolumeBlockReader::VolumeBlockReader(
     m_session(session)
 {}
 
+#ifdef __linux__
 void VolumeBlockReader::ReaderThread()
 {
     // Open the device file for reading
@@ -163,3 +164,11 @@ void VolumeBlockReader::ReaderThread()
     }
     return;
 }
+#endif
+
+#ifdef _WIN32
+void VolumeBlockReader::ReaderThread()
+{
+    // TODO
+}
+#endif

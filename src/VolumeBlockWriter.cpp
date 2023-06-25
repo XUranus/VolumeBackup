@@ -76,10 +76,14 @@ VolumeBlockWriter::~VolumeBlockWriter()
     if (m_writerThread.joinable()) {
         m_writerThread.join();
     }
+#ifdef __linux__
     if (m_fd < 0) {
         ::close(m_fd);
         m_fd = -1;
     }
+#endif
+#ifdef _WIN32
+#endif
 }
 
 VolumeBlockWriter::VolumeBlockWriter(
@@ -91,6 +95,7 @@ VolumeBlockWriter::VolumeBlockWriter(
     m_session(session)
 {}
 
+#ifdef __linux__
 bool VolumeBlockWriter::Prepare()
 {
     // open writer target file handle
@@ -115,7 +120,17 @@ bool VolumeBlockWriter::Prepare()
     }
     return true;
 }
+#endif
 
+#ifdef _WIN32
+bool VolumeBlockWriter::Prepare()
+{
+    // TODO
+    return false;
+}
+#endif
+
+#ifdef __linux__
 void VolumeBlockWriter::WriterThread()
 {
     VolumeConsumeBlock consumeBlock {};
@@ -161,3 +176,11 @@ void VolumeBlockWriter::WriterThread()
     m_status = TaskStatus::SUCCEED;
     return;
 }
+#endif
+
+#ifdef _WIN32
+void VolumeBlockWriter::WriterThread()
+{
+    // TODO
+}
+#endif
