@@ -12,11 +12,15 @@ class BlockingQueue {
 public:
     BlockingQueue(std::size_t maxSize);
 
-    bool Push(const T&);    // return false if queue is set to finished
+    bool Push(const T&);    // blocking push, return false if queue is set to finished
 
-    bool Pop(T&);           // return false if queue is set to finished and empty
+    bool Pop(T&);           // blocking pop, return false if queue is set to finished and empty
 
     void Finish();
+
+    bool TryPush(const T&); // non-blocking push
+
+    bool TryPop(T&);        // non-blocking pop
 
     bool Empty();
 
@@ -36,6 +40,14 @@ BlockingQueue<T>::BlockingQueue(std::size_t maxSize)
  : m_finished(false), m_maxSize(maxSize)
 {}
 
+/**
+ * @brief blocking push an item, invoker thread will be blocked if queue is full
+ * 
+ * @tparam T
+ * @param v
+ * @return true if push successfully
+ * @return false if queue is set to finish
+ */
 template<typename T>
 bool BlockingQueue<T>::Push(const T &v)
 {
@@ -50,6 +62,14 @@ bool BlockingQueue<T>::Push(const T &v)
     return true;
 }
 
+/**
+ * @brief blocking pop an item from queue, invoker thread will be blocked if queue is empty
+ *
+ * @tparam T
+ * @param v
+ * @return true if item is poped successfully
+ * @return false if queue is empty and has been set to finished
+ */
 template<typename T>
 bool BlockingQueue<T>::Pop(T &v)
 {
@@ -65,6 +85,11 @@ bool BlockingQueue<T>::Pop(T &v)
     return true;
 }
 
+/**
+ * @brief to mark the queue to finished, no more item should be pushed anymore and Pop may return false once empty
+ * 
+ * @tparam T
+ */
 template<typename T>
 void BlockingQueue<T>::Finish()
 {
@@ -72,6 +97,47 @@ void BlockingQueue<T>::Finish()
     m_finished = true;
     m_notFull.notify_all();
     m_notEmpty.notify_all();
+}
+
+/**
+ * @brief try to push an item (non-blocking)
+ * 
+ * @tparam T
+ * @param v
+ * @return true if push successfully
+ * @return false if push failed
+ */
+template<typename T>
+bool BlockingQueue<T>::TryPush(const T& v)
+{
+    std::unique_lock<std::mutex> lk(m_mutex);
+    if (m_finished || m_queue.size() >= m_maxSize) {
+        return false;
+    }
+    m_queue.push(v);
+    m_notEmpty.notify_one();
+    return true;
+}
+
+/**
+ * @brief try to pop an item (non-blocking)
+ * 
+ * @tparam T
+ * @param v
+ * @return true if pop successfully
+ * @return false if pop failed
+ */
+template<typename T>
+bool BlockingQueue<T>::TryPop(T& v)
+{
+    std::unique_lock<std::mutex> lk(m_mutex);
+    if (m_queue.empty()) {
+        return false;
+    }
+    v = m_queue.front();
+    m_queue.pop();
+    m_notFull.notify_one();
+    return true;
 }
 
 template<typename T>

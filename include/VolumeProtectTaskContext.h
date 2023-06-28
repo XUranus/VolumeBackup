@@ -50,13 +50,16 @@ struct SessionCounter {
     std::atomic<uint64_t>   bytesWritten    { 0 };
 };
 
-/*
- * |                    |<-------session------>|
- * |==========================================================| logical volume
- * |        ...         |                      |    
- * 0              sessionOffset      sessionOffset + sessionSize
+/**
+ * Split a logical volume into multiple sessions
+ * Sach session(default 1TB) corresponding to a SHA256 checksum binary file(8MB) and a data slice file(1TB)
+ * Each backup/restore task involves one or more sessions represented by struct VolumeTaskSession
+ * 
+ *       ...      |<------session[i]------>|<-----session[i+1]----->|<-----session[i+2]----->|   ...
+ * |===================================================================================================| logical volume
+ * |     ...      |----- sessionSize ------|    
+ * 0         sessionOffset   sessionOffset + sessionSize
  *
- * each VolumeTaskSession corresponding to a volume <===> volume.part file backup/restore session 
  */
 struct VolumeTaskSession {
     // immutable fields (common)
