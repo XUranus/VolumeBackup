@@ -9,10 +9,12 @@
 #include <unistd.h>
 #endif
 
+#include "GetOption.h"
 #include "VolumeProtector.h"
 #include "Logger.h"
 
 using namespace volumeprotect;
+using namespace xuranus::getopt;
 using namespace xuranus::minilogger;
 
 void PrintHelp()
@@ -80,7 +82,7 @@ int ExecVolumeBackup(
     return 0;
 }
 
-int main(int argc, char** argv)
+int main(int argc, const char** argv)
 {
     std::string blockDevicePath = "";
     std::string copyDataDirPath = "";
@@ -89,41 +91,25 @@ int main(int argc, char** argv)
     std::string logLevel = "DEBUG";
     bool isRestore = false;
 
-#ifdef __linux__
-    int ch = -1;
-    while ((ch = getopt(argc, argv, "v:d:m:p:h:r:l")) != -1) {
-        switch (ch) {
-            case 'v' : {
-                blockDevicePath = optarg;
-                break;
-            }
-            case 'd' : {
-                copyDataDirPath = optarg;
-                break;
-            }
-            case 'm' : {
-                copyMetaDirPath = optarg;
-                break;
-            }
-            case 'p' : {
-                prevCopyMetaDirPath = optarg;
-                break;
-            }
-            case 'r' : {
-                isRestore = true;
-                break;
-            }
-            case 'l' : {
-                logLevel = optarg;
-                break;
-            }
-            case 'h' : {
-                PrintHelp();
-                return 0;
-            }
+    GetOptionResult result = GetOption(argv + 1, argc - 1, "v:d:m:p:h:r:l", {});
+    for (const OptionResult opt: result.opts) {
+        if (opt.option == "v") {
+            blockDevicePath = opt.value;
+        } else if (opt.option == "d") {
+            copyDataDirPath = opt.value;
+        } else if (opt.option == "m") {
+            copyMetaDirPath = opt.value;
+        } else if (opt.option == "p") {
+            prevCopyMetaDirPath = opt.value;
+        } else if (opt.option == "r") {
+            isRestore = true;
+        } else if (opt.option == "l") {
+            logLevel = opt.value;
+        } else if (opt.option == "h") {
+            PrintHelp();
+            return 0;
         }
     }
-#endif
 
     if (blockDevicePath.empty() || copyDataDirPath.empty() || copyMetaDirPath.empty()) {
         PrintHelp();

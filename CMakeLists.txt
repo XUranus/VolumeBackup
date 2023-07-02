@@ -1,6 +1,5 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.8)
-PROJECT ("vbkup")
-
+PROJECT("VolumeProtect")
 ADD_SUBDIRECTORY(module/minijson)
 ADD_SUBDIRECTORY(module/minilogger)
 FILE(GLOB_RECURSE VOLUME_BACKUP_SOURCE "src/*.cpp")
@@ -13,14 +12,22 @@ INCLUDE_DIRECTORIES(
 
 ADD_EXECUTABLE (vbkup
     ${VOLUME_BACKUP_SOURCE}
-    "main.cpp"
+    "vbkup.cpp"
+    "GetOption.cpp"
+)
+
+ADD_EXECUTABLE (voltool
+    "voltool.cpp"
+    "GetOption.cpp"
+    "src/VolumeUtils.cpp"
 )
 
 IF (CMAKE_VERSION VERSION_GREATER 3.12)
     SET_PROPERTY(TARGET vbkup PROPERTY CXX_STANDARD 17)
+    SET_PROPERTY(TARGET voltool PROPERTY CXX_STANDARD 17)
 ENDIF()
 
-
+# build vbkup executable
 IF(${CMAKE_HOST_WIN32})
     TARGET_LINK_LIBRARIES(
         vbkup
@@ -28,7 +35,6 @@ IF(${CMAKE_HOST_WIN32})
         minijson
         minilogger
     )
-
 ELSE()
     # require linux-utils
     TARGET_LINK_LIBRARIES(
@@ -41,5 +47,25 @@ ELSE()
         minijson
         minilogger
     )
+ENDIF()
 
+# build voltool executable
+IF(${CMAKE_HOST_WIN32})
+    TARGET_LINK_LIBRARIES(
+        voltool
+        # third part dependency provided by XUranus
+        minijson
+        minilogger
+    )
+ELSE()
+    # require linux-utils
+    TARGET_LINK_LIBRARIES(
+        voltool
+        # libblkid libparted
+        blkid
+        parted
+        # third part dependency provided by XUranus
+        minijson
+        minilogger
+)
 ENDIF()
