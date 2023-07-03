@@ -13,9 +13,46 @@
 #include "GetOption.h"
 #include "VolumeUtils.h"
 #include <iostream>
+#include <cstdint>
+#include <string>
 
 using namespace volumeprotect;
 using namespace xuranus::getopt;
+
+#ifdef _WIN32
+enum class PartitionStyle {
+    GPT,
+    MBR,
+    RAW
+};
+
+struct MBRPartition {
+    unsigned char   partitionType;
+    bool            bootIndicator;
+    bool            recognized;
+    uint32_t        hiddenSectors;
+    std::string     uuid;               // MBR GUID
+};
+
+struct GPTPartition {
+    std::string     partitionType;
+    std::string     uuid;               // GPT uuid
+    uint64_t        attribute;
+    std::string     name;
+};
+
+struct PartitionEntry {
+    PartitionStyle  partitionStyle;
+    uint64_t        startingOffset;
+    uint64_t        partitionLength;
+    uint32_t        partitionNumber;
+    bool            rewritePartition;
+    bool            isServicePartition;
+    MBRPartition    mbr;
+    GPTPartition    gpt;
+};
+#endif
+
 
 void PrintHelp()
 {
