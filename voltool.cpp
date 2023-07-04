@@ -18,6 +18,9 @@
 #include <string>
 
 #ifdef _WIN32
+#define UNICODE
+#include <locale>
+#include <codecvt>
 #include <Windows.h>
 #include <devpkey.h>
 #include <SetupAPI.h>
@@ -67,135 +70,139 @@ void PrintHelp()
 }
 
 #ifdef _WIN32
-// Function to retrieve the device path from a device information set and device data
-std::wstring GetDevicePath(HDEVINFO deviceInfoSet, PSP_DEVINFO_DATA deviceInfoData)
+std::wstring Utf8ToUtf16(const std::string& str)
 {
-    DWORD requiredSize = 0;
-
-    // Retrieve the required size for the device path
-    SetupDiGetDeviceInstanceIdW(deviceInfoSet, deviceInfoData, nullptr, 0, &requiredSize);
-
-    std::vector<wchar_t> buffer(requiredSize);
-    if (!SetupDiGetDeviceInstanceIdW(deviceInfoSet, deviceInfoData, buffer.data(), requiredSize, nullptr))
-    {
-        std::cout << "Failed to retrieve device instance ID. Error code: " << GetLastError() << std::endl;
-        return L"";
-    }
-
-    // Extract the device path from the device instance ID
-    std::wstring deviceInstanceID(buffer.data());
-    size_t pos = deviceInstanceID.find(L'\\');
-    if (pos != std::wstring::npos)
-    {
-        return deviceInstanceID.substr(pos + 1);
-    }
-
-    return L"";
+    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+    std::wstring_convert<ConvertTypeX> converterX;
+    std::wstring wstr = converterX.from_bytes(str);
+    return wstr;
 }
 
-// Function to retrieve the list of storage devices and their partition information
-std::vector<PARTITION_INFORMATION_EX> GetStorageDevices()
+std::string Utf16ToUtf8(const std::wstring& wstr)
 {
-    std::vector<PARTITION_INFORMATION_EX> partitionInfoList;
+    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+    std::wstring_convert<ConvertTypeX> converterX;
+    return converterX.to_bytes(wstr);
+}
 
-    // Create a device information set for storage devices
-    HDEVINFO deviceInfoSet = SetupDiGetClassDevsW(
-        &GUID_DEVINTERFACE_DISK,
-        NULL,
-        NULL,
-        DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+std::vector<std::wstring> GetStorageDevicesW()
+{
+    std::vector<std::wstring> wDevices;
+    HANDLE hFindVolume;
+    TCHAR volumeName[MAX_PATH];
+    TCHAR volumePathNames[MAX_PATH];
+    DWORD bufferSize;
+    DWORD error;
 
-    if (deviceInfoSet == INVALID_HANDLE_VALUE)
-    {
-        std::cout << "Failed to retrieve device information set. Error code: " << GetLastError() << std::endl;
-        return partitionInfoList;
+    hFindVolume = FindFirstVolume(volumeName, ARRAYSIZE(volumeName));
+    if (hFindVolume == INVALID_HANDLE_VALUE) {
+        error = GetLastError();
+        std::cout << "Error: " << error << std::endl;
+        return wDevices;
     }
 
-    // Enumerate the devices
-    SP_DEVINFO_DATA deviceInfoData = { 0 };
-    deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
-    DWORD deviceIndex = 0;
+    std::cout << "Volume paths:" << std::endl;
 
-    while (SetupDiEnumDeviceInfo(deviceInfoSet, deviceIndex, &deviceInfoData))
-    {
-        // Retrieve the device path
-        std::wstring devicePath = GetDevicePath(deviceInfoSet, &deviceInfoData);
+    do {
+        std::cout << "Volume: " << volumeName << std::endl;
 
-        if (!devicePath.empty())
-        {
-            // Open the device
-            HANDLE hDevice = CreateFileW(
-                devicePath.c_str(),
-                GENERIC_READ,
-                FILE_SHARE_READ | FILE_SHARE_WRITE,
-                NULL,
-                OPEN_EXISTING,
-                0,
-                NULL);
-
-            if (hDevice != INVALID_HANDLE_VALUE)
-            {
-                // Query the partition information
-                PARTITION_INFORMATION_EX partitionInfo = { 0 };
-                DWORD bytesReturned = 0;
-
-                BOOL result = DeviceIoControl(
-                    hDevice,
-                    IOCTL_DISK_GET_PARTITION_INFO_EX,
-                    NULL,
-                    0,
-                    &partitionInfo,
-                    sizeof(PARTITION_INFORMATION_EX),
-                    &bytesReturned,
-                    NULL);
-
-                if (result)
-                {
-                    partitionInfoList.push_back(partitionInfo);
-                }
-                else
-                {
-                    std::cout << "Failed to retrieve partition information for device: " << devicePath.c_str() << ". Error code: " << GetLastError() << std::endl;
-                }
-
-                CloseHandle(hDevice);
-            }
-            else
-            {
-                std::cout << "Failed to open device: " << devicePath.c_str() << ". Error code: " << GetLastError() << std::endl;
+        if (!GetVolumePathNamesForVolumeName(volumeName, volumePathNames, ARRAYSIZE(volumePathNames), &bufferSize)) {
+            error = GetLastError();
+            std::cout << "Error: " << error << std::endl;
+        } else {
+            TCHAR* currentPath = volumePathNames;
+            while (*currentPath) {
+                std::cout << "Path: " << currentPath << std::endl;
+                currentPath += lstrlen(currentPath) + 1; // Move to the next path
             }
         }
+    } while (FindNextVolume(hFindVolume, volumeName, ARRAYSIZE(volumeName)));
 
-        deviceIndex++;
+    FindVolumeClose(hFindVolume);
+
+    return wDevices;
+}
+
+void PrintVolumeListWin32()
+{
+    std::cout << "PrintVolumeListWin32" << std::endl;
+    int deviceNo = 0;
+    for (const std::wstring& wDevicePath : GetStorageDevicesW()) {
+        std::wcout << L"[" << ++deviceNo << L"] " << wDevicePath << std::endl;
     }
+    return;
+}
 
-    // Clean up the device information set
-    SetupDiDestroyDeviceInfoList(deviceInfoSet);
-
-    return partitionInfoList;
+void PrintPartitionStructWin32(const PARTITION_INFORMATION_EX& partition)
+{
+    std::cout << "Starting Offset: " << partition.StartingOffset.QuadPart << " bytes" << std::endl;
+    std::cout << "Partition Length: " << partition.PartitionLength.QuadPart << " bytes" << std::endl;
+    std::cout << "Partition Number: " << partition.PartitionNumber << " bytes" << std::endl;
+    std::cout << "Partition Rewrite: " << partition.RewritePartition << " bytes" << std::endl;
+    // Add more information as needed
+    if (partition.PartitionStyle == PARTITION_STYLE_RAW) {
+        std::cout << "Partition Style: RAW" << std::endl;
+    } else if (partition.PartitionStyle == PARTITION_STYLE_GPT) {
+        std::cout << "Partition Style: GPT" << std::endl;
+        std::wcout << L"Partition Name: " << partition.Gpt.Name << std::endl;
+    } else if (partition.PartitionStyle == PARTITION_STYLE_MBR) {
+        std::cout << "Partition Style: MBR" << std::endl;
+    }
 }
 
 void PrintVolumeInfoWin32(const std::string& volumePath)
 {
-    std::vector<PARTITION_INFORMATION_EX> partitions = GetStorageDevices();
-    std::cout << "partition count = " << partitions.size() << std::endl;
+    std::cout << "PrintVolumeInfoWin32 " << volumePath << std::endl;
+    std::wstring wDevicePath = Utf8ToUtf16(volumePath);
+    // Open the device
+    HANDLE hDevice = ::CreateFileW(
+        wDevicePath.c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL);
+    if (hDevice != INVALID_HANDLE_VALUE) {
+        // Query the partition information
+        PARTITION_INFORMATION_EX partition = { 0 };
+        DWORD bytesReturned = 0;
 
-    // Display the partition information
-    for (const auto& partition : partitions)
-    {
-        std::cout << "Partition Information:" << std::endl;
-        std::cout << "Partition Style: " << partition.PartitionStyle << std::endl;
-        std::cout << "Starting Offset: " << partition.StartingOffset.QuadPart << " bytes" << std::endl;
-        std::cout << "Partition Length: " << partition.PartitionLength.QuadPart << " bytes" << std::endl;
-        // Add more information as needed
-        std::cout << std::endl;
+        BOOL result = ::DeviceIoControl(
+            hDevice,
+            IOCTL_DISK_GET_PARTITION_INFO_EX,
+            NULL,
+            0,
+            &partition,
+            sizeof(PARTITION_INFORMATION_EX),
+            &bytesReturned,
+            NULL);
+
+        if (result) {
+            PrintPartitionStructWin32(partition);
+        } else {
+            std::wcout
+                << L"Failed to retrieve partition information for device: " << wDevicePath.c_str()
+                << ". Error code: " << ::GetLastError() << std::endl;
+            return;
+        }
+        ::CloseHandle(hDevice);
+    } else {
+        std::wcout << L"Failed to open device: " << wDevicePath.c_str() << L". Error code: " << ::GetLastError() << std::endl;
+        return;
     }
+    return;
 }
 
 
 #endif
 
 #ifdef __linux__
+void PrintVolumeListLinux()
+{
+    std::cout << "TODO:: PrintVolumeListLinux" << std::endl;
+}
+
 void PrintVolumeInfoLinux(const std::string& volumePath)
 {
     std::cout << "UUID:  " << util::ReadVolumeUUID(volumePath) << std::endl;
@@ -220,9 +227,8 @@ int main(int argc, char** argv)
     GetOptionResult result = GetOption(
         const_cast<const char**>(argv) + 1,
         argc - 1,
-        "v:h",
-        { "volume=", "help" });
-    std::cout << result.args.size() << " " << result.opts.size() << std::endl;
+        "v:lh",
+        { "volume=", "list", "help" });
     for (const OptionResult opt: result.opts) {
         if (opt.option == "h" || opt.option == "help") {
             PrintHelp();
@@ -234,6 +240,15 @@ int main(int argc, char** argv)
 #endif
 #ifdef _WIN32
             PrintVolumeInfoWin32(volumePath);
+#endif
+            return 0;
+        } else if (opt.option == "l" || opt.option == "list") {
+            std::string volumePath = opt.value;
+#ifdef __linux__
+            PrintVolumeListLinux();
+#endif
+#ifdef _WIN32
+            PrintVolumeListWin32();
 #endif
             return 0;
         }
