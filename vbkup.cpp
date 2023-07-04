@@ -84,6 +84,7 @@ int ExecVolumeBackup(
 
 int main(int argc, const char** argv)
 {
+    std::cout << "=== vbkup ===" << std::endl;
     std::string blockDevicePath = "";
     std::string copyDataDirPath = "";
     std::string copyMetaDirPath = "";

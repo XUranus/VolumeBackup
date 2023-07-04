@@ -53,6 +53,7 @@ ENDIF()
 IF(${CMAKE_HOST_WIN32})
     TARGET_LINK_LIBRARIES(
         voltool
+        Setupapi
         # third part dependency provided by XUranus
         minijson
         minilogger
