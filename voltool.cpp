@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <optional>
 
 #ifdef _WIN32
 #define UNICODE
@@ -70,6 +71,16 @@ void PrintHelp()
 }
 
 #ifdef _WIN32
+#define FAILED(hr) (((HRESULT)(hr)) < 0)
+
+std::wstring GUID2WStr(GUID guid)
+{
+    LPOLESTR wguidBuf = nullptr;
+    HRESULT hr = ::StringFromIID(guid, &wguidBuf);
+    std::wstring wGuidStr(wguidBuf);
+    return wGuidStr;
+}
+
 std::wstring Utf8ToUtf16(const std::string& str)
 {
     using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
@@ -137,16 +148,23 @@ void PrintPartitionStructWin32(const PARTITION_INFORMATION_EX& partition)
 {
     std::cout << "Starting Offset: " << partition.StartingOffset.QuadPart << " bytes" << std::endl;
     std::cout << "Partition Length: " << partition.PartitionLength.QuadPart << " bytes" << std::endl;
-    std::cout << "Partition Number: " << partition.PartitionNumber << " bytes" << std::endl;
-    std::cout << "Partition Rewrite: " << partition.RewritePartition << " bytes" << std::endl;
+    std::cout << "Partition Number: " << partition.PartitionNumber << std::endl;
+    std::cout << "Partition Rewrite: " << partition.RewritePartition << std::endl;
     // Add more information as needed
     if (partition.PartitionStyle == PARTITION_STYLE_RAW) {
         std::cout << "Partition Style: RAW" << std::endl;
     } else if (partition.PartitionStyle == PARTITION_STYLE_GPT) {
         std::cout << "Partition Style: GPT" << std::endl;
         std::wcout << L"Partition Name: " << partition.Gpt.Name << std::endl;
+        std::wcout << L"Partition Type: " << GUID2WStr(partition.Gpt.PartitionType) << std::endl;
+        std::wcout << L"Partition Id: " << GUID2WStr(partition.Gpt.PartitionId) << std::endl;
+        std::wcout << L"Partition Attributes: " << partition.Gpt.Attributes << std::endl;
     } else if (partition.PartitionStyle == PARTITION_STYLE_MBR) {
         std::cout << "Partition Style: MBR" << std::endl;
+        std::wcout << L"Partition Type: " << partition.Mbr.PartitionType << std::endl;
+        std::wcout << L"Partition BootIndicator: " << partition.Mbr.BootIndicator << std::endl;
+        std::wcout << L"Partition RecognizedPartition: " << partition.Mbr.RecognizedPartition << std::endl;
+        std::wcout << L"Partition HiddenSectors: " << partition.Mbr.HiddenSectors << std::endl;
     }
 }
 
@@ -161,7 +179,7 @@ void PrintVolumeInfoWin32(const std::string& volumePath)
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         NULL,
         OPEN_EXISTING,
-        0,
+        FILE_FLAG_BACKUP_SEMANTICS,
         NULL);
     if (hDevice != INVALID_HANDLE_VALUE) {
         // Query the partition information
