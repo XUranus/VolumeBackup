@@ -123,20 +123,21 @@ int main(int argc, const char** argv)
     std::cout << "logLevel: " << logLevel << std::endl;
 
     if (logLevel == "INFO") {
-        Logger::GetInstance().SetLogLevel(LoggerLevel::INFO);
+        Logger::GetInstance()->SetLogLevel(LoggerLevel::INFO);
     } else if (logLevel == "DEBUG") {
-        Logger::GetInstance().SetLogLevel(LoggerLevel::DEBUG);
+        Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
     }
 
     if (isRestore) {
         std::cout << "Doing copy restore" << std::endl;
-        return ExecVolumeRestore(blockDevicePath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeRestore(blockDevicePath, copyDataDirPath, copyMetaDirPath);
     } else if (prevCopyMetaDirPath.empty()) {
         std::cout << "Doing full backup" << std::endl;
-        return ExecVolumeBackup(CopyType::FULL, blockDevicePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeBackup(CopyType::FULL, blockDevicePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
     } else {
         std::cout << "Doing increment backup" << std::endl;
-        return ExecVolumeBackup(CopyType::INCREMENT, blockDevicePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeBackup(CopyType::INCREMENT, blockDevicePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
     }
+    Logger::GetInstance()->Destroy();
     return 0;
 }
