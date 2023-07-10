@@ -35,7 +35,7 @@ VolumeBlockAllocator::~VolumeBlockAllocator()
 char* VolumeBlockAllocator::bmalloc()
 {
     std::lock_guard<std::mutex> lk(m_mutex);
-    for (int i = 0; i < m_blockNum; i++)
+    for (int i = 0; i < static_cast<int>(m_blockNum); i++)
     {
         if (!m_allocTable[i]) {
             m_allocTable[i] = true;
@@ -50,8 +50,8 @@ char* VolumeBlockAllocator::bmalloc()
 void VolumeBlockAllocator::bfree(char* ptr)
 {
     std::lock_guard<std::mutex> lk(m_mutex);
-    int index = (ptr - m_pool) / m_blockSize;
-    DBGLOG("bfree address = %p, index = %d", ptr, index);
+    uint64_t index = (ptr - m_pool) / static_cast<uint64_t>(m_blockSize);
+    DBGLOG("bfree address = %p, index = %lu", ptr, index);
     if ((ptr - m_pool) % m_blockSize == 0) {
         m_allocTable[index] = false;
         return;

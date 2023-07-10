@@ -12,6 +12,7 @@
 
 #include "GetOption.h"
 #include "VolumeUtils.h"
+
 #include <iostream>
 #include <cstdint>
 #include <vector>
@@ -183,6 +184,77 @@ void PrintVolumeInfoWin32(const std::string& volumePath)
         NULL);
     if (hDevice != INVALID_HANDLE_VALUE) {
         // Query the partition information
+        WCHAR volumeNameBuffer[MAX_PATH] = { 0 };
+        DWORD nVolumeNameSize = MAX_PATH;
+        DWORD volumeSerialNumber = 0;
+        DWORD maximumComponentLength = 0;
+        DWORD fileSystemFlags = 0;
+        WCHAR fileSystemNameBuffer[MAX_PATH] = { 0 };
+        DWORD nFileSystemNameSize = MAX_PATH;
+        BOOL result = ::GetVolumeInformationByHandleW(
+            hDevice,
+            volumeNameBuffer,
+            nVolumeNameSize,
+            &volumeSerialNumber,
+            &maximumComponentLength,
+            &fileSystemFlags,
+            fileSystemNameBuffer,
+            nFileSystemNameSize
+        );
+        if (result) {
+            std::wcout << L"VolumeName: " << volumeNameBuffer << std::endl;
+            std::wcout << L"VolumeSerialNumber: " << volumeSerialNumber << std::endl;
+            std::wcout << L"MaximumComponentLength: " << maximumComponentLength << std::endl;
+            std::wcout << L"FileSystemFlags: " << fileSystemFlags << std::endl;
+            std::wcout << L"FileSystemName: " << fileSystemNameBuffer << std::endl;
+            // Get Volume Size
+            DWORD bytesReturned;
+            DISK_GEOMETRY diskGeometry;
+            if (!::DeviceIoControl(hDevice,
+                    IOCTL_DISK_GET_DRIVE_GEOMETRY,
+                    NULL,
+                    0,
+                    &diskGeometry,
+                    sizeof(DISK_GEOMETRY),
+                    &bytesReturned,
+                    NULL)) {
+                std::cout << "Failed to read volume size" << std::endl;
+            } else {
+                LONGLONG volumeSize = diskGeometry.Cylinders.QuadPart *
+                    diskGeometry.TracksPerCylinder *
+                    diskGeometry.SectorsPerTrack *
+                    diskGeometry.BytesPerSector;
+                std::cout << "VolumeSize: " << volumeSize << std::endl;
+            }
+        } else {
+            std::wcout
+                << L"Failed to retrieve volume information for device: " << wDevicePath.c_str()
+                << ". Error code: " << ::GetLastError() << std::endl;
+            return;
+        }
+        ::CloseHandle(hDevice);
+    } else {
+        std::wcout << L"Failed to open device: " << wDevicePath.c_str() << L". Error code: " << ::GetLastError() << std::endl;
+        return;
+    }
+    return;
+}
+
+void PrintPartitionInfoWin32(const std::string& devicePath)
+{
+    std::cout << "PrintPartitionInfoWin32 " << devicePath << std::endl;
+    std::wstring wDevicePath = Utf8ToUtf16(devicePath);
+    // Open the device
+    HANDLE hDevice = ::CreateFileW(
+        wDevicePath.c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS,
+        NULL);
+    if (hDevice != INVALID_HANDLE_VALUE) {
+        // Query the partition information
         PARTITION_INFORMATION_EX partition = { 0 };
         DWORD bytesReturned = 0;
 
@@ -213,12 +285,17 @@ void PrintVolumeInfoWin32(const std::string& volumePath)
 }
 
 
+
 #endif
 
 #ifdef __linux__
 void PrintVolumeListLinux()
 {
     std::cout << "TODO:: PrintVolumeListLinux" << std::endl;
+}
+
+void PrintPartitionInfoLinux(const std::string& volumePath) {
+
 }
 
 void PrintVolumeInfoLinux(const std::string& volumePath)
@@ -245,19 +322,28 @@ int main(int argc, char** argv)
     GetOptionResult result = GetOption(
         const_cast<const char**>(argv) + 1,
         argc - 1,
-        "v:lh",
-        { "volume=", "list", "help" });
+        "v:p:lh",
+        { "volume=", "partition=", "list", "help" });
     for (const OptionResult opt: result.opts) {
         if (opt.option == "h" || opt.option == "help") {
             PrintHelp();
             return 0;
         } else if (opt.option == "v" || opt.option == "volume") {
-            std::string volumePath = opt.value;
+            std::string devicePath = opt.value;
 #ifdef __linux__
-            PrintVolumeInfoLinux(volumePath);
+            PrintVolumeInfoLinux(devicePath);
 #endif
 #ifdef _WIN32
-            PrintVolumeInfoWin32(volumePath);
+            PrintVolumeInfoWin32(devicePath);
+#endif
+            return 0;
+        } else if (opt.option == "p" || opt.option == "partition") {
+            std::string devicePath = opt.value;
+#ifdef __linux__
+            PrintPartitionInfoLinux(devicePath);
+#endif
+#ifdef _WIN32
+            PrintPartitionInfoWin32(devicePath);
 #endif
             return 0;
         } else if (opt.option == "l" || opt.option == "list") {

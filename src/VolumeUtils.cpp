@@ -119,7 +119,7 @@ bool volumeprotect::util::CheckDirectoryExistence(const std::string& path)
             return true;
         }
         return std::filesystem::create_directories(path);
-    } catch (const std::exception& e) {
+    } catch (...) {
         return false;
     }
 }

@@ -4,6 +4,12 @@ ADD_SUBDIRECTORY(module/minijson)
 ADD_SUBDIRECTORY(module/minilogger)
 FILE(GLOB_RECURSE VOLUME_BACKUP_SOURCE "src/*.cpp")
 
+IF(${CMAKE_HOST_WIN32})
+    SET(CMAKE_CXX_FLAGS_DEBUG "/MTd /Zi /Ob0 /Od /RTC1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
+ENDIF()
+
 INCLUDE_DIRECTORIES(
     "include"
     "module/minijson"
@@ -16,11 +22,18 @@ ADD_EXECUTABLE (vbkup
     "GetOption.cpp"
 )
 
-ADD_EXECUTABLE (voltool
-    "voltool.cpp"
-    "GetOption.cpp"
-    "src/VolumeUtils.cpp"
-)
+IF(${CMAKE_HOST_WIN32})
+    ADD_EXECUTABLE (voltool
+        "voltool.cpp"
+        "GetOption.cpp"
+    )
+ELSE()
+    ADD_EXECUTABLE (voltool
+        "voltool.cpp"
+        "GetOption.cpp"
+        "src/VolumeUtils.cpp"
+    )
+ENDIF()
 
 IF (CMAKE_VERSION VERSION_GREATER 3.12)
     SET_PROPERTY(TARGET vbkup PROPERTY CXX_STANDARD 17)
@@ -55,8 +68,8 @@ IF(${CMAKE_HOST_WIN32})
         voltool
         Setupapi
         # third part dependency provided by XUranus
-        minijson
-        minilogger
+        minijson_static
+        minilogger_static
     )
 ELSE()
     # require linux-utils
