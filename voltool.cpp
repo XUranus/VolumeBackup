@@ -9,7 +9,6 @@
  * ==================================================================
  */
 
-
 #include "GetOption.h"
 #include "VolumeUtils.h"
 
@@ -18,6 +17,7 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <stdexcept>
 
 #ifdef _WIN32
 #define UNICODE
@@ -28,52 +28,47 @@
 #include <SetupAPI.h>
 #endif
 
+#ifdef __linux__
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#include <unistd.h>
+#endif
+
 using namespace volumeprotect;
 using namespace xuranus::getopt;
 
-#ifdef _WIN32
-enum class PartitionStyle {
-    GPT,
-    MBR,
-    RAW
+class SystemApiException : public std::exception {
+public:
+    // Constructor
+    SystemApiException(uint32_t errorCode) : m_message(nullptr), m_errorCode(errorCode) {}
+    SystemApiException(const char* message, uint32_t errorCode) : m_message(message), m_errorCode(errorCode) {}
+
+    // Override the what() method to provide a description of the exception
+    const char* what() const noexcept override {
+        return "TODO"; // TODO
+    }
+
+private:
+    const char* m_message;
+    uint32_t    m_errorCode;
 };
 
-struct MBRPartition {
-    unsigned char   partitionType;
-    bool            bootIndicator;
-    bool            recognized;
-    uint32_t        hiddenSectors;
-    std::string     uuid;               // MBR GUID
+/**
+ * @brief logic volume info
+ * https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew
+ * 
+ */
+struct VolumeInfo {
+    std::string     volumeName;
+    uint64_t        volumeSize;
+    uint32_t        serialNumber;
+    uint32_t        maximumComponentLength; // maximum length of filename the fs support
+    std::string     fileSystemName;
+    uint32_t        fileSystemFlags;
 };
-
-struct GPTPartition {
-    std::string     partitionType;
-    std::string     uuid;               // GPT uuid
-    uint64_t        attribute;
-    std::string     name;
-};
-
-struct PartitionEntry {
-    PartitionStyle  partitionStyle;
-    uint64_t        startingOffset;
-    uint64_t        partitionLength;
-    uint32_t        partitionNumber;
-    bool            rewritePartition;
-    bool            isServicePartition;
-    MBRPartition    mbr;
-    GPTPartition    gpt;
-};
-#endif
-
-
-void PrintHelp()
-{
-    std::cout << "usage: voltool -v [device path]" << std::endl;
-}
 
 #ifdef _WIN32
-#define FAILED(hr) (((HRESULT)(hr)) < 0)
-
 std::wstring GUID2WStr(GUID guid)
 {
     LPOLESTR wguidBuf = nullptr;
@@ -97,264 +92,211 @@ std::string Utf16ToUtf8(const std::wstring& wstr)
     return converterX.to_bytes(wstr);
 }
 
-std::vector<std::wstring> GetStorageDevicesW()
+uint64_t GetVolumeSizeWin32(const std::string& devicePath)
 {
-    std::vector<std::wstring> wDevices;
-    HANDLE hFindVolume;
-    TCHAR volumeName[MAX_PATH];
-    TCHAR volumePathNames[MAX_PATH];
-    DWORD bufferSize;
-    DWORD error;
-
-    hFindVolume = FindFirstVolume(volumeName, ARRAYSIZE(volumeName));
-    if (hFindVolume == INVALID_HANDLE_VALUE) {
-        error = GetLastError();
-        std::cout << "Error: " << error << std::endl;
-        return wDevices;
-    }
-
-    std::cout << "Volume paths:" << std::endl;
-
-    do {
-        std::cout << "Volume: " << volumeName << std::endl;
-
-        if (!GetVolumePathNamesForVolumeName(volumeName, volumePathNames, ARRAYSIZE(volumePathNames), &bufferSize)) {
-            error = GetLastError();
-            std::cout << "Error: " << error << std::endl;
-        } else {
-            TCHAR* currentPath = volumePathNames;
-            while (*currentPath) {
-                std::cout << "Path: " << currentPath << std::endl;
-                currentPath += lstrlen(currentPath) + 1; // Move to the next path
-            }
-        }
-    } while (FindNextVolume(hFindVolume, volumeName, ARRAYSIZE(volumeName)));
-
-    FindVolumeClose(hFindVolume);
-
-    return wDevices;
-}
-
-void PrintVolumeListWin32()
-{
-    std::cout << "PrintVolumeListWin32" << std::endl;
-    int deviceNo = 0;
-    for (const std::wstring& wDevicePath : GetStorageDevicesW()) {
-        std::wcout << L"[" << ++deviceNo << L"] " << wDevicePath << std::endl;
-    }
-    return;
-}
-
-void PrintPartitionStructWin32(const PARTITION_INFORMATION_EX& partition)
-{
-    std::cout << "Starting Offset: " << partition.StartingOffset.QuadPart << " bytes" << std::endl;
-    std::cout << "Partition Length: " << partition.PartitionLength.QuadPart << " bytes" << std::endl;
-    std::cout << "Partition Number: " << partition.PartitionNumber << std::endl;
-    std::cout << "Partition Rewrite: " << partition.RewritePartition << std::endl;
-    // Add more information as needed
-    if (partition.PartitionStyle == PARTITION_STYLE_RAW) {
-        std::cout << "Partition Style: RAW" << std::endl;
-    } else if (partition.PartitionStyle == PARTITION_STYLE_GPT) {
-        std::cout << "Partition Style: GPT" << std::endl;
-        std::wcout << L"Partition Name: " << partition.Gpt.Name << std::endl;
-        std::wcout << L"Partition Type: " << GUID2WStr(partition.Gpt.PartitionType) << std::endl;
-        std::wcout << L"Partition Id: " << GUID2WStr(partition.Gpt.PartitionId) << std::endl;
-        std::wcout << L"Partition Attributes: " << partition.Gpt.Attributes << std::endl;
-    } else if (partition.PartitionStyle == PARTITION_STYLE_MBR) {
-        std::cout << "Partition Style: MBR" << std::endl;
-        std::wcout << L"Partition Type: " << partition.Mbr.PartitionType << std::endl;
-        std::wcout << L"Partition BootIndicator: " << partition.Mbr.BootIndicator << std::endl;
-        std::wcout << L"Partition RecognizedPartition: " << partition.Mbr.RecognizedPartition << std::endl;
-        std::wcout << L"Partition HiddenSectors: " << partition.Mbr.HiddenSectors << std::endl;
-    }
-}
-
-void PrintVolumeInfoWin32(const std::string& volumePath)
-{
-    std::cout << "PrintVolumeInfoWin32 " << volumePath << std::endl;
-    std::wstring wDevicePath = Utf8ToUtf16(volumePath);
-    // Open the device
-    HANDLE hDevice = ::CreateFileW(
-        wDevicePath.c_str(),
-        GENERIC_READ,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS,
-        NULL);
-    if (hDevice != INVALID_HANDLE_VALUE) {
-        // Query the partition information
-        WCHAR volumeNameBuffer[MAX_PATH] = { 0 };
-        DWORD nVolumeNameSize = MAX_PATH;
-        DWORD volumeSerialNumber = 0;
-        DWORD maximumComponentLength = 0;
-        DWORD fileSystemFlags = 0;
-        WCHAR fileSystemNameBuffer[MAX_PATH] = { 0 };
-        DWORD nFileSystemNameSize = MAX_PATH;
-        BOOL result = ::GetVolumeInformationByHandleW(
-            hDevice,
-            volumeNameBuffer,
-            nVolumeNameSize,
-            &volumeSerialNumber,
-            &maximumComponentLength,
-            &fileSystemFlags,
-            fileSystemNameBuffer,
-            nFileSystemNameSize
-        );
-        if (result) {
-            std::wcout << L"VolumeName: " << volumeNameBuffer << std::endl;
-            std::wcout << L"VolumeSerialNumber: " << volumeSerialNumber << std::endl;
-            std::wcout << L"MaximumComponentLength: " << maximumComponentLength << std::endl;
-            std::wcout << L"FileSystemFlags: " << fileSystemFlags << std::endl;
-            std::wcout << L"FileSystemName: " << fileSystemNameBuffer << std::endl;
-            // Get Volume Size
-            DWORD bytesReturned;
-            DISK_GEOMETRY diskGeometry;
-            if (!::DeviceIoControl(hDevice,
-                    IOCTL_DISK_GET_DRIVE_GEOMETRY,
-                    NULL,
-                    0,
-                    &diskGeometry,
-                    sizeof(DISK_GEOMETRY),
-                    &bytesReturned,
-                    NULL)) {
-                std::cout << "Failed to read volume size" << std::endl;
-            } else {
-                LONGLONG volumeSize = diskGeometry.Cylinders.QuadPart *
-                    diskGeometry.TracksPerCylinder *
-                    diskGeometry.SectorsPerTrack *
-                    diskGeometry.BytesPerSector;
-                std::cout << "VolumeSize: " << volumeSize << std::endl;
-            }
-        } else {
-            std::wcout
-                << L"Failed to retrieve volume information for device: " << wDevicePath.c_str()
-                << ". Error code: " << ::GetLastError() << std::endl;
-            return;
-        }
-        ::CloseHandle(hDevice);
-    } else {
-        std::wcout << L"Failed to open device: " << wDevicePath.c_str() << L". Error code: " << ::GetLastError() << std::endl;
-        return;
-    }
-    return;
-}
-
-void PrintPartitionInfoWin32(const std::string& devicePath)
-{
-    std::cout << "PrintPartitionInfoWin32 " << devicePath << std::endl;
     std::wstring wDevicePath = Utf8ToUtf16(devicePath);
     // Open the device
     HANDLE hDevice = ::CreateFileW(
         wDevicePath.c_str(),
         GENERIC_READ,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
+        nullptr,
         OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS,
-        NULL);
-    if (hDevice != INVALID_HANDLE_VALUE) {
-        // Query the partition information
-        PARTITION_INFORMATION_EX partition = { 0 };
-        DWORD bytesReturned = 0;
-
-        BOOL result = ::DeviceIoControl(
-            hDevice,
-            IOCTL_DISK_GET_PARTITION_INFO_EX,
-            NULL,
-            0,
-            &partition,
-            sizeof(PARTITION_INFORMATION_EX),
-            &bytesReturned,
-            NULL);
-
-        if (result) {
-            PrintPartitionStructWin32(partition);
-        } else {
-            std::wcout
-                << L"Failed to retrieve partition information for device: " << wDevicePath.c_str()
-                << ". Error code: " << ::GetLastError() << std::endl;
-            return;
-        }
-        ::CloseHandle(hDevice);
-    } else {
-        std::wcout << L"Failed to open device: " << wDevicePath.c_str() << L". Error code: " << ::GetLastError() << std::endl;
-        return;
+        nullptr);
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        // Failed to open handle
+        throw SystemApiException("failed to open volume", ::GetLastError());
+        return 0;
     }
-    return;
+    // Query the length information
+    GET_LENGTH_INFORMATION lengthInfo {};
+    DWORD bytesReturned = 0;
+    if (!::DeviceIoControl(
+        hDevice,
+        IOCTL_DISK_GET_LENGTH_INFO,
+        nullptr,
+        0,
+        &lengthInfo,
+        sizeof(GET_LENGTH_INFORMATION),
+        &bytesReturned,
+        nullptr)) {
+        // Failed to query length
+        ::CloseHandle(hDevice);
+        throw SystemApiException("failed to call IOCTL_DISK_GET_LENGTH_INFO", ::GetLastError());
+        return 0;
+    }
+    ::CloseHandle(hDevice);
+    return lengthInfo.Length.QuadPart;
 }
 
-
-
+VolumeInfo GetVolumeInfoWin32(const std::string& volumePath)
+{
+    std::wstring wDevicePath = Utf8ToUtf16(volumePath);
+    VolumeInfo volumeInfo {};
+    // Open the device
+    HANDLE hDevice = ::CreateFileW(
+        wDevicePath.c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS,
+        nullptr);
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        throw SystemApiException("failed to open volume", ::GetLastError());
+        return volumeInfo;
+    }
+    // Query the partition information
+    WCHAR volumeNameBuffer[MAX_PATH] = { 0 };
+    DWORD nVolumeNameSize = MAX_PATH;
+    DWORD volumeSerialNumber = 0;
+    DWORD maximumComponentLength = 0;
+    DWORD fileSystemFlags = 0;
+    WCHAR fileSystemNameBuffer[MAX_PATH] = { 0 };
+    DWORD nFileSystemNameSize = MAX_PATH;
+    if (!::GetVolumeInformationByHandleW(
+        hDevice,
+        volumeNameBuffer,
+        nVolumeNameSize,
+        &volumeSerialNumber,
+        &maximumComponentLength,
+        &fileSystemFlags,
+        fileSystemNameBuffer,
+        nFileSystemNameSize)) {
+        ::CloseHandle(hDevice);
+        throw SystemApiException("failed to call GetVolumeInformationByHandleW", ::GetLastError());
+        return volumeInfo;
+    }
+    // assign volume info struct
+    volumeInfo.volumeName = Utf16ToUtf8(volumeNameBuffer);
+    volumeInfo.serialNumber = volumeSerialNumber;
+    volumeInfo.maximumComponentLength = maximumComponentLength;
+    volumeInfo.fileSystemFlags = fileSystemFlags;
+    volumeInfo.fileSystemName = Utf16ToUtf8(fileSystemNameBuffer);
+    try {
+        volumeInfo.volumeSize = GetVolumeSizeWin32(volumePath);
+    } catch (const SystemApiException& e) {
+        ::CloseHandle(hDevice);
+        throw e;
+        return volumeInfo;
+    }
+    ::CloseHandle(hDevice);
+    return volumeInfo;
+}
 #endif
+
+
+std::vector<std::string> ParseFileSystemFlagsOfVolume(uint32_t flag)
+{
+    std::vector<std::pair<std::string, uint32_t>> flagsSet = {
+        { "FILE_CASE_SENSITIVE_SEARCH", 0x00000001 },
+        { "FILE_CASE_PRESERVED_NAMES", 0x00000002 },
+        { "FILE_UNICODE_ON_DISK", 0x00000004 },
+        { "FILE_PERSISTENT_ACLS", 0x00000008 },
+        { "FILE_FILE_COMPRESSION", 0x00000010 },
+        { "FILE_VOLUME_QUOTAS", 0x00000020 },
+        { "FILE_SUPPORTS_SPARSE_FILES", 0x00000040 },
+        { "FILE_SUPPORTS_REPARSE_POINTS", 0x00000080 },
+        { "FILE_VOLUME_IS_COMPRESSED", 0x00008000 },
+        { "FILE_SUPPORTS_OBJECT_IDS", 0x00010000 },
+        { "FILE_SUPPORTS_ENCRYPTION", 0x00020000 },
+        { "FILE_NAMED_STREAMS", 0x00040000 },
+        { "FILE_READ_ONLY_VOLUME", 0x00080000 },
+        { "FILE_SEQUENTIAL_WRITE_ONCE", 0x00100000 },
+        { "FILE_SUPPORTS_TRANSACTIONS", 0x00200000 },
+        { "FILE_SUPPORTS_HARD_LINKS", 0x00400000 },
+        { "FILE_SUPPORTS_EXTENDED_ATTRIBUTES", 0x00800000 },
+        { "FILE_SUPPORTS_OPEN_BY_FILE_ID", 0x01000000 },
+        { "FILE_SUPPORTS_USN_JOURNAL", 0x02000000 },
+        { "FILE_SUPPORTS_BLOCK_REFCOUNTING", 0x08000000 }
+    };
+    std::vector<std::string> res;
+    for (const std::pair<std::string, uint32_t>& p : flagsSet) {
+        if ((p.second & flag) != 0) {
+            res.emplace_back(p.first);
+        }
+    }
+    return res;
+}
 
 #ifdef __linux__
-void PrintVolumeListLinux()
-{
-    std::cout << "TODO:: PrintVolumeListLinux" << std::endl;
-}
-
-void PrintPartitionInfoLinux(const std::string& volumePath) {
-
-}
-
-void PrintVolumeInfoLinux(const std::string& volumePath)
-{
-    std::cout << "UUID:  " << util::ReadVolumeUUID(volumePath) << std::endl;
-    std::cout << "Type:  " << util::ReadVolumeType(volumePath) << std::endl;
-    std::cout << "Label: " << util::ReadVolumeLabel(volumePath) << std::endl;
-
-    int partitionNumber = 0;
-    for (const auto& partition : util::ReadVolumePartitionTable(volumePath)) {
-        std::cout << "======= partition[" << ++partitionNumber << "] =======" << std::endl;
-        std::cout << "filesystem:       " << partition.filesystem << std::endl;
-        std::cout << "patitionNumber:   " << partition.patitionNumber << std::endl;
-        std::cout << "firstSector:      " << partition.firstSector << std::endl;
-        std::cout << "lastSector:       " << partition.lastSector << std::endl;
-        std::cout << "totalSectors:     " << partition.totalSectors << std::endl;
-        std::cout << std::endl;
+uint64_t GetVolumeSizeLinux(const std::string& devicePath) {
+    int fd = ::open(devicePath.c_str(), O_RDONLY);
+    if (fd < 0) {
+        throw SystemApiException("failed to open device", errno);
+        return 0;
     }
+    uint64_t size = 0;
+    if (::ioctl(fd, BLKGETSIZE64, &size) < 0) {
+        close(fd);
+        throw SystemApiException("failed to execute ioctl BLKGETSIZE64", errno);
+        return 0;
+    }
+    ::close(fd);
+    return size;
+}
+
+VolumeInfo GetVolumeInfoLinux(const std::string& volumePath)
+{
+    VolumeInfo volumeInfo {};
+    // TODO:: implement reading linux volume info
+    try {
+        volumeInfo.volumeSize = GetVolumeSizeLinux(volumePath);
+    } catch (const SystemApiException& e) {
+        throw e;
+        return volumeInfo;
+    }
+    return volumeInfo;
 }
 #endif
+
+
+int PrintHelp()
+{
+    std::cout << "Usage: voltool -v [path]" << std::endl;
+    return 0;
+}
+
+int PrintVolumeInfo(const std::string& volumePath)
+{
+    VolumeInfo volumeInfo;
+    try {
+#ifdef _WIN32
+        volumeInfo = GetVolumeInfoWin32(volumePath);
+#endif
+#ifdef __linux__
+        volumeInfo = GetVolumeInfoLinux(volumePath);
+#endif
+    } catch (const SystemApiException& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
+    std::cout << "VolumeName: " << volumeInfo.volumeName << std::endl;
+    std::cout << "VolumeSize: " << volumeInfo.volumeSize << std::endl;
+    std::cout << "VolumeSerialNumber: " << volumeInfo.serialNumber << std::endl;
+    std::cout << "MaximumComponentLength: " << volumeInfo.maximumComponentLength << std::endl;
+    std::cout << "FileSystemName: " << volumeInfo.fileSystemName << std::endl;
+    std::cout << "FileSystemFlags: " << volumeInfo.fileSystemFlags << std::endl;
+    for (const std::string& flagStr : ParseFileSystemFlagsOfVolume(volumeInfo.fileSystemFlags)) {
+        std::cout << flagStr << std::endl;
+    }
+    std::cout << std::endl;
+    return 0;
+}
 
 int main(int argc, char** argv)
 {
     GetOptionResult result = GetOption(
         const_cast<const char**>(argv) + 1,
         argc - 1,
-        "v:p:lh",
-        { "volume=", "partition=", "list", "help" });
+        "v:h",
+        { "volume=", "help" });
     for (const OptionResult opt: result.opts) {
         if (opt.option == "h" || opt.option == "help") {
-            PrintHelp();
-            return 0;
+            return PrintHelp();
         } else if (opt.option == "v" || opt.option == "volume") {
-            std::string devicePath = opt.value;
-#ifdef __linux__
-            PrintVolumeInfoLinux(devicePath);
-#endif
-#ifdef _WIN32
-            PrintVolumeInfoWin32(devicePath);
-#endif
-            return 0;
-        } else if (opt.option == "p" || opt.option == "partition") {
-            std::string devicePath = opt.value;
-#ifdef __linux__
-            PrintPartitionInfoLinux(devicePath);
-#endif
-#ifdef _WIN32
-            PrintPartitionInfoWin32(devicePath);
-#endif
-            return 0;
-        } else if (opt.option == "l" || opt.option == "list") {
-            std::string volumePath = opt.value;
-#ifdef __linux__
-            PrintVolumeListLinux();
-#endif
-#ifdef _WIN32
-            PrintVolumeListWin32();
-#endif
-            return 0;
+            return PrintVolumeInfo(opt.value);
         }
     }
     PrintHelp();
