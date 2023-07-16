@@ -48,9 +48,8 @@ private:
     std::string m_targetPath;
 
     // mutable fields
-    std::shared_ptr<VolumeTaskSession> m_session;
-    std::thread m_writerThread;
-    int         m_fd { -1 };
+    std::shared_ptr<VolumeTaskSession>  m_session;
+    std::thread                         m_writerThread;
 };
 
 }

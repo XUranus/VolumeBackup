@@ -77,9 +77,9 @@ bool VolumeRestoreTask::Prepare()
     // TODO:: read volume info and validate
 
     // 2. split session
-    uint64_t volumeSize = volumeCopyMeta.size;
+    uint64_t volumeSize = volumeCopyMeta.volumeSize;
     CopyType copyType = static_cast<CopyType>(volumeCopyMeta.copyType);
-    for (const std::pair<uint64_t, uint64_t> slice: volumeCopyMeta.slices) {
+    for (const std::pair<uint64_t, uint64_t> slice: volumeCopyMeta.copySlices) {
         uint64_t sessionOffset = slice.first;
         uint64_t sessionSize = slice.second;
         INFOLOG("Size = %llu sessionOffset %d sessionSize %d", volumeSize, sessionOffset, sessionSize);

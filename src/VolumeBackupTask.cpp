@@ -67,25 +67,11 @@ bool VolumeBackupTask::IsIncrementBackup() const
 bool VolumeBackupTask::Prepare()
 {
     std::string blockDevicePath = m_backupConfig->blockDevicePath;
-    // 1. retrive volume partition info
-    VolumePartitionTableEntry partitionEntry {};
-    try {
-        std::vector<VolumePartitionTableEntry> partitionTable = util::ReadVolumePartitionTable(blockDevicePath);
-        if (partitionTable.size() != 1) {
-            ERRLOG("failed to read partition table, or has multiple volumes");
-            return false;
-        }
-        partitionEntry =  partitionTable.back();
-    } catch (std::exception& e) {
-        ERRLOG("read volume partition got exception: %s", e.what());
-        return false;
-    }
-
+    // 1. fill volume meta info
     VolumeCopyMeta volumeCopyMeta {};
     volumeCopyMeta.copyType = static_cast<int>(m_backupConfig->copyType);
-    volumeCopyMeta.size = m_volumeSize;
+    volumeCopyMeta.volumeSize = m_volumeSize;
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
-    volumeCopyMeta.partition = partitionEntry;
 
     if (IsIncrementBackup()) {
         // TODO:: validate increment backup meta
@@ -117,7 +103,7 @@ bool VolumeBackupTask::Prepare()
         session.prevChecksumBinPath = prevChecksumBinPath;
         session.copyFilePath = copyFilePath;
         
-        volumeCopyMeta.slices.emplace_back(sessionOffset, sessionSize);
+        volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
         sessionOffset += sessionSize;
     }

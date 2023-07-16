@@ -22,6 +22,7 @@
 #include "Logger.h"
 #include "VolumeBlockReader.h"
 #include "VolumeUtils.h"
+#include "SystemIOInterface.h"
 
 using namespace volumeprotect;
 
@@ -86,21 +87,22 @@ VolumeBlockReader::VolumeBlockReader(
     m_session(session)
 {}
 
-#ifdef __linux__
 void VolumeBlockReader::ReaderThread()
 {
     // Open the device file for reading
     uint32_t defaultBufferSize = m_session->blockSize;
     uint64_t currentOffset = m_sourceOffset;
     uint32_t nBytesToRead = 0;
-    int fd = ::open(m_sourcePath.c_str(), O_RDONLY);
-    if (fd < 0) {
+    system::IOHandle handle = system::OpenVolumeForRead(m_sourcePath);
+    if (!system::IsValidIOHandle(handle)) {
         ERRLOG("Failed to open %s for read, %d", m_sourcePath.c_str(), errno);
         m_status = TaskStatus::FAILED;
         return;
     }
     
-    ::lseek(fd, m_sourceOffset, SEEK_SET); // read from m_sourceOffset
+    if (!system::SetIOPointer(handle, m_sourceOffset)) { // read from m_sourceOffset
+        ERRLOG("failed to read from %llu", m_sourceOffset);
+    }
     m_session->counter->bytesToRead += m_sourceLength;
     DBGLOG("reader thread start, sourceOffset: %lu ", m_sourceOffset);
 
@@ -109,7 +111,7 @@ void VolumeBlockReader::ReaderThread()
             m_sourceOffset, m_sourceLength, currentOffset);
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
-            ::close(fd);
+            system::CloseVolume(handle);
             return;
         }
 
@@ -129,10 +131,10 @@ void VolumeBlockReader::ReaderThread()
             nBytesToRead = m_sourceOffset + m_sourceLength - currentOffset;
         }
         
-        int n = ::read(fd, buffer, nBytesToRead);
-        if (n != nBytesToRead) { // read failed, size mismatch
-            ERRLOG("failed to read %u bytes, ret = %d", nBytesToRead, n);
-            ::close(fd);
+        uint32_t errorCode = 0;
+        if (!system::ReadVolumeData(handle, buffer, nBytesToRead, errorCode)) {
+            ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
+            system::CloseVolume(handle);
             m_status = TaskStatus::FAILED;
             return;
         }
@@ -156,7 +158,7 @@ void VolumeBlockReader::ReaderThread()
     // handle success
     INFOLOG("reader read completed successfully");
     m_status = TaskStatus::SUCCEED;
-    ::close(fd);
+    system::CloseVolume(handle);
     if (m_session->hasherEnabled) {
         m_session->hashingQueue->Finish();
     } else {
@@ -164,11 +166,3 @@ void VolumeBlockReader::ReaderThread()
     }
     return;
 }
-#endif
-
-#ifdef _WIN32
-void VolumeBlockReader::ReaderThread()
-{
-    // TODO
-}
-#endif

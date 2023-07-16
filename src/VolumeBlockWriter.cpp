@@ -24,6 +24,7 @@
 #include "VolumeProtector.h"
 #include "VolumeBlockWriter.h"
 #include "VolumeUtils.h"
+#include "SystemIOInterface.h"
 
 using namespace volumeprotect;
 
@@ -76,14 +77,6 @@ VolumeBlockWriter::~VolumeBlockWriter()
     if (m_writerThread.joinable()) {
         m_writerThread.join();
     }
-#ifdef __linux__
-    if (m_fd < 0) {
-        ::close(m_fd);
-        m_fd = -1;
-    }
-#endif
-#ifdef _WIN32
-#endif
 }
 
 VolumeBlockWriter::VolumeBlockWriter(
@@ -95,54 +88,51 @@ VolumeBlockWriter::VolumeBlockWriter(
     m_session(session)
 {}
 
-#ifdef __linux__
 bool VolumeBlockWriter::Prepare()
 {
     // open writer target file handle
     if (m_targetType == TargetType::COPYFILE) {
-        m_fd = ::open(m_targetPath.c_str() ,O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-        if (m_fd < 0) {
-            ERRLOG("open copy file %s failed, errno: %d", m_targetPath.c_str(), errno);
-            return false;
-        }
         // truncate copy file to session size
         DBGLOG("truncate target copy file %s to size %lu", m_targetPath.c_str(), m_session->sessionSize);
-        ::ftruncate(m_fd, m_session->sessionSize);
-        ::lseek(m_fd, 0, SEEK_SET);
+        if (!system::TruncateCreateFile(m_targetPath, m_session->sessionSize)) {
+            ERRLOG("failed to truncate create file %s with size %lu, error code = %u",
+                m_targetPath.c_str(),
+                m_session->sessionSize,
+                system::GetLastError());
+            return false;
+        }
     }
     
     if (m_targetType == TargetType::VOLUME) {
-        m_fd = ::open(m_targetPath.c_str(), O_RDWR);
-        if (m_fd < 0) {
-            ERRLOG("open block device %s failed, errno: %d", m_targetPath.c_str(), errno);
+        system::IOHandle handle = system::OpenVolumeForWrite(m_targetPath.c_str());
+        if (system::IsValidIOHandle(handle)) {
+            ERRLOG("open block device %s failed, error code = %u", m_targetPath.c_str(), system::GetLastError());
             return false;
         }
+        system::CloseVolume(handle);
     }
     return true;
 }
-#endif
 
-#ifdef _WIN32
-bool VolumeBlockWriter::Prepare()
-{
-    // TODO
-    return false;
-}
-#endif
-
-#ifdef __linux__
 void VolumeBlockWriter::WriterThread()
 {
     VolumeConsumeBlock consumeBlock {};
     DBGLOG("writer thread start");
 
+    system::IOHandle handle = system::OpenVolumeForWrite(m_targetPath);
+    if (!system::IsValidIOHandle(handle)) {
+        ERRLOG("open %s failed, error code = %u", m_targetPath.c_str(), system::GetLastError());
+        return;
+    }
+
     while (true) {
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
+            system::CloseVolume(handle);
             return;
         }
         DBGLOG("check writer thread");
-    
+
         if (!m_session->writeQueue->Pop(consumeBlock)) {
             break; // queue has been finished
         }
@@ -159,13 +149,15 @@ void VolumeBlockWriter::WriterThread()
         if (m_targetType == TargetType::COPYFILE) {
             writerOffset = consumeBlock.volumeOffset - m_session->sessionOffset;
         }
-        
-        ::lseek(m_fd, writerOffset, SEEK_SET);
-        int n = ::write(m_fd, buffer, len);
-        if (n != len) {
-            ERRLOG("write %lu bytes failed, ret = %d", writerOffset, n);
+        if (!system::SetIOPointer(handle, writerOffset)) {
+            ERRLOG("failed to set write offset to %lu", writerOffset);
+        }
+        uint32_t errorCode = 0;
+        if (!system::WriteVolumeData(handle, buffer, len, errorCode)) {
+            ERRLOG("write %lu bytes failed, error code = %u", writerOffset, errorCode);
             m_status = TaskStatus::FAILED;
             m_session->allocator->bfree(buffer);
+            system::CloseVolume(handle);
             return;
         }
 
@@ -174,13 +166,6 @@ void VolumeBlockWriter::WriterThread()
     }
     INFOLOG("writer read completed successfully");
     m_status = TaskStatus::SUCCEED;
+    system::CloseVolume(handle);
     return;
 }
-#endif
-
-#ifdef _WIN32
-void VolumeBlockWriter::WriterThread()
-{
-    // TODO
-}
-#endif

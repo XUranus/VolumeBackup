@@ -14,46 +14,33 @@
 
 namespace volumeprotect {
 
-struct VolumePartitionTableEntry {
-    std::string filesystem;
-    uint64_t    patitionNumber;
-    uint64_t    firstSector;
-    uint64_t    lastSector;
-    uint64_t    totalSectors;
-
-    SERIALIZE_SECTION_BEGIN
-    SERIALIZE_FIELD(filesystem, filesystem);
-    SERIALIZE_FIELD(patitionNumber, patitionNumber);
-    SERIALIZE_FIELD(firstSector, firstSector);
-    SERIALIZE_FIELD(lastSector, lastSector);
-    SERIALIZE_FIELD(totalSectors, totalSectors);
-    SERIALIZE_SECTION_END
+class SystemApiException : public std::exception {
+public:
+    // Constructor
+    SystemApiException(uint32_t errorCode);
+    SystemApiException(const char* message, uint32_t errorCode);
+    const char* what() const noexcept override;
+private:
+    std::string m_message;
 };
 
 struct VolumeCopyMeta {
     using Range = std::vector<std::pair<uint64_t, uint64_t>>;
 
     int         copyType;
-    uint64_t    size;
+    uint64_t    volumeSize;
     uint32_t    blockSize;
-    Range       slices;
-    VolumePartitionTableEntry partition;
+    Range       copySlices;
 
     SERIALIZE_SECTION_BEGIN
     SERIALIZE_FIELD(copyType, copyType);
-    SERIALIZE_FIELD(size, size);
+    SERIALIZE_FIELD(volumeSize, volumeSize);
     SERIALIZE_FIELD(blockSize, blockSize);
-    SERIALIZE_FIELD(slices, slices);
-    SERIALIZE_FIELD(partition, partition);
+    SERIALIZE_FIELD(copySlices, copySlices);
     SERIALIZE_SECTION_END
 };
 
 namespace util {
-
-std::runtime_error BuildRuntimeException(
-    const std::string& message,
-    const std::string& blockDevice,
-    uint32_t errcode);
 
 uint64_t ReadVolumeSize(const std::string& blockDevice);
 
@@ -62,14 +49,6 @@ bool IsBlockDeviceExists(const std::string& blockDevicePath);
 bool CheckDirectoryExistence(const std::string& path);
 
 uint32_t ProcessorsNum();
-
-std::string ReadVolumeUUID(const std::string& blockDevicePath);
-
-std::string ReadVolumeType(const std::string& blockDevicePath);
-
-std::string ReadVolumeLabel(const std::string& blockDevicePath);
-
-std::vector<VolumePartitionTableEntry> ReadVolumePartitionTable(const std::string& blockDevicePath);
 
 std::string GetChecksumBinPath(
     const std::string&      copyMetaDirPath,

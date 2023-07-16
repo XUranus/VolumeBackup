@@ -22,18 +22,10 @@ ADD_EXECUTABLE (vbkup
     "GetOption.cpp"
 )
 
-IF(${CMAKE_HOST_WIN32})
-    ADD_EXECUTABLE (voltool
-        "voltool.cpp"
-        "GetOption.cpp"
-    )
-ELSE()
-    ADD_EXECUTABLE (voltool
-        "voltool.cpp"
-        "GetOption.cpp"
-        "src/VolumeUtils.cpp"
-    )
-ENDIF()
+ADD_EXECUTABLE (voltool
+    "voltool.cpp"
+    "GetOption.cpp"
+)
 
 IF (CMAKE_VERSION VERSION_GREATER 3.12)
     SET_PROPERTY(TARGET vbkup PROPERTY CXX_STANDARD 17)
@@ -52,10 +44,9 @@ ELSE()
     # require linux-utils
     TARGET_LINK_LIBRARIES(
         vbkup
-        # libblkid libparted openssl
-        blkid
-        parted
+        # openssl
         crypto
+        pthread
         # third part dependency provided by XUranus
         minijson
         minilogger
@@ -63,23 +54,9 @@ ELSE()
 ENDIF()
 
 # build voltool executable
-IF(${CMAKE_HOST_WIN32})
-    TARGET_LINK_LIBRARIES(
-        voltool
-        Setupapi
-        # third part dependency provided by XUranus
-        minijson_static
-        minilogger_static
-    )
-ELSE()
-    # require linux-utils
-    TARGET_LINK_LIBRARIES(
-        voltool
-        # libblkid libparted
-        blkid
-        parted
-        # third part dependency provided by XUranus
-        minijson
-        minilogger
+TARGET_LINK_LIBRARIES(
+    voltool
+    # third part dependency provided by XUranus
+    minijson_static
+    minilogger_static
 )
-ENDIF()

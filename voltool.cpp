@@ -10,7 +10,6 @@
  */
 
 #include "GetOption.h"
-#include "VolumeUtils.h"
 
 #include <iostream>
 #include <cstdint>
@@ -35,7 +34,6 @@
 #include <unistd.h>
 #endif
 
-using namespace volumeprotect;
 using namespace xuranus::getopt;
 
 class SystemApiException : public std::exception {
@@ -46,7 +44,7 @@ public:
 
     // Override the what() method to provide a description of the exception
     const char* what() const noexcept override {
-        return "TODO"; // TODO
+        return "TODO";
     }
 
 private:
