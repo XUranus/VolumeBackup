@@ -128,6 +128,22 @@ int main(int argc, const char** argv)
         Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
     }
 
+    using namespace xuranus::minilogger;
+    LoggerConfig conf {};
+    conf.target = LoggerTarget::FILE;
+    conf.archiveFilesNumMax = 10;
+    conf.fileName = "demo.log";
+#ifdef __linux__
+    conf.logDirPath = "/tmp/LoggerTest";
+#endif
+#ifdef _WIN32
+    conf.logDirPath = R"(C:\LoggerTest)";
+#endif
+    Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
+    if (!Logger::GetInstance()->Init(conf)) {
+        std::cerr << "Init logger failed" << std::endl;
+    }
+
     if (isRestore) {
         std::cout << "Doing copy restore" << std::endl;
         ExecVolumeRestore(blockDevicePath, copyDataDirPath, copyMetaDirPath);

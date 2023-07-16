@@ -37,8 +37,8 @@ IF(${CMAKE_HOST_WIN32})
     TARGET_LINK_LIBRARIES(
         vbkup
         # third part dependency provided by XUranus
-        minijson
-        minilogger
+        minijson_static
+        minilogger_static
     )
 ELSE()
     # require linux-utils
