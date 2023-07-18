@@ -51,7 +51,7 @@ void VolumeBlockAllocator::bfree(char* ptr)
 {
     std::lock_guard<std::mutex> lk(m_mutex);
     uint64_t index = (ptr - m_pool) / static_cast<uint64_t>(m_blockSize);
-    DBGLOG("bfree address = %p, index = %lu", ptr, index);
+    DBGLOG("bfree address = %p, index = %llu", ptr, index);
     if ((ptr - m_pool) % m_blockSize == 0) {
         m_allocTable[index] = false;
         return;

@@ -25,6 +25,11 @@ namespace {
 
 using namespace xuranus::getopt;
 
+inline bool IsAlphabet(char ch)
+{
+    return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
+}
+
 OptionResult::OptionResult(const std::string& optionName, const std::string& optionValue)
  : option(optionName), value(optionValue) {}
 
@@ -39,7 +44,7 @@ static std::map<char, bool> ParseShortOption(const std::string& str)
 {
     std::map<char, bool> optionMap;
     for (std::string::const_iterator it = str.begin(); it != str.end(); ++it) {
-        if (!std::isalpha(*it)) {
+        if (!IsAlphabet(*it)) {
             continue;
         }
         if (it + 1 != str.end() && *(it + 1) == COLON) {

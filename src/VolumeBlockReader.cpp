@@ -104,10 +104,10 @@ void VolumeBlockReader::ReaderThread()
         ERRLOG("failed to read from %llu", m_sourceOffset);
     }
     m_session->counter->bytesToRead += m_sourceLength;
-    DBGLOG("reader thread start, sourceOffset: %lu ", m_sourceOffset);
+    DBGLOG("reader thread start, sourceOffset: %llu ", m_sourceOffset);
 
     while (true) {
-        DBGLOG("reader thread check, sourceOffset: %lu, sourceLength %lu, currentOffset: %lu",
+        DBGLOG("reader thread check, sourceOffset: %llu, sourceLength %llu, currentOffset: %llu",
             m_sourceOffset, m_sourceLength, currentOffset);
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
@@ -144,7 +144,7 @@ void VolumeBlockReader::ReaderThread()
             (currentOffset - m_sourceOffset + m_session->sessionOffset),
             nBytesToRead
         };
-        DBGLOG("reader push consume block (%p, %lu, %lu)",
+        DBGLOG("reader push consume block (%p, %llu, %u)",
             consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
         if (m_session->hasherEnabled) {
             ++m_session->counter->blocksToHash;

@@ -84,7 +84,7 @@ IOHandle volumeprotect::system::OpenVolumeForWrite(const std::string& volumePath
         GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr,
-        CREATE_ALWAYS,
+        OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS,
         nullptr);
     return hDevice;

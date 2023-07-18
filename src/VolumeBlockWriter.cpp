@@ -93,9 +93,9 @@ bool VolumeBlockWriter::Prepare()
     // open writer target file handle
     if (m_targetType == TargetType::COPYFILE) {
         // truncate copy file to session size
-        DBGLOG("truncate target copy file %s to size %lu", m_targetPath.c_str(), m_session->sessionSize);
+        DBGLOG("truncate target copy file %s to size %llu", m_targetPath.c_str(), m_session->sessionSize);
         if (!system::TruncateCreateFile(m_targetPath, m_session->sessionSize)) {
-            ERRLOG("failed to truncate create file %s with size %lu, error code = %u",
+            ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
                 m_targetPath.c_str(),
                 m_session->sessionSize,
                 system::GetLastError());
@@ -141,20 +141,19 @@ void VolumeBlockWriter::WriterThread()
         uint64_t writerOffset = consumeBlock.volumeOffset;
         uint32_t len = consumeBlock.length;
 
-        DBGLOG("writer pop consume block (%p, %lu, %lu)",
-            consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
-
         // 1. volume => file   (file writer),   writerOffset = volumeOffset - sessionOffset
         // 2. file   => volume (volume writer), writerOffset = volumeOffset
         if (m_targetType == TargetType::COPYFILE) {
             writerOffset = consumeBlock.volumeOffset - m_session->sessionOffset;
         }
+        DBGLOG("writer pop consume block (%p, %llu, %u) writerOffset = %llu",
+            consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length, writerOffset);
         if (!system::SetIOPointer(handle, writerOffset)) {
-            ERRLOG("failed to set write offset to %lu", writerOffset);
+            ERRLOG("failed to set write offset to %llu", writerOffset);
         }
         uint32_t errorCode = 0;
         if (!system::WriteVolumeData(handle, buffer, len, errorCode)) {
-            ERRLOG("write %lu bytes failed, error code = %u", writerOffset, errorCode);
+            ERRLOG("write %llu bytes failed, error code = %u", writerOffset, errorCode);
             m_status = TaskStatus::FAILED;
             m_session->allocator->bfree(buffer);
             system::CloseVolume(handle);
