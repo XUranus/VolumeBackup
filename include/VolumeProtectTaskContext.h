@@ -80,10 +80,10 @@ struct VolumeTaskSession {
     std::shared_ptr<VolumeBlockWriter> writer { nullptr };
 
     // shared container context
-    std::shared_ptr<SessionCounter>                     counter { nullptr };
-    std::shared_ptr<VolumeBlockAllocator>               allocator { nullptr };
-    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue { nullptr };
-    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue { nullptr };
+    std::shared_ptr<SessionCounter>                     counter         { nullptr };
+    std::shared_ptr<VolumeBlockAllocator>               allocator       { nullptr };
+    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue    { nullptr };
+    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue      { nullptr };
 
     bool IsTerminated() const;
     bool IsFailed() const;

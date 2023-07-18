@@ -51,16 +51,16 @@ bool CheckDirectoryExistence(const std::string& path);
 uint32_t ProcessorsNum();
 
 std::string GetChecksumBinPath(
-    const std::string&      copyMetaDirPath,
-    uint64_t                sessionOffset,
-    uint64_t                sessionSize
+    const std::string&          copyMetaDirPath,
+    uint64_t                    sessionOffset,
+    uint64_t                    sessionSize
 );
 
 std::string GetCopyFilePath(
-    const std::string&      copyDataDirPath,
-    volumeprotect::CopyType  copyType,
-    uint64_t                sessionOffset,
-    uint64_t                sessionSize
+    const std::string&          copyDataDirPath,
+    volumeprotect::CopyType     copyType,
+    uint64_t                    sessionOffset,
+    uint64_t                    sessionSize
 );
 
 bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);

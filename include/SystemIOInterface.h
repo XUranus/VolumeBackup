@@ -15,6 +15,10 @@
 #include <string>
 #include <cstdint>
 
+
+/**
+ * @brief this module is used to shield system I/O interface differences to provide a unified I/O layer
+ */
 namespace volumeprotect {
 namespace system {
 

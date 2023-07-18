@@ -29,6 +29,13 @@ static std::string Utf16ToUtf8(const std::wstring& wstr)
     std::wstring_convert<ConvertTypeX> converterX;
     return converterX.to_bytes(wstr);
 }
+
+inline void SetOverlappedStructOffset(OVERLAPPED& ov, uint64_t offset)
+{
+    DWORD *ptr = reinterpret_cast<DWORD*>(&offset);
+    ov.Offset = *ptr;
+    ov.OffsetHigh = *(ptr + 1);
+}
 #endif
 
 bool volumeprotect::system::IsValidIOHandle(IOHandle handle)
@@ -102,13 +109,6 @@ void volumeprotect::system::CloseVolume(IOHandle handle)
 #ifdef _WIN32
     ::CloseHandle(handle);
 #endif
-}
-
-inline void SetOverlappedStructOffset(OVERLAPPED& ov, uint64_t offset)
-{
-    DWORD *ptr = reinterpret_cast<DWORD*>(&offset);
-    ov.Offset = *ptr;
-    ov.OffsetHigh = *(ptr + 1);
 }
 
 bool volumeprotect::system::ReadVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode)

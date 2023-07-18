@@ -50,7 +50,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
     }
     memset(lastestChecksumTable, 0, sizeof(char) * lastestChecksumTableSize);
 
-    return std::make_shared<VolumeBlockHasher>(
+    VolumeBlockHasherParam param {
         session,
         HasherForwardMode::DIRECT,
         "",
@@ -60,7 +60,8 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
         0,
         lastestChecksumTable,
         lastestChecksumTableSize
-    );
+    };
+    return std::make_shared<VolumeBlockHasher>(param);
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
@@ -107,8 +108,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
     }
 
     // TODO:: 3. validate previous checksum table size with current one
-
-    return std::make_shared<VolumeBlockHasher>(
+    VolumeBlockHasherParam param {
         session,
         HasherForwardMode::DIFF,
         prevChecksumBinPath,
@@ -118,30 +118,22 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
         prevChecksumTableSize,
         lastestChecksumTable,
         lastestChecksumTableSize
-    );
+    };
+
+    return std::make_shared<VolumeBlockHasher>(param);
 }
 
-VolumeBlockHasher::VolumeBlockHasher(
-    std::shared_ptr<VolumeTaskSession> session,
-    HasherForwardMode   forwardMode,
-    const std::string&  prevChecksumBinPath,
-    const std::string&  lastestChecksumBinPath,
-    uint32_t            singleChecksumSize,
-    char*               prevChecksumTable,
-    uint64_t            prevChecksumTableSize,
-    char*               lastestChecksumTable,
-    uint64_t            lastestChecksumTableSize
-) : m_session(session),
-    m_forwardMode(forwardMode),
-    m_prevChecksumBinPath(prevChecksumBinPath),
-    m_lastestChecksumBinPath(lastestChecksumBinPath),
-    m_singleChecksumSize(singleChecksumSize),
-    m_prevChecksumTable(prevChecksumTable),
-    m_prevChecksumTableSize(prevChecksumTableSize),
-    m_lastestChecksumTable(lastestChecksumTable),
-    m_lastestChecksumTableSize(lastestChecksumTableSize)
+VolumeBlockHasher::VolumeBlockHasher(const VolumeBlockHasherParam& param)
+  : m_session(param.session),
+    m_forwardMode(param.forwardMode),
+    m_prevChecksumBinPath(param.prevChecksumBinPath),
+    m_lastestChecksumBinPath(param.lastestChecksumBinPath),
+    m_singleChecksumSize(param.singleChecksumSize),
+    m_prevChecksumTable(param.prevChecksumTable),
+    m_prevChecksumTableSize(param.prevChecksumTableSize),
+    m_lastestChecksumTable(param.lastestChecksumTable),
+    m_lastestChecksumTableSize(param.lastestChecksumTableSize)
 {}
-
 
 bool VolumeBlockHasher::Start()
 {

@@ -1,11 +1,3 @@
-#ifdef __linux__
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
-#ifdef _WIN32
-#endif
-
 #include <algorithm>
 #include <string>
 #include <iostream>
@@ -113,8 +105,7 @@ void VolumeBlockReader::ReaderThread()
             return;
         }
 
-        if (m_sourceOffset + m_sourceLength <= currentOffset) {
-            // read completed
+        if (m_sourceOffset + m_sourceLength <= currentOffset) { // read completed
             break;
         }
 
@@ -126,7 +117,7 @@ void VolumeBlockReader::ReaderThread()
         }
         nBytesToRead = defaultBufferSize;
         if (m_sourceOffset + m_sourceLength - currentOffset < defaultBufferSize) {
-            nBytesToRead = m_sourceOffset + m_sourceLength - currentOffset;
+            nBytesToRead = static_cast<uint32_t>(m_sourceOffset + m_sourceLength - currentOffset);
         }
         
         uint32_t errorCode = 0;

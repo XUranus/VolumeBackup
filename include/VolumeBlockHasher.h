@@ -22,6 +22,21 @@ enum HasherForwardMode {
     DIFF
 };
 
+/**
+ * @brief param struct to build a hasher
+ */
+struct VolumeBlockHasherParam {
+    std::shared_ptr<VolumeTaskSession> session;
+    HasherForwardMode   forwardMode;
+    std::string         prevChecksumBinPath;
+    std::string         lastestChecksumBinPath;
+    uint32_t            singleChecksumSize;
+    char*               prevChecksumTable;
+    uint64_t            prevChecksumTableSize;
+    char*               lastestChecksumTable;
+    uint64_t            lastestChecksumTableSize;
+};
+
 class VolumeBlockHasher : public StatefulTask {
 public:
     ~VolumeBlockHasher();
@@ -36,17 +51,7 @@ public:
 
     bool Start();
 
-    VolumeBlockHasher(
-        std::shared_ptr<VolumeTaskSession> session,
-        HasherForwardMode   forwardMode,
-        const std::string&  prevChecksumBinPath,
-        const std::string&  lastestChecksumBinPath,
-        uint32_t            singleChecksumSize,
-        char*               prevChecksumTable,
-        uint64_t            prevChecksumTableSize,
-        char*               lastestChecksumTable,
-        uint64_t            lastestChecksumTableSize
-    );
+    VolumeBlockHasher(const VolumeBlockHasherParam& param);
 
 private:
     void WorkerThread(int workerIndex);

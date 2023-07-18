@@ -79,8 +79,8 @@ bool VolumeBackupTask::Prepare()
 
     // 2. split session
     for (uint64_t sessionOffset = 0; sessionOffset < m_volumeSize;) {
-        uint64_t sessionSize = DEFAULT_SESSION_SIZE;
-        if (sessionOffset + DEFAULT_SESSION_SIZE >= m_volumeSize) {
+        uint64_t sessionSize = m_backupConfig->sessionSize;
+        if (sessionOffset + m_backupConfig->sessionSize >= m_volumeSize) {
             sessionSize = m_volumeSize - sessionOffset;
         }
         std::string lastestChecksumBinPath = util::GetChecksumBinPath(

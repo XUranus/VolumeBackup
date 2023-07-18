@@ -36,15 +36,15 @@ struct VolumeBackupConfig {
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
     std::string	    outputCopyDataDirPath;
     std::string	    outputCopyMetaDirPath;
-    uint32_t        blockSize { DEFAULT_BLOCK_SIZE };       // [optional] default block size used for computing checksum
-    uint64_t        sessionSize { DEFAULT_SESSION_SIZE };   // default sesson size used to split session
-    uint64_t        hasherNum { DEFAULT_HASHER_NUM };       // hasher worker count, recommended set to the num of processors
-    bool            hasherEnabled { true };                 // if set to false, won't compute checksum
+    uint32_t        blockSize       { DEFAULT_BLOCK_SIZE };  // [optional] default blocksize used for computing sha256
+    uint64_t        sessionSize     { DEFAULT_SESSION_SIZE };// default sesson size used to split session
+    uint64_t        hasherNum       { DEFAULT_HASHER_NUM };  // hasher worker count, set to the num of processors
+    bool            hasherEnabled   { true };                // if set to false, won't compute sha256
 };
 
 // immutable config, used to build volume restore task
 struct VolumeRestoreConfig {
-    std::string     blockDevicePath;                        // path of the block device (volume)
+    std::string     blockDevicePath;                          // path of the block device (volume)
     std::string	    copyDataDirPath;
     std::string	    copyMetaDirPath;
 };
