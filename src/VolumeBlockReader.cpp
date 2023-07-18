@@ -100,9 +100,7 @@ void VolumeBlockReader::ReaderThread()
         return;
     }
     
-    if (!system::SetIOPointer(handle, m_sourceOffset)) { // read from m_sourceOffset
-        ERRLOG("failed to read from %llu", m_sourceOffset);
-    }
+    // read from currentOffset
     m_session->counter->bytesToRead += m_sourceLength;
     DBGLOG("reader thread start, sourceOffset: %llu ", m_sourceOffset);
 
@@ -132,7 +130,7 @@ void VolumeBlockReader::ReaderThread()
         }
         
         uint32_t errorCode = 0;
-        if (!system::ReadVolumeData(handle, buffer, nBytesToRead, errorCode)) {
+        if (!system::ReadVolumeData(handle, currentOffset, buffer, nBytesToRead, errorCode)) {
             ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
             system::CloseVolume(handle);
             m_status = TaskStatus::FAILED;

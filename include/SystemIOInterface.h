@@ -36,9 +36,9 @@ IOHandle OpenVolumeForWrite(const std::string& volumePath);
 
 void CloseVolume(IOHandle handle);
 
-bool ReadVolumeData(IOHandle handle, char* buffer, int length, uint32_t& errorCode);
+bool ReadVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode);
 
-bool WriteVolumeData(IOHandle handle, char* buffer, int length, uint32_t& errorCode);
+bool WriteVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode);
 
 bool SetIOPointer(IOHandle handle, uint64_t offset);
 

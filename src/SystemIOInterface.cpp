@@ -104,9 +104,17 @@ void volumeprotect::system::CloseVolume(IOHandle handle)
 #endif
 }
 
-bool volumeprotect::system::ReadVolumeData(IOHandle handle, char* buffer, int length, uint32_t& errorCode)
+inline void SetOverlappedStructOffset(OVERLAPPED& ov, uint64_t offset)
+{
+    DWORD *ptr = reinterpret_cast<DWORD*>(&offset);
+    ov.Offset = *ptr;
+    ov.OffsetHigh = *(ptr + 1);
+}
+
+bool volumeprotect::system::ReadVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode)
 {
 #ifdef __linux__
+    ::lseek(handle, offset, SEEK_SET);
     int ret = ::read(handle, buffer, length);
     if (ret <= 0 || ret != length) {
         errorCode = errno;
@@ -116,7 +124,9 @@ bool volumeprotect::system::ReadVolumeData(IOHandle handle, char* buffer, int le
 #endif
 #ifdef _WIN32
     OVERLAPPED ov {};
-    if (!::ReadFileEx(handle, buffer, length, &ov, nullptr)) {
+    DWORD bytesReaded = 0;
+    SetOverlappedStructOffset(ov, offset);
+    if (!::ReadFile(handle, buffer, length, &bytesReaded, &ov) || bytesReaded != length) {
         errorCode = ::GetLastError();
         return false;
     }
@@ -124,9 +134,10 @@ bool volumeprotect::system::ReadVolumeData(IOHandle handle, char* buffer, int le
 #endif
 }
 
-bool volumeprotect::system::WriteVolumeData(IOHandle handle, char* buffer, int length, uint32_t& errorCode)
+bool volumeprotect::system::WriteVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode)
 {
 #ifdef __linux__
+    ::lseek(handle, offset, SEEK_SET);
     int ret = ::write(handle, buffer, length);
     if (ret <= 0 || ret != length) {
         errorCode = errno;
@@ -136,7 +147,9 @@ bool volumeprotect::system::WriteVolumeData(IOHandle handle, char* buffer, int l
 #endif
 #ifdef _WIN32
     OVERLAPPED ov {};
-    if (!::WriteFileEx(handle, buffer, length, &ov, nullptr)) {
+    DWORD bytesWrited = 0;
+    SetOverlappedStructOffset(ov, offset);
+    if (!::WriteFile(handle, buffer, length, &bytesWrited, &ov) && bytesWrited != length) {
         errorCode = ::GetLastError();
         return false;
     }
@@ -173,7 +186,6 @@ uint32_t volumeprotect::system::GetLastError()
     return ::GetLastError();
 #endif
 }
-
 
 bool volumeprotect::system::TruncateCreateFile(const std::string& path, uint64_t size)
 {

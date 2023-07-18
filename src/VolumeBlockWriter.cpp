@@ -148,11 +148,8 @@ void VolumeBlockWriter::WriterThread()
         }
         DBGLOG("writer pop consume block (%p, %llu, %u) writerOffset = %llu",
             consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length, writerOffset);
-        if (!system::SetIOPointer(handle, writerOffset)) {
-            ERRLOG("failed to set write offset to %llu", writerOffset);
-        }
         uint32_t errorCode = 0;
-        if (!system::WriteVolumeData(handle, buffer, len, errorCode)) {
+        if (!system::WriteVolumeData(handle, writerOffset, buffer, len, errorCode)) {
             ERRLOG("write %llu bytes failed, error code = %u", writerOffset, errorCode);
             m_status = TaskStatus::FAILED;
             m_session->allocator->bfree(buffer);
