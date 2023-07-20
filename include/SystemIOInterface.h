@@ -15,6 +15,7 @@
 #include <string>
 #include <cstdint>
 
+#include "VolumeProtectMacros.h"
 
 /**
  * @brief this module is used to shield system I/O interface differences to provide a unified I/O layer
@@ -30,25 +31,37 @@ using IOHandle = int;
 using IOHandle = HANDLE;
 #endif
 
-bool IsValidIOHandle(IOHandle handle);
+VOLUMEPROTECT_API bool IsValidIOHandle(IOHandle handle);
 
-void SetHandleInvalid(IOHandle& handle);
+VOLUMEPROTECT_API void SetHandleInvalid(IOHandle& handle);
 
-IOHandle OpenVolumeForRead(const std::string& volumePath);
+VOLUMEPROTECT_API IOHandle OpenVolumeForRead(const std::string& volumePath);
 
-IOHandle OpenVolumeForWrite(const std::string& volumePath);
+VOLUMEPROTECT_API IOHandle OpenVolumeForWrite(const std::string& volumePath);
 
-void CloseVolume(IOHandle handle);
+VOLUMEPROTECT_API void CloseVolume(IOHandle handle);
 
-bool ReadVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode);
+VOLUMEPROTECT_API bool ReadVolumeData(
+    IOHandle    handle,
+    uint64_t    offset,
+    char*       buffer,
+    int         length,
+    uint32_t&   errorCode
+);
 
-bool WriteVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode);
+VOLUMEPROTECT_API bool WriteVolumeData(
+    IOHandle    handle,
+    uint64_t    offset,
+    char*       buffer,
+    int         length, 
+    uint32_t&   errorCode
+);
 
-bool SetIOPointer(IOHandle handle, uint64_t offset);
+VOLUMEPROTECT_API bool SetIOPointer(IOHandle handle, uint64_t offset);
 
-uint32_t GetLastError();
+VOLUMEPROTECT_API uint32_t GetLastError();
 
-bool TruncateCreateFile(const std::string& path, uint64_t size);
+VOLUMEPROTECT_API bool TruncateCreateFile(const std::string& path, uint64_t size);
 
 }
 };

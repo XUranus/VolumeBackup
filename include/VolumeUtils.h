@@ -7,6 +7,7 @@
 #include <exception>
 #include <vector>
 
+#include "VolumeProtectMacros.h"
 // external logger/json library
 #include "Logger.h"
 #include "Json.h"
@@ -24,7 +25,7 @@ private:
     std::string m_message;
 };
 
-struct VolumeCopyMeta {
+struct VOLUMEPROTECT_API VolumeCopyMeta {
     using Range = std::vector<std::pair<uint64_t, uint64_t>>;
 
     int         copyType;
@@ -42,30 +43,30 @@ struct VolumeCopyMeta {
 
 namespace util {
 
-uint64_t ReadVolumeSize(const std::string& blockDevice);
+VOLUMEPROTECT_API uint64_t ReadVolumeSize(const std::string& blockDevice);
 
-bool IsBlockDeviceExists(const std::string& blockDevicePath);
+VOLUMEPROTECT_API bool IsBlockDeviceExists(const std::string& blockDevicePath);
 
-bool CheckDirectoryExistence(const std::string& path);
+VOLUMEPROTECT_API bool CheckDirectoryExistence(const std::string& path);
 
-uint32_t ProcessorsNum();
+VOLUMEPROTECT_API uint32_t ProcessorsNum();
 
-std::string GetChecksumBinPath(
+VOLUMEPROTECT_API std::string GetChecksumBinPath(
     const std::string&          copyMetaDirPath,
     uint64_t                    sessionOffset,
     uint64_t                    sessionSize
 );
 
-std::string GetCopyFilePath(
+VOLUMEPROTECT_API std::string GetCopyFilePath(
     const std::string&          copyDataDirPath,
     volumeprotect::CopyType     copyType,
     uint64_t                    sessionOffset,
     uint64_t                    sessionSize
 );
 
-bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
+VOLUMEPROTECT_API bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
 
-bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
+VOLUMEPROTECT_API bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 
 }
 }

@@ -1,14 +1,15 @@
 #ifndef VOLUME_BLOCKING_QUEUE_H
 #define VOLUME_BLOCKING_QUEUE_H
 
-#include "Logger.h"
-#include <cstddef>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
 
+#include "VolumeProtectMacros.h"
+#include "Logger.h"
+
 template<typename T>
-class BlockingQueue {
+class VOLUMEPROTECT_API BlockingQueue {
 public:
     BlockingQueue(std::size_t maxSize);
 

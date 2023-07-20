@@ -8,6 +8,8 @@
 #include <queue>
 #include <memory>
 
+#include "VolumeProtectMacros.h"
+
 // volume backup application facade
 namespace volumeprotect {
 
@@ -24,13 +26,13 @@ const uint32_t DEFAULT_HASHER_NUM = 8;
  *volume backup/restore facade and common struct defines
  */
 
-enum class CopyType {
+enum class VOLUMEPROTECT_API CopyType {
     FULL,       // the copy contains a full volume
     INCREMENT   // the copy is increment copy
 };
 
 // immutable config, used to build volume full/increment backup task
-struct VolumeBackupConfig {
+struct VOLUMEPROTECT_API VolumeBackupConfig {
     CopyType        copyType;                               // type of target copy to be generated
     std::string     blockDevicePath;                        // path of the block device (volume)
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
@@ -43,13 +45,13 @@ struct VolumeBackupConfig {
 };
 
 // immutable config, used to build volume restore task
-struct VolumeRestoreConfig {
+struct VOLUMEPROTECT_API VolumeRestoreConfig {
     std::string     blockDevicePath;                          // path of the block device (volume)
     std::string	    copyDataDirPath;
     std::string	    copyMetaDirPath;
 };
 
-enum class TaskStatus {
+enum class VOLUMEPROTECT_API TaskStatus {
     INIT        =  0,
     RUNNING     =  1,
     SUCCEED     =  2,
@@ -58,7 +60,7 @@ enum class TaskStatus {
     FAILED      =  5
 };
 
-struct TaskStatistics {
+struct VOLUMEPROTECT_API TaskStatistics {
     uint64_t bytesToRead;
     uint64_t bytesRead;
     uint64_t blocksToHash;
@@ -69,7 +71,7 @@ struct TaskStatistics {
     TaskStatistics operator+ (const TaskStatistics& taskStatistics) const;
 };
 
-class StatefulTask {
+class VOLUMEPROTECT_API StatefulTask {
 public:
     void        Abort();
     TaskStatus  GetStatus() const;
@@ -82,7 +84,7 @@ protected:
 };
 
 // base class of VolumeBackupTask and VolumeRestoreTask
-class VolumeProtectTask : public StatefulTask {
+class VOLUMEPROTECT_API VolumeProtectTask : public StatefulTask {
 public:
     virtual bool            Start() = 0;
     virtual TaskStatistics  GetStatistics() const = 0;

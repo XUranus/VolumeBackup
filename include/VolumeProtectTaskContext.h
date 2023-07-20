@@ -9,6 +9,7 @@
 #include <string>
 #include <cstdio>
 
+#include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "BlockingQueue.h"
 
@@ -19,14 +20,14 @@ class VolumeBlockWriter;
 class VolumeBlockHasher;
 
 // commpound struct used for hash/writer consuming
-struct VolumeConsumeBlock {
+struct VOLUMEPROTECT_API VolumeConsumeBlock {
     char*           ptr;
     uint64_t        volumeOffset;
     uint32_t        length;
 };
 
 // a fixed block allocator
-class VolumeBlockAllocator {
+class VOLUMEPROTECT_API VolumeBlockAllocator {
 public:
     VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum);
     ~VolumeBlockAllocator();
@@ -41,7 +42,7 @@ private:
     std::mutex  m_mutex;
 };
 
-struct SessionCounter {
+struct VOLUMEPROTECT_API SessionCounter {
     std::atomic<uint64_t>   bytesToRead     { 0 };
     std::atomic<uint64_t>   bytesRead       { 0 };
     std::atomic<uint64_t>   blocksToHash    { 0 };
@@ -61,7 +62,7 @@ struct SessionCounter {
  * 0         sessionOffset   sessionOffset + sessionSize
  *
  */
-struct VolumeTaskSession {
+struct VOLUMEPROTECT_API VolumeTaskSession {
     // immutable fields (common)
     uint64_t        sessionOffset;
     uint64_t        sessionSize;

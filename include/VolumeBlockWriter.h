@@ -2,16 +2,17 @@
 #ifndef VOLUME_BLOCK_WRITER_H
 #define VOLUME_BLOCK_WRITER_H
 
-#include "VolumeProtectTaskContext.h"
-
 #include <iostream>
 #include <memory>
 #include <thread>
 #include <fstream>
 
+#include "VolumeProtectMacros.h"
+#include "VolumeProtectTaskContext.h"
+
 namespace volumeprotect {
 
-class VolumeBlockWriter : public StatefulTask {
+class VOLUMEPROTECT_API VolumeBlockWriter : public StatefulTask {
 public:
     enum TargetType {
         VOLUME,

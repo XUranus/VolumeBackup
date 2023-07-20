@@ -1,17 +1,18 @@
 #ifndef VOLUME_BLOCK_READER_H
 #define VOLUME_BLOCK_READER_H
 
-#include "VolumeProtectTaskContext.h"
-
 #include <cstdint>
 #include <string>
 #include <memory>
 #include <thread>
 
+#include "VolumeProtectMacros.h"
+#include "VolumeProtectTaskContext.h"
+
 namespace volumeprotect {
 
 // read m_sourceLength bytes from block device/copy from m_sourceOffset
-class VolumeBlockReader : public StatefulTask {
+class VOLUMEPROTECT_API VolumeBlockReader : public StatefulTask {
 public:
     enum SourceType {
         VOLUME,

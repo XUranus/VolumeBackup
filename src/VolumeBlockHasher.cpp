@@ -2,6 +2,7 @@
 #include <cstring>
 #include <thread>
 #include <cassert>
+#include <fstream>
 
 #ifdef __linux__
 #include <openssl/evp.h>
@@ -22,9 +23,9 @@ using namespace volumeprotect;
 VolumeBlockHasher::~VolumeBlockHasher()
 {
     INFOLOG("finalize VolumeBlockHasher");
-    for (std::thread& worker: m_workers) {
-        if (worker.joinable()) {
-            worker.join();
+    for (std::shared_ptr<std::thread>& worker: m_workers) {
+        if (worker->joinable()) {
+            worker->join();
         }
     }
     if (m_prevChecksumTable != nullptr) {
@@ -152,7 +153,7 @@ bool VolumeBlockHasher::Start()
     m_status = TaskStatus::RUNNING;
     m_workersRunning = m_workerThreadNum;
     for (int i = 0; i < m_workerThreadNum; i++) {
-        m_workers.emplace_back(&VolumeBlockHasher::WorkerThread, this, i);
+        m_workers.emplace_back(std::make_shared<std::thread>(&VolumeBlockHasher::WorkerThread, this, i));
     }
     return true;
 }

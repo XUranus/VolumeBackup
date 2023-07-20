@@ -8,12 +8,13 @@
 #include <exception>
 #include <vector>
 
+#include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
 
 namespace volumeprotect {
 
-class VolumeRestoreTask : public VolumeProtectTask {
+class VOLUMEPROTECT_API VolumeRestoreTask : public VolumeProtectTask {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
     

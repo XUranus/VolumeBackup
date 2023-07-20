@@ -3,19 +3,17 @@
 #define VOLUME_BLOCK_HASHER_H
 
 #include <cstdint>
-#include <exception>
-#include <fstream>
 #include <memory>
-#include <new>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
 
 namespace volumeprotect {
 
-enum HasherForwardMode {
+enum class VOLUMEPROTECT_API  HasherForwardMode {
     // direct move block to write queue after block checksum is computed
     DIRECT,        
     // diff the checksum computed with the corresponding previous one and move block forward only it's cheksum changed
@@ -25,7 +23,7 @@ enum HasherForwardMode {
 /**
  * @brief param struct to build a hasher
  */
-struct VolumeBlockHasherParam {
+struct VOLUMEPROTECT_API VolumeBlockHasherParam {
     std::shared_ptr<VolumeTaskSession> session;
     HasherForwardMode   forwardMode;
     std::string         prevChecksumBinPath;
@@ -37,7 +35,7 @@ struct VolumeBlockHasherParam {
     uint64_t            lastestChecksumTableSize;
 };
 
-class VolumeBlockHasher : public StatefulTask {
+class VOLUMEPROTECT_API VolumeBlockHasher : public StatefulTask {
 public:
     ~VolumeBlockHasher();
 
@@ -76,9 +74,9 @@ private:
     std::string             m_prevChecksumBinPath;      // path of the checksum bin from previous copy
     std::string             m_lastestChecksumBinPath;   // path of the checksum bin to write latest copy
 
-    std::vector<std::thread> m_workers;
     int                     m_workerThreadNum { DEFAULT_HASHER_NUM };
     int                     m_workersRunning;
+    std::vector<std::shared_ptr<std::thread>> m_workers;
 };
 
 }
