@@ -2,7 +2,7 @@
 Volume backup/restore util (full backup and incremental backup)
 
 ## Require
- - CXX 17
+ - CXX 11
  - MSVC/GCC
  - Windows/Linux
 
