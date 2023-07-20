@@ -1,8 +1,12 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include <filesystem>
 #include <stdexcept>
+
+#if __cplusplus >= 201703L
+// using std::filesystem requires CXX17
+#include <filesystem>
+#endif
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN 1
@@ -26,12 +30,14 @@
 #include "VolumeUtils.h"
 
 namespace {
-#ifdef WIN32
+#ifdef _WIN32
     constexpr auto SEPARATOR = "\\";
 #else
     constexpr auto SEPARATOR = "/";
 #endif
     constexpr auto VOLUME_COPY_META_JSON_FILENAME = "volumecopy.meta.json";
+    constexpr auto DEFAULT_PROCESSORS_NUM = 4;
+    constexpr auto DEFAULT_MKDIR_MASK = 0755;
 }
 
 using namespace volumeprotect;
@@ -154,6 +160,8 @@ bool volumeprotect::util::IsBlockDeviceExists(const std::string& blockDevicePath
 
 bool volumeprotect::util::CheckDirectoryExistence(const std::string& path)
 {
+#if __cplusplus >= 201703L
+    // using std::filesystem requires CXX17
     try {
         if (std::filesystem::is_directory(path)) {
             return true;
@@ -162,12 +170,31 @@ bool volumeprotect::util::CheckDirectoryExistence(const std::string& path)
     } catch (...) {
         return false;
     }
+#else
+    // using WIN32/POSIX API
+#ifdef _WIN32
+    std::wstring wpath = Utf8ToUtf16(path);
+    DWORD attribute = ::GetFileAttributesW(wpath.c_str());
+    if (attribute != INVALID_FILE_ATTRIBUTES && (attribute & FILE_ATTRIBUTE_DIRECTORY)) {
+        return true;
+    }
+    return ::CreateDirectoryW(wpath.c_str(), nullptr) != 0;
+#else
+    DIR* dir = ::opendir(path.c_str());
+    if (dir) {
+        closedir(dir);
+        return true;
+    }
+    return ::mkdir(path.c_str(), DEFAULT_MKDIR_MASK) == 0;
+#endif
+#endif
 }
 
 #ifdef __linux
 uint32_t volumeprotect::util::ProcessorsNum()
 {
-    return sysconf(_SC_NPROCESSORS_ONLN);
+    auto processorCount = sysconf(_SC_NPROCESSORS_ONLN);
+    return processorCount <= 0 ? DEFAULT_PROCESSORS_NUM : processorCount;
 }
 #endif
 
@@ -178,7 +205,7 @@ uint32_t volumeprotect::util::ProcessorsNum()
     ::GetSystemInfo(&systemInfo);
     
     DWORD processorCount = systemInfo.dwNumberOfProcessors;
-    return processorCount;
+    return processorCount <= 0 ? DEFAULT_PROCESSORS_NUM : processorCount;
 }
 #endif
 
