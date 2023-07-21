@@ -41,12 +41,11 @@ public:
 
 private:
     void WriterThread();
-    bool Prepare();
 
 private:
     // immutable fields
-    TargetType  m_targetType;
-    std::string m_targetPath;
+    TargetType      m_targetType;
+    std::string     m_targetPath;
 
     // mutable fields
     std::shared_ptr<VolumeTaskSession>  m_session;

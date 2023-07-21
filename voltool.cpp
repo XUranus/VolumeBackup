@@ -15,8 +15,8 @@
 #include <cstdint>
 #include <vector>
 #include <string>
-#include <optional>
 #include <stdexcept>
+#include <exception>
 
 #ifdef _WIN32
 #define UNICODE

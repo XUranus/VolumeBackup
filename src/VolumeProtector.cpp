@@ -44,8 +44,8 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
     // 1. check volume size
     uint64_t volumeSize = 0;
     try {
-        volumeSize = util::ReadVolumeSize(backupConfig.blockDevicePath);
-    } catch (std::exception& e) {
+        volumeSize = system::ReadVolumeSize(backupConfig.blockDevicePath);
+    } catch (const system::SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return nullptr;
     }
@@ -54,10 +54,10 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
     }
 
     // 2. check dir existence
-    if (!util::CheckDirectoryExistence(backupConfig.outputCopyDataDirPath) ||
-        !util::CheckDirectoryExistence(backupConfig.outputCopyMetaDirPath) ||
+    if (!system::IsDirectoryExists(backupConfig.outputCopyDataDirPath) ||
+        !system::IsDirectoryExists(backupConfig.outputCopyMetaDirPath) ||
         (backupConfig.copyType == CopyType::INCREMENT &&
-        !util::CheckDirectoryExistence(backupConfig.prevCopyMetaDirPath))) {
+        !system::IsDirectoryExists(backupConfig.prevCopyMetaDirPath))) {
         ERRLOG("failed to prepare copy directory");
         return nullptr;
     }
@@ -70,8 +70,8 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
     // 1. check volume size
     uint64_t volumeSize = 0;
     try {
-        volumeSize = util::ReadVolumeSize(restoreConfig.blockDevicePath);
-    } catch (std::exception& e) {
+        volumeSize = system::ReadVolumeSize(restoreConfig.blockDevicePath);
+    } catch (const system::SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return nullptr;
     }
@@ -80,8 +80,8 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
     }
 
     // 2. check dir existence
-    if (!util::CheckDirectoryExistence(restoreConfig.copyDataDirPath) ||
-        !util::CheckDirectoryExistence(restoreConfig.copyMetaDirPath)) {
+    if (!system::IsDirectoryExists(restoreConfig.copyDataDirPath) ||
+        !system::IsDirectoryExists(restoreConfig.copyMetaDirPath)) {
         ERRLOG("failed to prepare copy directory");
         return nullptr;
     }

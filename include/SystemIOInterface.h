@@ -14,6 +14,8 @@
 
 #include <string>
 #include <cstdint>
+#include <exception>
+#include <stdexcept>
 
 #include "VolumeProtectMacros.h"
 
@@ -30,6 +32,16 @@ using IOHandle = int;
 #ifdef _WIN32
 using IOHandle = HANDLE;
 #endif
+
+class SystemApiException : public std::exception {
+public:
+    // Constructor
+    SystemApiException(uint32_t errorCode);
+    SystemApiException(const char* message, uint32_t errorCode);
+    const char* what() const noexcept override;
+private:
+    std::string m_message;
+};
 
 VOLUMEPROTECT_API bool IsValidIOHandle(IOHandle handle);
 
@@ -62,6 +74,18 @@ VOLUMEPROTECT_API bool SetIOPointer(IOHandle handle, uint64_t offset);
 VOLUMEPROTECT_API uint32_t GetLastError();
 
 VOLUMEPROTECT_API bool TruncateCreateFile(const std::string& path, uint64_t size);
+
+VOLUMEPROTECT_API bool IsFileExists(const std::string& path);
+
+VOLUMEPROTECT_API uint64_t GetFileSize(const std::string& path);
+
+VOLUMEPROTECT_API bool IsDirectoryExists(const std::string& path);
+
+VOLUMEPROTECT_API bool IsVolumeExists(const std::string& volumePath);
+
+VOLUMEPROTECT_API uint64_t ReadVolumeSize(const std::string& volumePath);
+
+VOLUMEPROTECT_API uint32_t ProcessorsNum();
 
 }
 };

@@ -33,7 +33,19 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
     std::shared_ptr<VolumeTaskSession> session)
 {
     std::string copyFilePath = session->copyFilePath;
-    // TODO:: check target copy file
+    if (system::IsFileExists(copyFilePath) && system::GetFileSize(copyFilePath) == session->sessionSize) {
+        // should be full copy file, this task should be increment backup
+        DBGLOG("copy file already exists, using %s", copyFilePath.c_str());
+        return nullptr;
+    }
+    // truncate copy file to session size
+    DBGLOG("truncate target copy file %s to size %llu", copyFilePath.c_str(), session->sessionSize);
+    if (!system::TruncateCreateFile(copyFilePath, session->sessionSize)) {
+        ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
+            copyFilePath.c_str(), session->sessionSize, system::GetLastError());
+        return nullptr;
+    }
+
     return std::make_shared<VolumeBlockWriter>(
         TargetType::COPYFILE,
         copyFilePath,
@@ -46,11 +58,19 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
     std::shared_ptr<VolumeTaskSession> session)
 {
     std::string blockDevicePath = session->blockDevicePath;
-    // check target block device
-    if (!util::IsBlockDeviceExists(blockDevicePath)) {
+    // check target block device existence
+    if (!system::IsVolumeExists(blockDevicePath)) {
         ERRLOG("block device %s not exists", blockDevicePath.c_str());
         return nullptr;
     }
+    // check target block device valid to write
+    system::IOHandle handle = system::OpenVolumeForWrite(blockDevicePath.c_str());
+    if (system::IsValidIOHandle(handle)) {
+        ERRLOG("open block device %s failed, error code = %u", blockDevicePath.c_str(), system::GetLastError());
+        return nullptr;
+    }
+    system::CloseVolume(handle);
+    // build writer
     return std::make_shared<VolumeBlockWriter>(
         TargetType::VOLUME,
         blockDevicePath,
@@ -61,10 +81,6 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
 bool VolumeBlockWriter::Start()
 {
     if (m_status != TaskStatus::INIT) {
-        return false;
-    }
-    if (!Prepare()) {
-        m_status = TaskStatus::FAILED;
         return false;
     }
     m_status = TaskStatus::RUNNING;
@@ -87,32 +103,6 @@ VolumeBlockWriter::VolumeBlockWriter(
     m_targetPath(targetPath),
     m_session(session)
 {}
-
-bool VolumeBlockWriter::Prepare()
-{
-    // open writer target file handle
-    if (m_targetType == TargetType::COPYFILE) {
-        // truncate copy file to session size
-        DBGLOG("truncate target copy file %s to size %llu", m_targetPath.c_str(), m_session->sessionSize);
-        if (!system::TruncateCreateFile(m_targetPath, m_session->sessionSize)) {
-            ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
-                m_targetPath.c_str(),
-                m_session->sessionSize,
-                system::GetLastError());
-            return false;
-        }
-    }
-    
-    if (m_targetType == TargetType::VOLUME) {
-        system::IOHandle handle = system::OpenVolumeForWrite(m_targetPath.c_str());
-        if (system::IsValidIOHandle(handle)) {
-            ERRLOG("open block device %s failed, error code = %u", m_targetPath.c_str(), system::GetLastError());
-            return false;
-        }
-        system::CloseVolume(handle);
-    }
-    return true;
-}
 
 void VolumeBlockWriter::WriterThread()
 {

@@ -2,9 +2,7 @@
 #define VOLUME_BACKUP_UTIL_H
 
 #include <cstdint>
-#include <stdexcept>
 #include <string>
-#include <exception>
 #include <vector>
 
 #include "VolumeProtectMacros.h"
@@ -12,18 +10,9 @@
 #include "Logger.h"
 #include "Json.h"
 #include "VolumeProtector.h"
+#include "SystemIOInterface.h"
 
 namespace volumeprotect {
-
-class SystemApiException : public std::exception {
-public:
-    // Constructor
-    SystemApiException(uint32_t errorCode);
-    SystemApiException(const char* message, uint32_t errorCode);
-    const char* what() const noexcept override;
-private:
-    std::string m_message;
-};
 
 struct VOLUMEPROTECT_API VolumeCopyMeta {
     using Range = std::vector<std::pair<uint64_t, uint64_t>>;
@@ -42,14 +31,6 @@ struct VOLUMEPROTECT_API VolumeCopyMeta {
 };
 
 namespace util {
-
-VOLUMEPROTECT_API uint64_t ReadVolumeSize(const std::string& blockDevice);
-
-VOLUMEPROTECT_API bool IsBlockDeviceExists(const std::string& blockDevicePath);
-
-VOLUMEPROTECT_API bool CheckDirectoryExistence(const std::string& path);
-
-VOLUMEPROTECT_API uint32_t ProcessorsNum();
 
 VOLUMEPROTECT_API std::string GetChecksumBinPath(
     const std::string&          copyMetaDirPath,
