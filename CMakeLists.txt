@@ -1,15 +1,20 @@
-CMAKE_MINIMUM_REQUIRED (VERSION 3.8)
-SET(Project volumeprotect)
+CMAKE_MINIMUM_REQUIRED (VERSION 3.14)
+SET(Project volumebackup)
 PROJECT(${Project} C CXX)
 SET(SOURCE_DIR ${${Project}_SOURCE_DIR})
 
-ADD_SUBDIRECTORY(module/minijson)
-ADD_SUBDIRECTORY(module/minilogger)
+MESSAGE("Project = ${Project}")
+MESSAGE("SOURCE_DIR = ${SOURCE_DIR}")
+MESSAGE("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+MESSAGE("COVERAGE = ${COVERAGE}")
 
+# supress MSVC/GCC warnings
 IF(${CMAKE_HOST_WIN32})
     SET(CMAKE_CXX_FLAGS_DEBUG "/MTd /Zi /Ob0 /Od /RTC1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
+ELSE()
+    ADD_COMPILE_OPTIONS(-Wno-format-security)
 ENDIF()
 
 FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_SOURCES "src/*.cpp")
@@ -21,61 +26,69 @@ INCLUDE_DIRECTORIES(
     "module/minilogger"
 )
 
+ADD_SUBDIRECTORY(module/minijson)
+ADD_SUBDIRECTORY(module/minilogger)
+
+
+
+# build a dynamic library
+MESSAGE("Build volumebackup dynamic library ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}")
 SET(VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET ${Project})
-SET(VOLUMEPROTECT_STATIC_LIBRARY_TARGET ${Project}_static)
-
-MESSAGE("Build volumeprotect dynamic library ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}")
-MESSAGE("Build volumeprotect static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
-ADD_LIBRARY(${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET} SHARED ${VOLUMEPROTECTPROTECT_SOURCES} ${VOLUMEPROTECTPROTECT_HEADERS})
-ADD_LIBRARY(${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}  STATIC ${VOLUMEPROTECTPROTECT_SOURCES} ${VOLUMEPROTECTPROTECT_HEADERS})
-
-SET_PROPERTY(TARGET ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET} PROPERTY CXX_STANDARD 17)
-SET_PROPERTY(TARGET ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET} PROPERTY CXX_STANDARD 17)
-
+ADD_LIBRARY(
+    ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
+    SHARED
+    ${VOLUMEPROTECTPROTECT_SOURCES} ${VOLUMEPROTECTPROTECT_HEADERS}
+)
+SET_PROPERTY(
+    TARGET ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
+    PROPERTY CXX_STANDARD 11
+)
+# to generate export library when build dynamic library, pass LIBRARY_EXPORT macro
+TARGET_COMPILE_DEFINITIONS(
+    ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
+    PRIVATE -DLIBRARY_EXPORT
+)
+# link again dynamic libs
 TARGET_LINK_LIBRARIES(
     ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
     minijson
     minilogger
 )
 
+# build a static library
+MESSAGE("Build volumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
+SET(VOLUMEPROTECT_STATIC_LIBRARY_TARGET ${Project}_static)
+ADD_LIBRARY(
+    ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
+    STATIC
+    ${VOLUMEPROTECTPROTECT_SOURCES} ${VOLUMEPROTECTPROTECT_HEADERS}
+)
+SET_PROPERTY(
+    TARGET ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
+    PROPERTY CXX_STANDARD 11
+)
+# link againt static libs
 TARGET_LINK_LIBRARIES(
     ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
     minijson_static
     minilogger_static
 )
 
-# to generate export library when build dynamic library
-TARGET_COMPILE_DEFINITIONS(${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET} PRIVATE -DLIBRARY_EXPORT)
 
-MESSAGE("CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
-MESSAGE("SOURCE_DIR is ${SOURCE_DIR}")
-
-# build test and run code coverage
-IF (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
+# set -DCMAKE_BUILD_TYPE=Debug to enable LLT, set -DCOVERAGE=ON to enable code coverage
+IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # these config must be put at the level of source code in order to append compile flags
+    IF (${COVERAGE} STREQUAL "lcov" OR ${COVERAGE} STREQUAL "gcovr")
+        MESSAGE("code coverage is enabled, COVERAGE = ${COVERAGE}, append coverage compiler flags")
+        INCLUDE(${SOURCE_DIR}/test/CodeCoverage.cmake)
+        APPEND_COVERAGE_COMPILER_FLAGS()
+    ENDIF()
 
     ENABLE_TESTING()
     ADD_SUBDIRECTORY("test")
-
-    IF (CMAKE_BUILD_TYPE STREQUAL "Coverage")
-
-        INCLUDE(${SOURCE_DIR}/test/CodeCoverage.cmake)
-        APPEND_COVERAGE_COMPILER_FLAGS()
-        SETUP_TARGET_FOR_COVERAGE_LCOV(
-            NAME "volumeprotect_lcov_test"
-            EXECUTABLE make test
-            EXCLUDE "${PROJECT_SOURCE_DIR}/test/*" "/usr/include/*" "*googlemock*" "*googletest*"
-        )
-    
-        SETUP_TARGET_FOR_COVERAGE_GCOVR_HTML(
-            NAME "volumeprotect_gcovr_test"
-            EXECUTABLE make test
-            BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
-            EXCLUDE "${PROJECT_SOURCE_DIR}/test/*" "/usr/include/*" "*googlemock*" "*googletest*" "*build*"
-        )
-    ENDIF()
 ENDIF()
 
-
+# build executable tools
 ADD_EXECUTABLE (vbkup
     "vbkup.cpp"
     "GetOption.cpp"
@@ -86,16 +99,14 @@ ADD_EXECUTABLE (voltool
     "GetOption.cpp"
 )
 
-IF (CMAKE_VERSION VERSION_GREATER 3.12)
-    SET_PROPERTY(TARGET vbkup PROPERTY CXX_STANDARD 17)
-    SET_PROPERTY(TARGET voltool PROPERTY CXX_STANDARD 17)
-ENDIF()
+SET_PROPERTY(TARGET vbkup PROPERTY CXX_STANDARD 11)
+SET_PROPERTY(TARGET voltool PROPERTY CXX_STANDARD 11)
 
-# build vbkup executable
+# link vbkup executable
 IF(${CMAKE_HOST_WIN32})
     TARGET_LINK_LIBRARIES(
         vbkup
-        volumeprotect_static
+        volumebackup_static
         # third part dependency provided by XUranus
         minijson_static
         minilogger_static
@@ -104,7 +115,7 @@ ELSE()
     # require linux-utils
     TARGET_LINK_LIBRARIES(
         vbkup
-        volumeprotect
+        volumebackup
         # openssl
         crypto
         pthread

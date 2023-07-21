@@ -1,5 +1,5 @@
 # VolumeBackup
-Volume backup/restore util (full backup and incremental backup)
+Volume backup/restore util (support **FULL BACKUP** and **FOREVER INCREMENT BACKUP**)
 
 ## Require
  - CXX 11
@@ -7,11 +7,21 @@ Volume backup/restore util (full backup and incremental backup)
  - Windows/Linux
 
 ## Build
+build library and executable:
 ```
-mkdir build
-cd build
-cmake ..
+mkdir build && cd build
+cmake .. && cmake --build .
+```
+
+build and run test coverage:
+```
+mkdir build && cd build
+# use lcov
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=lcov
+# or use gcovr
+# cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=gcovr
 cmake --build .
+make volumebackup_coverage_test
 ```
 
 ## Usage
