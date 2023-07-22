@@ -34,7 +34,7 @@ enum class VOLUMEPROTECT_API CopyType {
 // immutable config, used to build volume full/increment backup task
 struct VOLUMEPROTECT_API VolumeBackupConfig {
     CopyType        copyType;                               // type of target copy to be generated
-    std::string     blockDevicePath;                        // path of the block device (volume)
+    std::string     volumePath;                             // path of the block device (volume)
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
     std::string	    outputCopyDataDirPath;
     std::string	    outputCopyMetaDirPath;
@@ -46,7 +46,7 @@ struct VOLUMEPROTECT_API VolumeBackupConfig {
 
 // immutable config, used to build volume restore task
 struct VOLUMEPROTECT_API VolumeRestoreConfig {
-    std::string     blockDevicePath;                          // path of the block device (volume)
+    std::string     volumePath;                          // path of the block device (volume)
     std::string	    copyDataDirPath;
     std::string	    copyMetaDirPath;
 };

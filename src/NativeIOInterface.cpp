@@ -18,26 +18,28 @@
 #include <winioctl.h>
 #endif
 
-#include "SystemIOInterface.h"
+#include "NativeIOInterface.h"
 
-using namespace volumeprotect::system;
+using namespace volumeprotect::native;
 
 namespace {
     constexpr auto DEFAULT_PROCESSORS_NUM = 4;
     constexpr auto DEFAULT_MKDIR_MASK = 0755;
 #ifdef _WIN32
     constexpr auto SEPARATOR = "\\";
+    const IOHandle SYSTEM_IO_INVALID_HANDLE = INVALID_HANDLE_VALUE;
 #else
     constexpr auto SEPARATOR = "/";
+    const IOHandle SYSTEM_IO_INVALID_HANDLE = -1;
 #endif
 }
 
-SystemApiException::SystemApiException(uint32_t errorCode)
+SystemApiException::SystemApiException(ErrCodeType errorCode)
 {
     m_message = std::string("error code = ") + std::to_string(errorCode);
 }
 
-SystemApiException::SystemApiException(const char* message, uint32_t errorCode)
+SystemApiException::SystemApiException(const char* message, ErrCodeType errorCode)
 {
     m_message = std::string(message) + " , error code = " + std::to_string(errorCode);
 }
@@ -45,6 +47,39 @@ SystemApiException::SystemApiException(const char* message, uint32_t errorCode)
 const char* SystemApiException::what() const noexcept
 {
     return m_message.c_str();
+}
+
+inline bool IsIOHandleValid(IOHandle handle)
+{
+#ifdef __linux__
+    return handle > 0;
+#endif
+#ifdef _WIN32
+    return handle != INVALID_HANDLE_VALUE;
+#endif
+}
+
+inline bool LastErrorCode()
+{
+#ifdef __linux__
+    return static_cast<ErrCodeType>(errno);
+#endif
+#ifdef _WIN32
+    return static_cast<ErrCodeType>(::GetLastError());
+#endif
+}
+
+inline void CloseIOHandle(IOHandle handle)
+{
+    if (!IsIOHandleValid(handle)) {
+        return;
+    }
+#ifdef __linux__
+    ::close(handle);
+#endif
+#ifdef _WIN32
+    ::CloseHandle(handle);
+#endif
 }
 
 #ifdef _WIN32
@@ -71,84 +106,30 @@ inline void SetOverlappedStructOffset(OVERLAPPED& ov, uint64_t offset)
 }
 #endif
 
-bool volumeprotect::system::IsValidIOHandle(IOHandle handle)
+SystemDataReader::SystemDataReader(const std::string& path)
 {
 #ifdef __linux__
-    return handle > 0;
+    m_handle = ::open(path.c_str(), O_RDONLY);
 #endif
 #ifdef _WIN32
-    return handle != INVALID_HANDLE_VALUE;
-#endif
-}
-
-void volumeprotect::system::SetHandleInvalid(IOHandle& handle)
-{
-#ifdef __linux__
-    handle = -1;
-#endif
-#ifdef _WIN32
-    handle = INVALID_HANDLE_VALUE;
-#endif
-}
-
-IOHandle volumeprotect::system::OpenVolumeForRead(const std::string& volumePath)
-{
-#ifdef __linux__
-    int fd = ::open(volumePath.c_str(), O_RDONLY);
-    return fd;
-#endif
-#ifdef _WIN32
-    std::wstring wvolumePath = Utf8ToUtf16(volumePath);
-    HANDLE hDevice = ::CreateFileW(
-        wvolumePath.c_str(),
+    std::wstring wpath = Utf8ToUtf16(path);
+    m_handle = ::CreateFileW(
+        wpath.c_str(),
         GENERIC_READ,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr,
         OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS,
-        nullptr);
-    return hDevice;
+        nullptr
+    );
 #endif
 }
 
-IOHandle volumeprotect::system::OpenVolumeForWrite(const std::string& volumePath)
+bool SystemDataReader::Read(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode)
 {
 #ifdef __linux__
-    int fd = ::open(volumePath.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    return fd;
-#endif
-#ifdef _WIN32
-    std::wstring wvolumePath = Utf8ToUtf16(volumePath);
-    HANDLE hDevice = ::CreateFileW(
-        wvolumePath.c_str(),
-        GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr,
-        OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS,
-        nullptr);
-    return hDevice;
-#endif
-}
-
-void volumeprotect::system::CloseVolume(IOHandle handle)
-{
-    if (!IsValidIOHandle(handle)) {
-        return;
-    }
-#ifdef __linux__
-    ::close(handle);
-#endif
-#ifdef _WIN32
-    ::CloseHandle(handle);
-#endif
-}
-
-bool volumeprotect::system::ReadVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode)
-{
-#ifdef __linux__
-    ::lseek(handle, offset, SEEK_SET);
-    int ret = ::read(handle, buffer, length);
+    ::lseek(m_handle, offset, SEEK_SET);
+    int ret = ::read(m_handle, buffer, length);
     if (ret <= 0 || ret != length) {
         errorCode = errno;
         return false;
@@ -159,7 +140,7 @@ bool volumeprotect::system::ReadVolumeData(IOHandle handle, uint64_t offset, cha
     OVERLAPPED ov {};
     DWORD bytesReaded = 0;
     SetOverlappedStructOffset(ov, offset);
-    if (!::ReadFile(handle, buffer, length, &bytesReaded, &ov) || bytesReaded != length) {
+    if (!::ReadFile(m_handle, buffer, length, &bytesReaded, &ov) || bytesReaded != length) {
         errorCode = ::GetLastError();
         return false;
     }
@@ -167,11 +148,46 @@ bool volumeprotect::system::ReadVolumeData(IOHandle handle, uint64_t offset, cha
 #endif
 }
 
-bool volumeprotect::system::WriteVolumeData(IOHandle handle, uint64_t offset, char* buffer, int length, uint32_t& errorCode)
+bool SystemDataReader::Ok()
+{
+    return IsIOHandleValid(m_handle);
+}
+
+ErrCodeType SystemDataReader::Error()
+{
+    return LastErrorCode();
+}
+
+SystemDataReader::~SystemDataReader()
+{
+    CloseIOHandle(m_handle);
+    m_handle = SYSTEM_IO_INVALID_HANDLE;
+}
+
+SystemDataWriter::SystemDataWriter(const std::string& path)
 {
 #ifdef __linux__
-    ::lseek(handle, offset, SEEK_SET);
-    int ret = ::write(handle, buffer, length);
+    m_handle = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+#endif
+#ifdef _WIN32
+    std::wstring wpath = Utf8ToUtf16(path);
+    m_handle = ::CreateFileW(
+        wpath.c_str(),
+        GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS,
+        nullptr
+    );
+#endif
+}
+
+bool SystemDataWriter::Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode)
+{
+#ifdef __linux__
+    ::lseek(m_handle, offset, SEEK_SET);
+    int ret = ::write(m_handle, buffer, length);
     if (ret <= 0 || ret != length) {
         errorCode = errno;
         return false;
@@ -182,7 +198,7 @@ bool volumeprotect::system::WriteVolumeData(IOHandle handle, uint64_t offset, ch
     OVERLAPPED ov {};
     DWORD bytesWrited = 0;
     SetOverlappedStructOffset(ov, offset);
-    if (!::WriteFile(handle, buffer, length, &bytesWrited, &ov) && bytesWrited != length) {
+    if (!::WriteFile(m_handle, buffer, length, &bytesWrited, &ov) && bytesWrited != length) {
         errorCode = ::GetLastError();
         return false;
     }
@@ -190,40 +206,35 @@ bool volumeprotect::system::WriteVolumeData(IOHandle handle, uint64_t offset, ch
 #endif
 }
 
-bool volumeprotect::system::SetIOPointer(IOHandle handle, uint64_t offset)
+bool SystemDataWriter::Ok()
 {
-    if (!IsValidIOHandle(handle)) {
-        return false;
-    }
-#ifdef __linux__
-    ::lseek(handle, offset, SEEK_SET);
-    return true;
-#endif
-#ifdef _WIN32
-    LARGE_INTEGER liOffset;
-    liOffset.QuadPart = offset;
-    LARGE_INTEGER liNewPos {};
-    if (!::SetFilePointerEx(handle, liOffset, &liNewPos, FILE_BEGIN)) {
-        return false;
-    }
-    return true;
-#endif
+    return IsIOHandleValid(m_handle);
 }
 
-uint32_t volumeprotect::system::GetLastError()
+ErrCodeType SystemDataWriter::Error()
 {
-#ifdef __linux__
-    return errno;
-#endif
-#ifdef _WIN32
-    return ::GetLastError();
-#endif
+    return LastErrorCode();
 }
 
-bool volumeprotect::system::TruncateCreateFile(const std::string& path, uint64_t size)
+SystemDataWriter::~SystemDataWriter()
+{
+    CloseIOHandle(m_handle);
+    m_handle = SYSTEM_IO_INVALID_HANDLE;
+}
+
+
+
+
+
+
+
+
+
+bool volumeprotect::native::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode)
 {
 #ifdef __linux__
     if (::truncate(path.c_str(), size) < 0) {
+        errorCode = static_cast<ErrCodeType>(errno);
         return false;
     }
     return true;
@@ -240,6 +251,7 @@ bool volumeprotect::system::TruncateCreateFile(const std::string& path, uint64_t
         nullptr
     );
     if (hFile == INVALID_HANDLE_VALUE) {
+        errorCode = static_cast<ErrCodeType>(::GetLastError());
         return false;
     }
     
@@ -256,10 +268,12 @@ bool volumeprotect::system::TruncateCreateFile(const std::string& path, uint64_t
     LARGE_INTEGER li {};
     li.QuadPart = size;
     if (!::SetFilePointerEx(hFile, li, nullptr, FILE_BEGIN)) {
+        errorCode = static_cast<ErrCodeType>(::GetLastError());
         ::CloseHandle(hFile);
         return false;
     }
     if (!SetEndOfFile(hFile)) {
+        errorCode = static_cast<ErrCodeType>(::GetLastError());
         ::CloseHandle(hFile);
         return false;
     }
@@ -268,7 +282,7 @@ bool volumeprotect::system::TruncateCreateFile(const std::string& path, uint64_t
 #endif
 }
 
-bool volumeprotect::system::IsFileExists(const std::string& path)
+bool volumeprotect::native::IsFileExists(const std::string& path)
 {
 #ifdef __linux__
     struct stat st;
@@ -281,7 +295,7 @@ bool volumeprotect::system::IsFileExists(const std::string& path)
 #endif
 }
 
-uint64_t volumeprotect::system::GetFileSize(const std::string& path)
+uint64_t volumeprotect::native::GetFileSize(const std::string& path)
 {
 #ifdef __linux__
     struct stat st;
@@ -301,7 +315,7 @@ uint64_t volumeprotect::system::GetFileSize(const std::string& path)
 #endif
 }
 
-bool volumeprotect::system::IsDirectoryExists(const std::string& path)
+bool volumeprotect::native::IsDirectoryExists(const std::string& path)
 {
 #ifdef _WIN32
     std::wstring wpath = Utf8ToUtf16(path);
@@ -378,7 +392,7 @@ static uint64_t GetVolumeSizeLinux(const std::string& devicePath) {
 }
 #endif
 
-uint64_t volumeprotect::system::ReadVolumeSize(const std::string& volumePath)
+uint64_t volumeprotect::native::ReadVolumeSize(const std::string& volumePath)
 {
     uint64_t size = 0;
     try {
@@ -395,7 +409,7 @@ uint64_t volumeprotect::system::ReadVolumeSize(const std::string& volumePath)
     return size;
 }
 
-bool volumeprotect::system::IsVolumeExists(const std::string& volumePath)
+bool volumeprotect::native::IsVolumeExists(const std::string& volumePath)
 {
     try {
         ReadVolumeSize(volumePath);
@@ -405,7 +419,7 @@ bool volumeprotect::system::IsVolumeExists(const std::string& volumePath)
     return true;
 }
 
-uint32_t volumeprotect::system::ProcessorsNum()
+uint32_t volumeprotect::native::ProcessorsNum()
 {
 #ifdef __linux
     auto processorCount = sysconf(_SC_NPROCESSORS_ONLN);

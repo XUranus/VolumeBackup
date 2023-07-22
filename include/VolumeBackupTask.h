@@ -14,7 +14,7 @@
 
 namespace volumeprotect {
 
-class VOLUMEPROTECT_API  VolumeBackupTask : public VolumeProtectTask {
+class VOLUMEPROTECT_API VolumeBackupTask : public VolumeProtectTask {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
     

@@ -23,12 +23,12 @@ void PrintHelp()
 }
 
 int ExecVolumeRestore(
-    const std::string& 	blockDevicePath,
+    const std::string& 	volumePath,
 	const std::string&	copyDataDirPath,
 	const std::string&	copyMetaDirPath)
 {
     VolumeRestoreConfig restoreConfig {};
-    restoreConfig.blockDevicePath = blockDevicePath;
+    restoreConfig.volumePath = volumePath;
     restoreConfig.copyDataDirPath = copyDataDirPath;
     restoreConfig.copyMetaDirPath = copyMetaDirPath;
 
@@ -50,14 +50,14 @@ int ExecVolumeRestore(
 
 int ExecVolumeBackup(
     CopyType copyType,
-    const std::string& blockDevicePath,
+    const std::string& volumePath,
     const std::string& prevCopyMetaDirPath,
     const std::string& outputCopyDataDirPath,
     const std::string& outputCopyMetaDirPath)
 {
     VolumeBackupConfig backupConfig {};
     backupConfig.copyType = copyType;
-    backupConfig.blockDevicePath = blockDevicePath;
+    backupConfig.volumePath = volumePath;
     backupConfig.prevCopyMetaDirPath = prevCopyMetaDirPath;
     backupConfig.outputCopyDataDirPath = outputCopyDataDirPath;
     backupConfig.outputCopyMetaDirPath = outputCopyMetaDirPath;
@@ -85,7 +85,7 @@ int ExecVolumeBackup(
 int main(int argc, const char** argv)
 {
     std::cout << "=== vbkup ===" << std::endl;
-    std::string blockDevicePath = "";
+    std::string volumePath = "";
     std::string copyDataDirPath = "";
     std::string copyMetaDirPath = "";
     std::string prevCopyMetaDirPath = "";
@@ -95,7 +95,7 @@ int main(int argc, const char** argv)
     GetOptionResult result = GetOption(argv + 1, argc - 1, "v:d:m:p:h:r:l", {});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "v") {
-            blockDevicePath = opt.value;
+            volumePath = opt.value;
         } else if (opt.option == "d") {
             copyDataDirPath = opt.value;
         } else if (opt.option == "m") {
@@ -112,11 +112,11 @@ int main(int argc, const char** argv)
         }
     }
 
-    if (blockDevicePath.empty() || copyDataDirPath.empty() || copyMetaDirPath.empty()) {
+    if (volumePath.empty() || copyDataDirPath.empty() || copyMetaDirPath.empty()) {
         PrintHelp();
         return 1;
     } 
-    std::cout << "blockDevicePath: " << blockDevicePath << std::endl;
+    std::cout << "volumePath: " << volumePath << std::endl;
     std::cout << "copyDataDirPath: " << copyDataDirPath << std::endl;
     std::cout << "copyMetaDirPath: " << copyMetaDirPath << std::endl;
     std::cout << "prevCopyMetaDirPath: " << prevCopyMetaDirPath << std::endl;
@@ -146,13 +146,13 @@ int main(int argc, const char** argv)
 
     if (isRestore) {
         std::cout << "Doing copy restore" << std::endl;
-        ExecVolumeRestore(blockDevicePath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeRestore(volumePath, copyDataDirPath, copyMetaDirPath);
     } else if (prevCopyMetaDirPath.empty()) {
         std::cout << "Doing full backup" << std::endl;
-        ExecVolumeBackup(CopyType::FULL, blockDevicePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeBackup(CopyType::FULL, volumePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
     } else {
         std::cout << "Doing increment backup" << std::endl;
-        ExecVolumeBackup(CopyType::INCREMENT, blockDevicePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeBackup(CopyType::INCREMENT, volumePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
     }
     Logger::GetInstance()->Destroy();
     return 0;

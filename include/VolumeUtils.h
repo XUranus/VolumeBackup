@@ -10,7 +10,7 @@
 #include "Logger.h"
 #include "Json.h"
 #include "VolumeProtector.h"
-#include "SystemIOInterface.h"
+#include "NativeIOInterface.h"
 
 namespace volumeprotect {
 

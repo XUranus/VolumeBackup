@@ -9,16 +9,27 @@
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
+#include "NativeIOInterface.h"
 
 namespace volumeprotect {
 
+enum class TargetType {
+    VOLUME = 0,
+    COPYFILE = 1
+};
+
+/**
+ * @brief param to build a block reader
+ */
+struct VOLUMEPROTECT_API VolumeBlockWriterParam {
+    TargetType      targetType;
+    std::string     targetPath;
+    std::shared_ptr<VolumeTaskSession>  session;
+    std::shared_ptr<native::DataWriter> dataWriter;
+};
+
 class VOLUMEPROTECT_API VolumeBlockWriter : public StatefulTask {
 public:
-    enum TargetType {
-        VOLUME,
-        COPYFILE
-    };
-
     // build a writer writing to copy file
     static std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(
         std::shared_ptr<VolumeTaskSession> session
@@ -33,14 +44,10 @@ public:
 
     ~VolumeBlockWriter();
 
-    VolumeBlockWriter(
-        TargetType targetType,
-        const std::string& targetPath,
-        std::shared_ptr<VolumeTaskSession> session
-    );
+    VolumeBlockWriter(const VolumeBlockWriterParam& param);
 
 private:
-    void WriterThread();
+    void MainThread();
 
 private:
     // immutable fields
@@ -50,6 +57,7 @@ private:
     // mutable fields
     std::shared_ptr<VolumeTaskSession>  m_session;
     std::thread                         m_writerThread;
+    std::shared_ptr<volumeprotect::native::DataWriter> m_dataWriter;
 };
 
 }

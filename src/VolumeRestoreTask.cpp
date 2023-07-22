@@ -65,7 +65,7 @@ bool VolumeRestoreTask::IsIncrementCopy() const
 // split session and write back
 bool VolumeRestoreTask::Prepare()
 {
-    std::string blockDevicePath = m_restoreConfig->blockDevicePath;
+    std::string volumePath = m_restoreConfig->volumePath;
     
     // 1. read copy meta json and validate volume
     VolumeCopyMeta volumeCopyMeta {};
@@ -87,7 +87,7 @@ bool VolumeRestoreTask::Prepare()
             m_restoreConfig->copyDataDirPath, copyType, sessionOffset, sessionSize);
 
         VolumeTaskSession session {};
-        session.blockDevicePath = blockDevicePath;
+        session.volumePath = volumePath;
         session.hasherEnabled = false;
         session.blockSize = volumeCopyMeta.blockSize;
         session.sessionOffset = sessionOffset;

@@ -66,7 +66,7 @@ bool VolumeBackupTask::IsIncrementBackup() const
 // split session and save volume meta
 bool VolumeBackupTask::Prepare()
 {
-    std::string blockDevicePath = m_backupConfig->blockDevicePath;
+    std::string volumePath = m_backupConfig->volumePath;
     // 1. fill volume meta info
     VolumeCopyMeta volumeCopyMeta {};
     volumeCopyMeta.copyType = static_cast<int>(m_backupConfig->copyType);
@@ -94,7 +94,7 @@ bool VolumeBackupTask::Prepare()
         }
 
         VolumeTaskSession session {};
-        session.blockDevicePath = m_backupConfig->blockDevicePath;
+        session.volumePath = m_backupConfig->volumePath;
         session.hasherEnabled = true;
         session.blockSize = m_backupConfig->blockSize;
         session.sessionOffset = sessionOffset;
@@ -126,7 +126,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     
     // 2. check and init reader
     session->reader = VolumeBlockReader::BuildVolumeReader(
-        m_backupConfig->blockDevicePath,
+        m_backupConfig->volumePath,
         session->sessionOffset,
         session->sessionSize,
         session

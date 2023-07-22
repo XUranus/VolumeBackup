@@ -68,7 +68,7 @@ struct VOLUMEPROTECT_API VolumeTaskSession {
     uint64_t        sessionSize;
     uint32_t        blockSize;
     bool            hasherEnabled;
-    std::string     blockDevicePath;
+    std::string     volumePath;
     std::string     copyFilePath;
 
     // immutable fields (for backup)
