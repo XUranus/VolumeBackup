@@ -69,13 +69,13 @@ public:
  * @brief provide VolumeDataReader/VolumeDataWriter, FileDataReader/FileDataWriter implement using native API
  * 
  */
-class VOLUMEPROTECT_API SystemDataReader : public DataReader  {
+class VOLUMEPROTECT_API SystemDataReader : public DataReader {
 public:
     SystemDataReader(const std::string& path);
     ~SystemDataReader();
-    virtual bool Read(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) override;
-    virtual bool Ok() override;
-    virtual ErrCodeType Error() override;
+    bool Read(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) override;
+    bool Ok() override;
+    ErrCodeType Error() override;
 
 private:
     IOHandle m_handle {};
@@ -85,9 +85,9 @@ class VOLUMEPROTECT_API SystemDataWriter : public DataWriter {
 public:
     SystemDataWriter(const std::string& path);
     ~SystemDataWriter();
-    virtual bool Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) override;
-    virtual bool Ok() override;
-    virtual ErrCodeType Error() override;
+    bool Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) override;
+    bool Ok() override;
+    ErrCodeType Error() override;
 
 private:
     IOHandle m_handle {};
@@ -111,7 +111,6 @@ VOLUMEPROTECT_API bool IsVolumeExists(const std::string& volumePath);
 VOLUMEPROTECT_API uint64_t ReadVolumeSize(const std::string& volumePath);
 
 VOLUMEPROTECT_API uint32_t ProcessorsNum();
-
 }
 };
 

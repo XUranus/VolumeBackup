@@ -11,6 +11,7 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
+#include "VolumeUtils.h"
 
 namespace volumeprotect {
 
@@ -31,6 +32,7 @@ private:
     bool IsIncrementBackup() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
+    bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
 
 private:
     uint64_t                                m_volumeSize;

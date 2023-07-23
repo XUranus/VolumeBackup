@@ -108,7 +108,7 @@ bool VolumeBackupTask::Prepare()
         sessionOffset += sessionSize;
     }
 
-    if (!util::WriteVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, volumeCopyMeta)) {
+    if (!SaveVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, volumeCopyMeta)) {
         ERRLOG("failed to write copy meta to dir: %s", m_backupConfig->outputCopyMetaDirPath.c_str());
         return false;
     }
@@ -155,7 +155,6 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     }
     return true;
 }
-
 
 bool VolumeBackupTask::StartBackupSession(std::shared_ptr<VolumeTaskSession> session) const
 {
@@ -249,4 +248,9 @@ void VolumeBackupTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTa
     m_completedSessionStatistics.bytesToWrite += session->counter->bytesToWrite;
     m_completedSessionStatistics.bytesWritten += session->counter->bytesWritten;
     memset(&m_currentSessionStatistics, 0, sizeof(TaskStatistics));
+}
+
+bool VolumeBackupTask::SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta)
+{
+    return util::WriteVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta);
 }

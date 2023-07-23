@@ -13,14 +13,14 @@
 // volume backup application facade
 namespace volumeprotect {
 
-const uint64_t ONE_KB = 1024;
-const uint64_t ONE_MB = 1024 * ONE_KB;
-const uint64_t ONE_GB = 1024 * ONE_MB;
-const uint64_t ONE_TB = 1024 * ONE_GB;
+const uint64_t ONE_KB = 1024LLU;
+const uint64_t ONE_MB = 1024LLU * ONE_KB;
+const uint64_t ONE_GB = 1024LLU * ONE_MB;
+const uint64_t ONE_TB = 1024LLU * ONE_GB;
 
-const uint32_t DEFAULT_BLOCK_SIZE = 4 * ONE_MB;
+const uint32_t DEFAULT_BLOCK_SIZE = 4LU * ONE_MB;
 const uint64_t DEFAULT_SESSION_SIZE = ONE_TB;
-const uint32_t DEFAULT_HASHER_NUM = 8;
+const uint32_t DEFAULT_HASHER_NUM = 8LU;
 
 /*
  *volume backup/restore facade and common struct defines

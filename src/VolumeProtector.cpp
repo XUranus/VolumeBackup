@@ -114,7 +114,7 @@ bool StatefulTask::IsTerminated() const
     );
 }
 
-TaskStatistics TaskStatistics::operator+ (const TaskStatistics& statistic) const
+TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) const
 {
     TaskStatistics res;
     res.bytesToRead     = statistic.bytesToRead + this->bytesToRead;
