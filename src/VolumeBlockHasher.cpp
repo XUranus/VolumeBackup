@@ -142,13 +142,16 @@ bool VolumeBlockHasher::Start()
         return false;
     }
     if (m_workerThreadNum == 0) { // invalid parameter
+        m_status = TaskStatus::FAILED;
         return false;
     }
     if (!m_workers.empty()) { // already started
         return false;
     }
     if (!m_session->hasherEnabled) {
+        m_status = TaskStatus::FAILED;
         WARNLOG("hasher not enabled, exit hasher directly");
+        return false;
     }
     m_status = TaskStatus::RUNNING;
     m_workersRunning = m_workerThreadNum;
@@ -174,7 +177,6 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             break; // queue has been finished
         }
         uint64_t index = (consumeBlock.volumeOffset - m_session->sessionOffset) / m_session->blockSize;
-        
         // compute latest hash
         ComputeSHA256(
             consumeBlock.ptr,
