@@ -36,17 +36,13 @@ class VOLUMEPROTECT_API VolumeBlockReader : public StatefulTask {
 public:
     // build a reader reading from volume (block device)
     static std::shared_ptr<VolumeBlockReader> BuildVolumeReader(
-        const std::string& volumePath,
-        uint64_t offset,
-        uint64_t length,
-        std::shared_ptr<VolumeTaskSession> session);
+        std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext);
 
     // build a reader reading from volume copy
     static std::shared_ptr<VolumeBlockReader> BuildCopyReader(
-        const std::string& copyFilePath,
-        uint64_t offset,
-        uint64_t length,
-        std::shared_ptr<VolumeTaskSession> session);
+        std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext);
 
     bool Start();
 
@@ -64,9 +60,9 @@ private:
     std::string m_sourcePath;
     uint64_t    m_sourceOffset;
     uint64_t    m_sourceLength;
-
-    // mutable fields
     std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
+    
+    // mutable fields
     std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
     std::thread                                         m_readerThread;
     std::shared_ptr<volumeprotect::native::DataReader>  m_dataReader;  

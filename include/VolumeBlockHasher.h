@@ -41,11 +41,13 @@ public:
     ~VolumeBlockHasher();
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDirectHasher(
-        std::shared_ptr<VolumeTaskSession> session
+        std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext
     );
 
     static std::shared_ptr<VolumeBlockHasher>  BuildDiffHasher(
-        std::shared_ptr<VolumeTaskSession> session
+        std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext
     );
 
     bool Start();

@@ -33,12 +33,14 @@ class VOLUMEPROTECT_API VolumeBlockWriter : public StatefulTask {
 public:
     // build a writer writing to copy file
     static std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(
-        std::shared_ptr<VolumeTaskSession> session
+        std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext
     );
 
     // build a writer writing to volume
     static std::shared_ptr<VolumeBlockWriter> BuildVolumeWriter(
-        std::shared_ptr<VolumeTaskSession> session
+    	std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext
     );
 
     bool Start();
@@ -54,9 +56,9 @@ private:
     // immutable fields
     TargetType      m_targetType;
     std::string     m_targetPath;
-
-    // mutable fields
     std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
+    
+    // mutable fields
     std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
     std::thread                                         m_writerThread;
     std::shared_ptr<volumeprotect::native::DataWriter>  m_dataWriter;

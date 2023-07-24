@@ -20,12 +20,12 @@ using namespace volumeprotect;
 
 // build a reader reading from volume (block device)
 std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
-    const std::string& volumePath,
-    uint64_t offset,
-    uint64_t length,
     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
+	std::string volumePath = sharedConfig->volumePath;
+	uint64_t offset = sharedConfig->sessionOffset;
+	uint32_t length = sharedConfig->sessionSize;
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::VolumeDataReader>(volumePath));
     if (!dataReader->Ok()) {
@@ -37,12 +37,12 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
 
 // build a reader reading from volume copy file
 std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
-    const std::string& copyFilePath,
-    uint64_t offset,
-    uint64_t length,
     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
+	std::string copyFilePath = sharedConfig->copyFilePath;
+	uint64_t offset = 0; // read copy file from beginning
+	uint32_t length = sharedConfig->sessionSize;
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::FileDataReader>(copyFilePath));
     if (!dataReader->Ok()) {

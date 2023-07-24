@@ -120,6 +120,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
 {
     DBGLOG("init backup session context");
     // 1. init basic backup container
+    session->sharedContext = std::make_shared<VolumeTaskSharedContext>();
     session->sharedContext->counter = std::make_shared<SessionCounter>();
     session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
@@ -127,10 +128,8 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     
     // 2. check and init reader
     session->readerTask = VolumeBlockReader::BuildVolumeReader(
-        m_backupConfig->volumePath,
-        session->sharedConfig->sessionOffset,
-        session->sharedConfig->sessionSize,
-        session
+        session->sharedConfig,
+        session->sharedContext
     );
     if (session->readerTask == nullptr) {
         ERRLOG("backup session failed to init reader");
@@ -139,9 +138,9 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
 
     // 3. check and init hasher
     if (IsIncrementBackup()) {
-        session->hasherTask  = VolumeBlockHasher::BuildDiffHasher(session);
+        session->hasherTask  = VolumeBlockHasher::BuildDiffHasher(session->sharedConfig, session->sharedContext);
     } else {
-        session->hasherTask  = VolumeBlockHasher::BuildDirectHasher(session);
+        session->hasherTask  = VolumeBlockHasher::BuildDirectHasher(session->sharedConfig, session->sharedContext);
     }
     if (session->hasherTask  == nullptr) {
         ERRLOG("backup session failed to init hasher");
@@ -149,7 +148,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     }
 
     // 4. check and init writer
-    session->writerTask  = VolumeBlockWriter::BuildCopyWriter(session);
+    session->writerTask  = VolumeBlockWriter::BuildCopyWriter(session->sharedConfig, session->sharedContext);
     if (session->writerTask  == nullptr) {
         ERRLOG("backup session failed to init writer");
         return false;

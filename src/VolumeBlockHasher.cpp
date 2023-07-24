@@ -39,10 +39,11 @@ VolumeBlockHasher::~VolumeBlockHasher()
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
-    std::shared_ptr<VolumeTaskSession> session)
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     // allocate for latest checksum table
-    uint32_t blockCount = static_cast<uint32_t>(session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
+    uint32_t blockCount = static_cast<uint32_t>(sharedConfig->sessionSize / sharedConfig->blockSize);
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
     char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
     if (lastestChecksumTable == nullptr) {
@@ -52,10 +53,11 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
     memset(lastestChecksumTable, 0, sizeof(char) * lastestChecksumTableSize);
 
     VolumeBlockHasherParam param {
-        session,
+        sharedConfig,
+        sharedContext,
         HasherForwardMode::DIRECT,
         "",
-        session->sharedConfig->lastestChecksumBinPath,
+        sharedConfig->lastestChecksumBinPath,
         SHA256_CHECKSUM_SIZE,
         nullptr,
         0,
@@ -66,13 +68,14 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
 }
 
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
-    std::shared_ptr<VolumeTaskSession> session)
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
-    std::string prevChecksumBinPath = session->sharedConfig->prevChecksumBinPath; // path of the checksum bin from previous copy
-    std::string lastestChecksumBinPath = session->sharedConfig->lastestChecksumBinPath; // path of the checksum bin to write latest copy
+    std::string prevChecksumBinPath = sharedConfig->prevChecksumBinPath; // path of the checksum bin from previous copy
+    std::string lastestChecksumBinPath = sharedConfig->lastestChecksumBinPath; // path of the checksum bin to write latest copy
 
     // 1. allocate for latest checksum table
-    uint32_t blockCount = static_cast<uint32_t>(session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
+    uint32_t blockCount = static_cast<uint32_t>(sharedConfig->sessionSize / sharedConfig->blockSize);
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
     char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
     if (lastestChecksumTable == nullptr) {
@@ -110,7 +113,8 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
 
     // TODO:: 3. validate previous checksum table size with current one
     VolumeBlockHasherParam param {
-        session,
+        sharedConfig,
+        sharedContext,
         HasherForwardMode::DIFF,
         prevChecksumBinPath,
         lastestChecksumBinPath,
@@ -125,7 +129,8 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
 }
 
 VolumeBlockHasher::VolumeBlockHasher(const VolumeBlockHasherParam& param)
-  : m_session(param.session),
+  : m_sharedConfig(param.sharedConfig),
+    m_sharedContext(param.sharedContext),
     m_forwardMode(param.forwardMode),
     m_prevChecksumBinPath(param.prevChecksumBinPath),
     m_lastestChecksumBinPath(param.lastestChecksumBinPath),

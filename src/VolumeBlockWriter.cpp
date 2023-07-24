@@ -30,20 +30,21 @@ using namespace volumeprotect;
 
 // build a writer writing to copy file
 std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
-    std::shared_ptr<VolumeTaskSession> session)
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
-    std::string copyFilePath = session->sharedConfig->copyFilePath;
-    if (native::IsFileExists(copyFilePath) && native::GetFileSize(copyFilePath) == session->sharedConfig->sessionSize) {
+    std::string copyFilePath = sharedConfig->copyFilePath;
+    if (native::IsFileExists(copyFilePath) && native::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
         // should be full copy file, this task should be increment backup
         DBGLOG("copy file already exists, using %s", copyFilePath.c_str());
         return nullptr;
     }
     // truncate copy file to session size
-    DBGLOG("truncate target copy file %s to size %llu", copyFilePath.c_str(), session->sharedConfig->sessionSize);
+    DBGLOG("truncate target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
     native::ErrCodeType errorCode = 0;
-    if (!native::TruncateCreateFile(copyFilePath, session->sharedConfig->sessionSize, errorCode)) {
+    if (!native::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
         ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
-            copyFilePath.c_str(), session->sharedConfig->sessionSize, errorCode);
+            copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
         return nullptr;
     }
     // init data writer
@@ -53,15 +54,16 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
         ERRLOG("failed to init FileDataWriter, path = %s, error = %u", copyFilePath.c_str(), dataWriter->Error());
         return nullptr;
     }
-    VolumeBlockWriterParam param { TargetType::COPYFILE, copyFilePath, session, dataWriter };
+    VolumeBlockWriterParam param { TargetType::COPYFILE, copyFilePath, sharedConfig, sharedContext, dataWriter };
     return std::make_shared<VolumeBlockWriter>(param);
 }
 
 // build a writer writing to volume
 std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
-    std::shared_ptr<VolumeTaskSession> session)
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
-    std::string volumePath = session->sharedConfig->volumePath;
+    std::string volumePath = sharedConfig->volumePath;
     // check target block device valid to write
     auto dataWriter = std::dynamic_pointer_cast<native::DataWriter>(
         std::make_shared<native::VolumeDataWriter>(volumePath));
@@ -69,7 +71,7 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
         ERRLOG("failed to init VolumeDataWriter, path = %s, error = %u", volumePath.c_str(), dataWriter->Error());
         return nullptr;
     }
-    VolumeBlockWriterParam param { TargetType::VOLUME, volumePath, session, dataWriter };
+    VolumeBlockWriterParam param { TargetType::VOLUME, volumePath, sharedConfig, sharedContext, dataWriter };
     return std::make_shared<VolumeBlockWriter>(param);
 }
 
@@ -105,7 +107,8 @@ VolumeBlockWriter::~VolumeBlockWriter()
 VolumeBlockWriter::VolumeBlockWriter(const VolumeBlockWriterParam& param)
   : m_targetType(param.targetType),
     m_targetPath(param.targetPath),
-    m_session(param.session),
+    m_sharedContext(param.sharedContext),
+    m_sharedConfig(param.sharedConfig),
     m_dataWriter(param.dataWriter)
 {}
 

@@ -105,6 +105,7 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
 {
     DBGLOG("init restore session context");
     // 1. init basic restore container
+    session->sharedContext = std::make_shared<VolumeTaskSharedContext>();
     session->sharedContext->counter = std::make_shared<SessionCounter>();
     session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(
         session->sharedConfig->blockSize,
@@ -113,10 +114,8 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
     
     // 2. check and init reader
     session->readerTask = VolumeBlockReader::BuildCopyReader(
-        session->sharedConfig->copyFilePath,
-        0,
-        session->sharedConfig->sessionSize,
-        session
+        session->sharedConfig,
+        session->sharedContext
     );
     if (session->readerTask == nullptr) {
         ERRLOG("restore session failed to init reader task");
@@ -124,8 +123,8 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
     }
 
     // // 3. check and init writer
-    session->writerTask Task = VolumeBlockWriter::BuildVolumeWriter(session);
-    if (session->writerTask Task == nullptr) {
+    session->writerTask = VolumeBlockWriter::BuildVolumeWriter(session->sharedConfig, session->sharedContext);
+    if (session->writerTask == nullptr) {
         ERRLOG("restore session failed to init writer task");
         return false;
     }
@@ -135,9 +134,9 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
 bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const
 {
     DBGLOG("start restore session");
-    if (session->readerTask == nullptr || session->writerTask Task == nullptr) {
+    if (session->readerTask == nullptr || session->writerTask == nullptr) {
         ERRLOG("restore session member nullptr! readerTask: %p writerTask: %p ",
-            session->readerTask.get(), session->writerTask Task.get());
+            session->readerTask.get(), session->writerTask.get());
         return false;
     }
     DBGLOG("start restore session reader");
@@ -146,7 +145,7 @@ bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeTaskSession> s
         return false;
     }
     DBGLOG("start restore session writer");
-    if (!session->writerTask Task->Start() ) {
+    if (!session->writerTask->Start() ) {
         ERRLOG("restore session writerTask start failed");
         return false;
     }
