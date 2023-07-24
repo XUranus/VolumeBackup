@@ -94,14 +94,15 @@ bool VolumeBackupTask::Prepare()
         }
 
         VolumeTaskSession session {};
-        session.volumePath = m_backupConfig->volumePath;
-        session.hasherEnabled = true;
-        session.blockSize = m_backupConfig->blockSize;
-        session.sessionOffset = sessionOffset;
-        session.sessionSize = sessionSize;
-        session.lastestChecksumBinPath = lastestChecksumBinPath;
-        session.prevChecksumBinPath = prevChecksumBinPath;
-        session.copyFilePath = copyFilePath;
+        session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
+        session.sharedConfig->volumePath = m_backupConfig->volumePath;
+        session.sharedConfig->hasherEnabled = true;
+        session.sharedConfig->blockSize = m_backupConfig->blockSize;
+        session.sharedConfig->sessionOffset = sessionOffset;
+        session.sharedConfig->sessionSize = sessionSize;
+        session.sharedConfig->lastestChecksumBinPath = lastestChecksumBinPath;
+        session.sharedConfig->prevChecksumBinPath = prevChecksumBinPath;
+        session.sharedConfig->copyFilePath = copyFilePath;
         
         volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
@@ -119,37 +120,37 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
 {
     DBGLOG("init backup session context");
     // 1. init basic backup container
-    session->counter = std::make_shared<SessionCounter>();
-    session->allocator = std::make_shared<VolumeBlockAllocator>(session->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
-    session->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    session->sharedContext->counter = std::make_shared<SessionCounter>();
+    session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
+    session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     
     // 2. check and init reader
-    session->reader = VolumeBlockReader::BuildVolumeReader(
+    session->readerTask = VolumeBlockReader::BuildVolumeReader(
         m_backupConfig->volumePath,
-        session->sessionOffset,
-        session->sessionSize,
+        session->sharedConfig->sessionOffset,
+        session->sharedConfig->sessionSize,
         session
     );
-    if (session->reader == nullptr) {
+    if (session->readerTask == nullptr) {
         ERRLOG("backup session failed to init reader");
         return false;
     }
 
     // 3. check and init hasher
     if (IsIncrementBackup()) {
-        session->hasher = VolumeBlockHasher::BuildDiffHasher(session);
+        session->hasherTask  = VolumeBlockHasher::BuildDiffHasher(session);
     } else {
-        session->hasher = VolumeBlockHasher::BuildDirectHasher(session);
+        session->hasherTask  = VolumeBlockHasher::BuildDirectHasher(session);
     }
-    if (session->hasher == nullptr) {
+    if (session->hasherTask  == nullptr) {
         ERRLOG("backup session failed to init hasher");
         return false;
     }
 
     // 4. check and init writer
-    session->writer = VolumeBlockWriter::BuildCopyWriter(session);
-    if (session->writer == nullptr) {
+    session->writerTask  = VolumeBlockWriter::BuildCopyWriter(session);
+    if (session->writerTask  == nullptr) {
         ERRLOG("backup session failed to init writer");
         return false;
     }
@@ -159,23 +160,23 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
 bool VolumeBackupTask::StartBackupSession(std::shared_ptr<VolumeTaskSession> session) const
 {
     DBGLOG("start backup session");
-    if (session->reader == nullptr || session->hasher == nullptr || session->writer == nullptr) {
+    if (session->readerTask == nullptr || session->hasherTask  == nullptr || session->writerTask  == nullptr) {
         ERRLOG("backup session member nullptr! reader: %p hasher: %p writer: %p ",
-            session->reader.get(), session->hasher.get(), session->writer.get());
+            session->readerTask.get(), session->hasherTask.get(), session->writerTask.get());
         return false;
     }
     DBGLOG("start backup session reader");
-    if (!session->reader->Start()) {
+    if (!session->readerTask->Start()) {
         ERRLOG("backup session reader start failed");
         return false;
     }
     DBGLOG("start backup session hasher");
-    if (!session->hasher->Start() ) {
+    if (!session->hasherTask->Start() ) {
         ERRLOG("backup session hasher start failed");
         return false;
     }
     DBGLOG("start backup session writer");
-    if (!session->writer->Start() ) {
+    if (!session->writerTask->Start() ) {
         ERRLOG("backup session writer start failed");
         return false;
     }
@@ -216,9 +217,9 @@ void VolumeBackupTask::ThreadFunc()
                 break;
             }
             DBGLOG("updateStatistics: bytesToReaded: %llu, bytesRead: %llu, blocksToHash: %llu, blocksHashed: %llu, bytesToWrite: %llu, bytesWritten: %llu",
-            session->counter->bytesToRead.load(), session->counter->bytesRead.load(),
-            session->counter->blocksToHash.load(), session->counter->blocksHashed.load(),
-            session->counter->bytesToWrite.load(), session->counter->bytesWritten.load());
+            session->sharedContext->counter->bytesToRead.load(), session->sharedContext->counter->bytesRead.load(),
+            session->sharedContext->counter->blocksToHash.load(), session->sharedContext->counter->blocksHashed.load(),
+            session->sharedContext->counter->bytesToWrite.load(), session->sharedContext->counter->bytesWritten.load());
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
         DBGLOG("session complete successfully");
@@ -231,22 +232,22 @@ void VolumeBackupTask::ThreadFunc()
 
 void VolumeBackupTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
 {
-    m_currentSessionStatistics.bytesToRead = session->counter->bytesToRead;
-    m_currentSessionStatistics.bytesRead = session->counter->bytesRead;
-    m_currentSessionStatistics.blocksToHash = session->counter->blocksToHash;
-    m_currentSessionStatistics.blocksHashed = session->counter->blocksHashed;
-    m_currentSessionStatistics.bytesToWrite = session->counter->bytesToWrite;
-    m_currentSessionStatistics.bytesWritten = session->counter->bytesWritten;
+    m_currentSessionStatistics.bytesToRead = session->sharedContext->counter->bytesToRead;
+    m_currentSessionStatistics.bytesRead = session->sharedContext->counter->bytesRead;
+    m_currentSessionStatistics.blocksToHash = session->sharedContext->counter->blocksToHash;
+    m_currentSessionStatistics.blocksHashed = session->sharedContext->counter->blocksHashed;
+    m_currentSessionStatistics.bytesToWrite = session->sharedContext->counter->bytesToWrite;
+    m_currentSessionStatistics.bytesWritten = session->sharedContext->counter->bytesWritten;
 }
 
 void VolumeBackupTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
 {
-    m_completedSessionStatistics.bytesToRead += session->counter->bytesToRead;
-    m_completedSessionStatistics.bytesRead += session->counter->bytesRead;
-    m_completedSessionStatistics.blocksToHash += session->counter->blocksToHash;
-    m_completedSessionStatistics.blocksHashed += session->counter->blocksHashed;
-    m_completedSessionStatistics.bytesToWrite += session->counter->bytesToWrite;
-    m_completedSessionStatistics.bytesWritten += session->counter->bytesWritten;
+    m_completedSessionStatistics.bytesToRead += session->sharedContext->counter->bytesToRead;
+    m_completedSessionStatistics.bytesRead += session->sharedContext->counter->bytesRead;
+    m_completedSessionStatistics.blocksToHash += session->sharedContext->counter->blocksToHash;
+    m_completedSessionStatistics.blocksHashed += session->sharedContext->counter->blocksHashed;
+    m_completedSessionStatistics.bytesToWrite += session->sharedContext->counter->bytesToWrite;
+    m_completedSessionStatistics.bytesWritten += session->sharedContext->counter->bytesWritten;
     memset(&m_currentSessionStatistics, 0, sizeof(TaskStatistics));
 }
 

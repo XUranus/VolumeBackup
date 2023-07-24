@@ -25,8 +25,9 @@ struct VOLUMEPROTECT_API VolumeBlockReaderParam {
     std::string sourcePath;
     uint64_t    sourceOffset;
     uint64_t    sourceLength;
-    std::shared_ptr<VolumeTaskSession> session;
-    std::shared_ptr<native::DataReader> dataReader;
+    std::shared_ptr<native::DataReader>         dataReader;
+    std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
+    std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
 
 };
 
@@ -65,9 +66,10 @@ private:
     uint64_t    m_sourceLength;
 
     // mutable fields
-    std::shared_ptr<VolumeTaskSession>  m_session;
-    std::thread                         m_readerThread;
-    std::shared_ptr<volumeprotect::native::DataReader> m_dataReader;  
+    std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
+    std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
+    std::thread                                         m_readerThread;
+    std::shared_ptr<volumeprotect::native::DataReader>  m_dataReader;  
 };
 
 }

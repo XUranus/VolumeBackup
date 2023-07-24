@@ -23,14 +23,15 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
     const std::string& volumePath,
     uint64_t offset,
     uint64_t length,
-    std::shared_ptr<VolumeTaskSession> session)
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::VolumeDataReader>(volumePath));
     if (!dataReader->Ok()) {
         ERRLOG("failed to init VolumeDataReader, path = %s, error = %u", volumePath.c_str(), dataReader->Error());
     }
-    VolumeBlockReaderParam param { SourceType::VOLUME, volumePath, offset, length, session, dataReader};
+    VolumeBlockReaderParam param { SourceType::VOLUME, volumePath, offset, length, dataReader, sharedConfig, sharedContext };
     return std::make_shared<VolumeBlockReader>(param);
 }
 
@@ -39,14 +40,15 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     const std::string& copyFilePath,
     uint64_t offset,
     uint64_t length,
-    std::shared_ptr<VolumeTaskSession> session)
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::FileDataReader>(copyFilePath));
     if (!dataReader->Ok()) {
         ERRLOG("failed to init FileDataReader, path = %s, error = %u", copyFilePath.c_str(), dataReader->Error());
     }
-    VolumeBlockReaderParam param { SourceType::COPYFILE, copyFilePath, offset, length, session, dataReader};
+    VolumeBlockReaderParam param { SourceType::COPYFILE, copyFilePath, offset, length, dataReader, sharedConfig, sharedContext };
     return std::make_shared<VolumeBlockReader>(param);
 }
 
@@ -83,20 +85,21 @@ VolumeBlockReader::VolumeBlockReader(const VolumeBlockReaderParam& param)
     m_sourcePath(param.sourcePath),
     m_sourceOffset(param.sourceOffset),
     m_sourceLength(param.sourceLength),
-    m_session(param.session),
+    m_sharedConfig(param.sharedConfig),
+    m_sharedContext(param.sharedContext),
     m_dataReader(param.dataReader)
 {}
 
 void VolumeBlockReader::MainThread()
 {
     // Open the device file for reading
-    uint32_t defaultBufferSize = m_session->blockSize;
+    uint32_t defaultBufferSize = m_sharedConfig->blockSize;
     uint64_t currentOffset = m_sourceOffset;
     uint32_t nBytesToRead = 0;
     native::ErrCodeType errorCode = 0;
 
     // read from currentOffset
-    m_session->counter->bytesToRead += m_sourceLength;
+    m_sharedContext->counter->bytesToRead += m_sourceLength;
     DBGLOG("reader thread start, sourceOffset: %llu ", m_sourceOffset);
 
     while (true) {
@@ -111,7 +114,7 @@ void VolumeBlockReader::MainThread()
             break;
         }
 
-        char* buffer = m_session->allocator->bmalloc();
+        char* buffer = m_sharedContext->allocator->bmalloc();
         if (buffer == nullptr) {
             DBGLOG("failed to malloc, retry in 100ms");
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -129,27 +132,27 @@ void VolumeBlockReader::MainThread()
         // push readed block to queue (convert to reader offset to sessionOffset)
         VolumeConsumeBlock consumeBlock {
             buffer,
-            (currentOffset - m_sourceOffset + m_session->sessionOffset),
+            (currentOffset - m_sourceOffset + m_sharedConfig->sessionOffset),
             nBytesToRead
         };
         DBGLOG("reader push consume block (%p, %llu, %u)",
             consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
-        if (m_session->hasherEnabled) {
-            ++m_session->counter->blocksToHash;
-            m_session->hashingQueue->Push(consumeBlock);
+        if (m_sharedConfig->hasherEnabled) {
+            ++m_sharedContext->counter->blocksToHash;
+            m_sharedContext->hashingQueue->Push(consumeBlock);
         } else {
-            m_session->writeQueue->Push(consumeBlock);
+            m_sharedContext->writeQueue->Push(consumeBlock);
         }
         currentOffset += static_cast<uint64_t>(nBytesToRead);
-        m_session->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
+        m_sharedContext->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
     }
     // handle success
     INFOLOG("reader read completed successfully");
     m_status = TaskStatus::SUCCEED;
-    if (m_session->hasherEnabled) {
-        m_session->hashingQueue->Finish();
+    if (m_sharedConfig->hasherEnabled) {
+        m_sharedContext->hashingQueue->Finish();
     } else {
-        m_session->writeQueue->Finish();
+        m_sharedContext->writeQueue->Finish();
     }
     return;
 }

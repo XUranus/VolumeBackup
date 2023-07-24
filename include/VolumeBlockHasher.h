@@ -24,7 +24,8 @@ enum class VOLUMEPROTECT_API  HasherForwardMode {
  * @brief param struct to build a hasher
  */
 struct VOLUMEPROTECT_API VolumeBlockHasherParam {
-    std::shared_ptr<VolumeTaskSession> session;
+    std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
+    std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
     HasherForwardMode   forwardMode;
     std::string         prevChecksumBinPath;
     std::string         lastestChecksumBinPath;
@@ -62,9 +63,9 @@ private:
 
 private:
     // mutable
-    char*                                   m_lastestChecksumTable;     // mutable, shared within worker
-    uint64_t                                m_lastestChecksumTableSize; // bytes allocated
-    std::shared_ptr<VolumeTaskSession>    m_session;                  // mutable, used for sync
+    char*                                       m_lastestChecksumTable;     // mutable, shared within worker
+    uint64_t                                    m_lastestChecksumTableSize; // bytes allocated
+    std::shared_ptr<VolumeTaskSharedContext>    m_sharedContext;
 
     // immutable
     uint32_t                m_singleChecksumSize;
@@ -76,7 +77,8 @@ private:
 
     int                     m_workerThreadNum { DEFAULT_HASHER_NUM };
     int                     m_workersRunning;
-    std::vector<std::shared_ptr<std::thread>> m_workers;
+    std::vector<std::shared_ptr<std::thread>>   m_workers;
+    std::shared_ptr<VolumeTaskSharedConfig>     m_sharedConfig;
 };
 
 }

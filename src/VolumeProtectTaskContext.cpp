@@ -56,47 +56,47 @@ void VolumeBlockAllocator::bfree(char* ptr)
         m_allocTable[index] = false;
         return;
     }
+    // reach err here
     throw std::runtime_error("bfree error: bad address");
-    // err
 }
 
 bool VolumeTaskSession::IsTerminated() const
 {
-    DBGLOG("check session terminated, reader: %d, hasher: %d, writer: %d",
-        reader == nullptr ? TaskStatus::SUCCEED : reader->GetStatus(),
-        hasher == nullptr ? TaskStatus::SUCCEED : hasher->GetStatus(),
-        writer == nullptr ? TaskStatus::SUCCEED : writer->GetStatus()
+    DBGLOG("check session terminated, readerTask: %d, hasherTask: %d, writerTask: %d",
+        readerTask == nullptr ? TaskStatus::SUCCEED : readerTask->GetStatus(),
+        hasherTask == nullptr ? TaskStatus::SUCCEED : hasherTask->GetStatus(),
+        writerTask == nullptr ? TaskStatus::SUCCEED : writerTask->GetStatus()
     );
     return (
-        (reader == nullptr || reader->IsTerminated()) &&
-        (hasher == nullptr || hasher->IsTerminated()) &&
-        (writer == nullptr || writer->IsTerminated())
+        (readerTask == nullptr || readerTask->IsTerminated()) &&
+        (hasherTask == nullptr || hasherTask->IsTerminated()) &&
+        (writerTask == nullptr || writerTask->IsTerminated())
     );
 }
 
 bool VolumeTaskSession::IsFailed() const
 {
-    DBGLOG("check session failed, reader: %d, hasher: %d, writer: %d",
-        reader == nullptr ? TaskStatus::SUCCEED : reader->GetStatus(),
-        hasher == nullptr ? TaskStatus::SUCCEED : hasher->GetStatus(),
-        writer == nullptr ? TaskStatus::SUCCEED : writer->GetStatus()
+    DBGLOG("check session failed, readerTask: %d, hasherTask: %d, writerTask: %d",
+        readerTask == nullptr ? TaskStatus::SUCCEED : readerTask->GetStatus(),
+        hasherTask == nullptr ? TaskStatus::SUCCEED : hasherTask->GetStatus(),
+        writerTask == nullptr ? TaskStatus::SUCCEED : writerTask->GetStatus()
     );
     return (
-        (reader != nullptr && reader->IsFailed()) ||
-        (hasher != nullptr && hasher->IsFailed()) ||
-        (writer != nullptr && writer->IsFailed())
+        (readerTask != nullptr && readerTask->IsFailed()) ||
+        (hasherTask != nullptr && hasherTask->IsFailed()) ||
+        (writerTask != nullptr && writerTask->IsFailed())
     );
 }
 
 void VolumeTaskSession::Abort() const
 {
-    if (reader != nullptr) {
-        reader->Abort();
+    if (readerTask != nullptr) {
+        readerTask->Abort();
     }
-    if (hasher != nullptr) {
-        hasher->Abort();
+    if (hasherTask != nullptr) {
+        hasherTask->Abort();
     }
-    if (writer != nullptr) {
-        writer->Abort();
+    if (writerTask != nullptr) {
+        writerTask->Abort();
     }
 }

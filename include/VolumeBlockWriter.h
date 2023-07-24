@@ -24,8 +24,9 @@ enum class TargetType {
 struct VOLUMEPROTECT_API VolumeBlockWriterParam {
     TargetType      targetType;
     std::string     targetPath;
-    std::shared_ptr<VolumeTaskSession>  session;
-    std::shared_ptr<native::DataWriter> dataWriter;
+    std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
+    std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
+    std::shared_ptr<native::DataWriter>         dataWriter;
 };
 
 class VOLUMEPROTECT_API VolumeBlockWriter : public StatefulTask {
@@ -55,9 +56,10 @@ private:
     std::string     m_targetPath;
 
     // mutable fields
-    std::shared_ptr<VolumeTaskSession>  m_session;
-    std::thread                         m_writerThread;
-    std::shared_ptr<volumeprotect::native::DataWriter> m_dataWriter;
+    std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
+    std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
+    std::thread                                         m_writerThread;
+    std::shared_ptr<volumeprotect::native::DataWriter>  m_dataWriter;
 };
 
 }

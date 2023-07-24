@@ -40,6 +40,7 @@ private:
 
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;
+    
     // statistics
     TaskStatistics  m_currentSessionStatistics;     // current running session statistics
     TaskStatistics  m_completedSessionStatistics;   // statistic sum of all completed session

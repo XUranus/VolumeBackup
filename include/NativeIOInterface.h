@@ -56,6 +56,7 @@ public:
     virtual bool Read(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) = 0;
     virtual bool Ok() = 0;
     virtual ErrCodeType Error() = 0;
+    virtual ~DataReader() = default;
 };
 
 class VOLUMEPROTECT_API DataWriter {
@@ -63,6 +64,7 @@ public:
     virtual bool Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) = 0;
     virtual bool Ok() = 0;
     virtual ErrCodeType Error() = 0;
+    virtual ~DataWriter() = default;
 };
 
 /**

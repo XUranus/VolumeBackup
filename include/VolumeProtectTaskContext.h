@@ -60,9 +60,9 @@ struct VOLUMEPROTECT_API SessionCounter {
  * |===================================================================================================| logical volume
  * |     ...      |----- sessionSize ------|    
  * 0         sessionOffset   sessionOffset + sessionSize
- *
  */
-struct VOLUMEPROTECT_API VolumeTaskSession {
+
+struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
     // immutable fields (common)
     uint64_t        sessionOffset;
     uint64_t        sessionSize;
@@ -74,17 +74,24 @@ struct VOLUMEPROTECT_API VolumeTaskSession {
     // immutable fields (for backup)
     std::string     lastestChecksumBinPath;
     std::string     prevChecksumBinPath;
+};
 
-    // mutable fields
-    std::shared_ptr<VolumeBlockReader> reader { nullptr };
-    std::shared_ptr<VolumeBlockHasher> hasher { nullptr };
-    std::shared_ptr<VolumeBlockWriter> writer { nullptr };
-
+struct VOLUMEPROTECT_API VolumeTaskSharedContext {
     // shared container context
     std::shared_ptr<SessionCounter>                     counter         { nullptr };
     std::shared_ptr<VolumeBlockAllocator>               allocator       { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue    { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue      { nullptr };
+};
+
+struct VOLUMEPROTECT_API VolumeTaskSession {
+    // stateful task component
+    std::shared_ptr<VolumeBlockReader>          readerTask { nullptr };
+    std::shared_ptr<VolumeBlockHasher>          hasherTask { nullptr };
+    std::shared_ptr<VolumeBlockWriter>          writerTask { nullptr };
+
+    std::shared_ptr<VolumeTaskSharedContext>    sharedContext { nullptr };
+    std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig  { nullptr };
 
     bool IsTerminated() const;
     bool IsFailed() const;

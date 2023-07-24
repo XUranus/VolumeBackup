@@ -42,7 +42,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
     std::shared_ptr<VolumeTaskSession> session)
 {
     // allocate for latest checksum table
-    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->blockSize);
+    uint32_t blockCount = static_cast<uint32_t>(session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
     char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
     if (lastestChecksumTable == nullptr) {
@@ -55,7 +55,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
         session,
         HasherForwardMode::DIRECT,
         "",
-        session->lastestChecksumBinPath,
+        session->sharedConfig->lastestChecksumBinPath,
         SHA256_CHECKSUM_SIZE,
         nullptr,
         0,
@@ -68,11 +68,11 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
 std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
     std::shared_ptr<VolumeTaskSession> session)
 {
-    std::string prevChecksumBinPath = session->prevChecksumBinPath; // path of the checksum bin from previous copy
-    std::string lastestChecksumBinPath = session->lastestChecksumBinPath; // path of the checksum bin to write latest copy
+    std::string prevChecksumBinPath = session->sharedConfig->prevChecksumBinPath; // path of the checksum bin from previous copy
+    std::string lastestChecksumBinPath = session->sharedConfig->lastestChecksumBinPath; // path of the checksum bin to write latest copy
 
     // 1. allocate for latest checksum table
-    uint32_t blockCount = static_cast<uint32_t>(session->sessionSize / session->blockSize);
+    uint32_t blockCount = static_cast<uint32_t>(session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
     char* lastestChecksumTable = new(std::nothrow)char[lastestChecksumTableSize];
     if (lastestChecksumTable == nullptr) {
@@ -148,7 +148,7 @@ bool VolumeBlockHasher::Start()
     if (!m_workers.empty()) { // already started
         return false;
     }
-    if (!m_session->hasherEnabled) {
+    if (!m_sharedConfig->hasherEnabled) {
         m_status = TaskStatus::FAILED;
         WARNLOG("hasher not enabled, exit hasher directly");
         return false;
@@ -173,10 +173,10 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             return;
         }
 
-        if (!m_session->hashingQueue->Pop(consumeBlock)) {
+        if (!m_sharedContext->hashingQueue->Pop(consumeBlock)) {
             break; // queue has been finished
         }
-        uint64_t index = (consumeBlock.volumeOffset - m_session->sessionOffset) / m_session->blockSize;
+        uint64_t index = (consumeBlock.volumeOffset - m_sharedConfig->sessionOffset) / m_sharedConfig->blockSize;
         // compute latest hash
         ComputeSHA256(
             consumeBlock.ptr,
@@ -184,7 +184,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             m_lastestChecksumTable + index * m_singleChecksumSize,
             m_singleChecksumSize);
 
-        ++m_session->counter->blocksHashed;
+        ++m_sharedContext->counter->blocksHashed;
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash
@@ -192,13 +192,13 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             uint32_t lastestHash = reinterpret_cast<uint32_t*>(m_lastestChecksumTable)[index];
             if (prevHash == lastestHash) {
                 // drop the block and free
-                m_session->allocator->bfree(consumeBlock.ptr);
+                m_sharedContext->allocator->bfree(consumeBlock.ptr);
                 continue;
             }
         }
 
-        m_session->counter->bytesToWrite += consumeBlock.length;
-        m_session->writeQueue->Push(consumeBlock);
+        m_sharedContext->counter->bytesToWrite += consumeBlock.length;
+        m_sharedContext->writeQueue->Push(consumeBlock);
     }
     INFOLOG("hasher worker %d read completed successfully", workerIndex);
     m_workersRunning--;
@@ -267,7 +267,7 @@ void VolumeBlockHasher::HandleWorkerTerminate()
         return;
     }
     INFOLOG("workers all completed");
-    m_session->writeQueue->Finish();
+    m_sharedContext->writeQueue->Finish();
     m_status = TaskStatus::SUCCEED;
     SaveLatestChecksumBin();
     return;
