@@ -92,6 +92,13 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
 void StatefulTask::Abort()
 {
     m_abort = true;
+    if (m_status == TaskStatus::INIT) {
+        m_status = TaskStatus::ABORTED;
+        return;
+    }
+    if (IsTerminated()) {
+        return;
+    }
     m_status = TaskStatus::ABORTING;
 }
 

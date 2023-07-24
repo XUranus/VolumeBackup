@@ -38,7 +38,9 @@ private:
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;
     bool            m_incrementCopy { false };
+
     // statistics
+    mutable std::mutex m_statisticMutex;
     TaskStatistics  m_currentSessionStatistics;     // current running session statistics
     TaskStatistics  m_completedSessionStatistics;   // statistic sum of all completed session
 };

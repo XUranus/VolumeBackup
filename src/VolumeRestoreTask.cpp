@@ -54,6 +54,7 @@ bool VolumeRestoreTask::Start()
 
 TaskStatistics VolumeRestoreTask::GetStatistics() const
 {
+    std::lock_guard<std::mutex> lock(m_statisticMutex);
     return m_completedSessionStatistics + m_currentSessionStatistics;
 }
 
@@ -190,6 +191,7 @@ void VolumeRestoreTask::ThreadFunc()
                 session->sharedContext->counter->bytesRead.load(),
                 session->sharedContext->counter->bytesToWrite.load(),
                 session->sharedContext->counter->bytesWritten.load());
+            UpdateRunningSessionStatistics(session);
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
         DBGLOG("session complete successfully");
@@ -202,6 +204,7 @@ void VolumeRestoreTask::ThreadFunc()
 
 void VolumeRestoreTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
 {
+    std::lock_guard<std::mutex> lock(m_statisticMutex);
     m_currentSessionStatistics.bytesToRead = session->sharedContext->counter->bytesToRead;
     m_currentSessionStatistics.bytesRead = session->sharedContext->counter->bytesRead;
     m_currentSessionStatistics.blocksToHash = session->sharedContext->counter->blocksToHash;
@@ -212,6 +215,7 @@ void VolumeRestoreTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeTas
 
 void VolumeRestoreTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
 {
+    std::lock_guard<std::mutex> lock(m_statisticMutex);
     m_completedSessionStatistics.bytesToRead += session->sharedContext->counter->bytesToRead;
     m_completedSessionStatistics.bytesRead += session->sharedContext->counter->bytesRead;
     m_completedSessionStatistics.blocksToHash += session->sharedContext->counter->blocksToHash;

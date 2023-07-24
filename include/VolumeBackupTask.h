@@ -42,6 +42,7 @@ private:
     SessionQueue    m_sessionQueue;
     
     // statistics
+    mutable std::mutex m_statisticMutex;
     TaskStatistics  m_currentSessionStatistics;     // current running session statistics
     TaskStatistics  m_completedSessionStatistics;   // statistic sum of all completed session
 };
