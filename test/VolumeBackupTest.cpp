@@ -74,23 +74,26 @@ static void InitSessionBasic(std::shared_ptr<VolumeTaskSession> session)
     std::string targetPath = "/dummy/targetPath";
     uint64_t offset = 0LLU;
     uint64_t length = 512 * ONE_MB;
-    session->sessionOffset = 0LLU;
-    session->sessionSize = length;
-    session->blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
-    session->hasherEnabled = true;
-    session->volumePath = volumePath;
-    session->copyFilePath = targetPath;
-    session->hasherEnabled = true;
+    auto sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
+    sharedConfig->sessionOffset = 0LLU;
+    sharedConfig->sessionSize = length;
+    sharedConfig->blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
+    sharedConfig->hasherEnabled = true;
+    sharedConfig->volumePath = volumePath;
+    sharedConfig->copyFilePath = targetPath;
+    sharedConfig->hasherEnabled = true;
+    session->sharedConfig = sharedConfig;
 }
 
-static void InitSessionContainer(std::shared_ptr<VolumeTaskSession> session)
+static void InitSessionSharedContext(std::shared_ptr<VolumeTaskSession> session)
 {
-    session->blockSize = 4 * ONE_MB; // 4MB
-    // init session containers
-    session->counter = std::make_shared<SessionCounter>();
-    session->allocator = std::make_shared<VolumeBlockAllocator>(session->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
-    session->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    session->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    auto sharedContext = std::make_shared<VolumeTaskSharedContext>();
+    // init session container
+    sharedContext->counter = std::make_shared<SessionCounter>();
+    sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
+    sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    session->sharedContext = sharedContext;
 }
 
 static void InitSessionBlockReader(
@@ -99,14 +102,15 @@ static void InitSessionBlockReader(
 {
     VolumeBlockReaderParam readerParam {
         SourceType::VOLUME,
-        session->volumePath,
-        session->sessionOffset,
-        session->sessionSize,
-        session,
-        dataReader 
+        session->sharedConfig->volumePath,
+        session->sharedConfig->sessionOffset,
+        session->sharedConfig->sessionSize,
+        dataReader,
+        session->sharedConfig,
+        session->sharedContext
     };
     auto volumeBlockReader = std::make_shared<VolumeBlockReader>(readerParam);
-    session->reader = volumeBlockReader;
+    session->readerTask = volumeBlockReader;
 }
 
 static void InitSessionBlockWriter(
@@ -114,31 +118,32 @@ static void InitSessionBlockWriter(
     std::shared_ptr<native::DataWriter> dataWriter)
 {
     VolumeBlockWriterParam writerParam {
-        TargetType::COPYFILE, session->copyFilePath, session, dataWriter
+        TargetType::COPYFILE, session->sharedConfig->copyFilePath, session->sharedConfig, session->sharedContext, dataWriter
     };
     auto volumeBlockWriter = std::make_shared<VolumeBlockWriter>(writerParam);
-    session->writer = volumeBlockWriter;
+    session->writerTask = volumeBlockWriter;
 }
 
-static void InitSessionBlockHasher(std::shared_ptr<VolumeTaskSession> session)
+static void InitSessionBlockHasher(
+	std::shared_ptr<VolumeTaskSession> session)
 {
     uint32_t singleChecksumSize = 32LU; // SHA-256
     std::string previousChecksumBinPath = "/dummy/checksum1";
     std::string lastestChecksumBinPath = "/dummy/checksum2";
     
     // init hasher context
-    uint64_t prevChecksumTableSize = singleChecksumSize * (session->sessionSize / session->blockSize);
-    uint64_t lastestChecksumTableSize = singleChecksumSize * (session->sessionSize / session->blockSize);
+    uint64_t prevChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
+    uint64_t lastestChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
     auto lastestChecksumTable = new char[prevChecksumTableSize];
     auto prevChecksumTable = new char[lastestChecksumTableSize];
 
     VolumeBlockHasherParam hasherParam {
-        session, HasherForwardMode::DIRECT, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
+        session->sharedConfig, session->sharedContext, HasherForwardMode::DIRECT, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
         prevChecksumTable, prevChecksumTableSize,
         lastestChecksumTable, lastestChecksumTableSize
     };
     auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
-    session->hasher = volumeBlockHasher;
+    session->hasherTask = volumeBlockHasher;
 }
 
 class VolumeBackupTaskMock : public VolumeBackupTask
@@ -171,7 +176,7 @@ bool VolumeBackupTaskMock::InitBackupSessionContext(std::shared_ptr<VolumeTaskSe
         .WillRepeatedly(Return(static_cast<native::ErrCodeType>(0)));
 
     // init session
-    InitSessionContainer(session);
+    InitSessionSharedContext(session);
     InitSessionBlockReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
     InitSessionBlockWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
     InitSessionBlockHasher(session);
@@ -200,28 +205,28 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskSucessTest)
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
     InitSessionBasic(session);
-    InitSessionContainer(session);
+    InitSessionSharedContext(session);
     InitSessionBlockReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
     InitSessionBlockWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
     InitSessionBlockHasher(session);
 
-    EXPECT_TRUE(session->reader->Start());
-    EXPECT_TRUE(session->hasher->Start());
-    EXPECT_TRUE(session->writer->Start());
+    EXPECT_TRUE(session->readerTask->Start());
+    EXPECT_TRUE(session->hasherTask->Start());
+    EXPECT_TRUE(session->writerTask->Start());
 
     // wait all component to terminate
-    while (!session->reader->IsTerminated()) {
+    while (!session->readerTask->IsTerminated()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    while (!session->writer->IsTerminated()) {
+    while (!session->writerTask->IsTerminated()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    while (!session->hasher->IsTerminated()) {
+    while (!session->hasherTask->IsTerminated()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    EXPECT_EQ(session->reader->GetStatus(), TaskStatus::SUCCEED);
-    EXPECT_EQ(session->writer->GetStatus(), TaskStatus::SUCCEED);
-    EXPECT_EQ(session->hasher->GetStatus(), TaskStatus::SUCCEED);
+    EXPECT_EQ(session->readerTask->GetStatus(), TaskStatus::SUCCEED);
+    EXPECT_EQ(session->writerTask->GetStatus(), TaskStatus::SUCCEED);
+    EXPECT_EQ(session->hasherTask->GetStatus(), TaskStatus::SUCCEED);
 }
 
 TEST_F(VolumeBackupTest, VolumeBackupTaskReadFailedTest)
@@ -246,25 +251,25 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskReadFailedTest)
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
     InitSessionBasic(session);
-    InitSessionContainer(session);
+    InitSessionSharedContext(session);
     InitSessionBlockReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
     InitSessionBlockWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
     InitSessionBlockHasher(session);
 
-    EXPECT_FALSE(session->reader->Start());
-    EXPECT_FALSE(session->writer->Start());
+    EXPECT_FALSE(session->readerTask->Start());
+    EXPECT_FALSE(session->writerTask->Start());
 
     // wait all component to terminate
-    while (!session->reader->IsTerminated()) {
+    while (!session->readerTask->IsTerminated()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    while (!session->writer->IsTerminated()) {
+    while (!session->writerTask->IsTerminated()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    EXPECT_EQ(session->reader->GetStatus(), TaskStatus::FAILED);
-    EXPECT_EQ(session->writer->GetStatus(), TaskStatus::FAILED);
-    EXPECT_TRUE(session->reader->IsFailed());
-    EXPECT_TRUE(session->writer->IsFailed());
+    EXPECT_EQ(session->readerTask->GetStatus(), TaskStatus::FAILED);
+    EXPECT_EQ(session->writerTask->GetStatus(), TaskStatus::FAILED);
+    EXPECT_TRUE(session->readerTask->IsFailed());
+    EXPECT_TRUE(session->writerTask->IsFailed());
 }
 
 TEST_F(VolumeBackupTest, VolumeBackTaskMockInvalidVolumeTest)
