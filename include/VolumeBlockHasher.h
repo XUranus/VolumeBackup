@@ -15,7 +15,7 @@ namespace volumeprotect {
 
 enum class VOLUMEPROTECT_API  HasherForwardMode {
     // direct move block to write queue after block checksum is computed
-    DIRECT,        
+    DIRECT,
     // diff the checksum computed with the corresponding previous one and move block forward only it's cheksum changed
     DIFF
 };

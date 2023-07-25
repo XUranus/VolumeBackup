@@ -17,7 +17,7 @@ namespace volumeprotect {
 class VOLUMEPROTECT_API VolumeRestoreTask : public VolumeProtectTask {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
-    
+
     bool            Start() override;
     TaskStatistics  GetStatistics() const override;
 

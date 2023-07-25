@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(googletest)
 
 ADD_EXECUTABLE(${Project} ${Sources} ${Headers})
 
-TARGET_LINK_LIBRARIES(${Project} PUBLIC 
+TARGET_LINK_LIBRARIES(${Project} PUBLIC
     volumebackup_static
     GTest::gtest_main
     GTest::gmock_main

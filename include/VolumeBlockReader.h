@@ -61,11 +61,11 @@ private:
     uint64_t    m_sourceOffset;
     uint64_t    m_sourceLength;
     std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
-    
+
     // mutable fields
     std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
     std::thread                                         m_readerThread;
-    std::shared_ptr<volumeprotect::native::DataReader>  m_dataReader;  
+    std::shared_ptr<volumeprotect::native::DataReader>  m_dataReader;
 };
 
 }

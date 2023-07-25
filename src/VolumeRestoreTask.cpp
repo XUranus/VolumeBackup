@@ -67,7 +67,7 @@ bool VolumeRestoreTask::IsIncrementCopy() const
 bool VolumeRestoreTask::Prepare()
 {
     std::string volumePath = m_restoreConfig->volumePath;
-    
+
     // 1. read copy meta json and validate volume
     VolumeCopyMeta volumeCopyMeta {};
     if (!util::ReadVolumeCopyMeta(m_restoreConfig->copyMetaDirPath, volumeCopyMeta)) {
@@ -112,7 +112,7 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
         session->sharedConfig->blockSize,
         DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    
+
     // 2. check and init reader
     session->readerTask = VolumeBlockReader::BuildCopyReader(
         session->sharedConfig,
@@ -197,7 +197,7 @@ void VolumeRestoreTask::ThreadFunc()
         DBGLOG("session complete successfully");
         UpdateCompletedSessionStatistics(session);
     }
-    
+
     m_status = TaskStatus::SUCCEED;
     return;
 }

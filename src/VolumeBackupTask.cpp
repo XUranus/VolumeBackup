@@ -104,7 +104,7 @@ bool VolumeBackupTask::Prepare()
         session.sharedConfig->lastestChecksumBinPath = lastestChecksumBinPath;
         session.sharedConfig->prevChecksumBinPath = prevChecksumBinPath;
         session.sharedConfig->copyFilePath = copyFilePath;
-        
+
         volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
         sessionOffset += sessionSize;
@@ -126,7 +126,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    
+
     // 2. check and init reader
     session->readerTask = VolumeBlockReader::BuildVolumeReader(
         session->sharedConfig,
@@ -226,7 +226,7 @@ void VolumeBackupTask::ThreadFunc()
         DBGLOG("session complete successfully");
         UpdateCompletedSessionStatistics(session);
     }
-    
+
     m_status = TaskStatus::SUCCEED;
     return;
 }

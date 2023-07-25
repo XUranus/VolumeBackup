@@ -254,7 +254,7 @@ bool volumeprotect::native::TruncateCreateFile(const std::string& path, uint64_t
         errorCode = static_cast<ErrCodeType>(::GetLastError());
         return false;
     }
-    
+
     // check if filesystem support sparse file
     DWORD fileSystemFlags = 0;
     if (::GetVolumeInformationByHandleW(hFile, nullptr, 0, nullptr, nullptr, &fileSystemFlags, nullptr, 0) &&

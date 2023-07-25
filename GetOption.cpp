@@ -1,10 +1,10 @@
 /*================================================================
 *   Copyright (C) 2023 XUranus All rights reserved.
-*   
+*
 *   File:         GetOption.cpp
 *   Author:       XUranus
 *   Date:         2023-06-29
-*   Description:  
+*   Description:
 *
 ================================================================*/
 
@@ -35,8 +35,8 @@ OptionResult::OptionResult(const std::string& optionName, const std::string& opt
 
 /**
  * @brief parse short option to tuple array
- * 
- * @param optionStr 
+ *
+ * @param optionStr
  * @return std::map<char, bool> represent <option, has arg>
  * @example "v:ha:" => [{ 'v' => true }, { 'h' => false }, { 'a' => true }]
  */
@@ -59,8 +59,8 @@ static std::map<char, bool> ParseShortOption(const std::string& str)
 
 /**
  * @brief parse long option to tuple array
- * 
- * @param optionStr 
+ *
+ * @param optionStr
  * @return std::map<std::string, bool> represent <option, has arg>
  * @example { "--prev=", "--verbose" } => [{ "prev" => true }, { "verbose" => false }]
  */
@@ -68,15 +68,15 @@ static std::map<std::string, bool> ParseLongOption(const std::set<std::string>& 
 {
     std::map<std::string, bool> optionMap;
     for (std::string option : longOptionSet) {
-    	while (!option.empty() && option.front() == '-') {
-    		option = option.substr(1);
-    	}
+        while (!option.empty() && option.front() == '-') {
+            option = option.substr(1);
+        }
         bool hasArg = false;
-    	if (!option.empty() && option.back() == '=') {
-    		option.pop_back();
+        if (!option.empty() && option.back() == '=') {
+            option.pop_back();
             hasArg = true;
-    	}
-    	optionMap.emplace(option, hasArg);
+        }
+        optionMap.emplace(option, hasArg);
     }
     return optionMap;
 }

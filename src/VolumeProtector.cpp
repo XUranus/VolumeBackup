@@ -64,7 +64,7 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
 
     return std::make_shared<VolumeBackupTask>(backupConfig, volumeSize);
 }
-    
+
 std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const VolumeRestoreConfig& restoreConfig)
 {
     // 1. check volume size
@@ -125,7 +125,7 @@ TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) cons
 {
     TaskStatistics res;
     res.bytesToRead     = statistic.bytesToRead + this->bytesToRead;
-    res.bytesRead       = statistic.bytesRead + this->bytesRead;;
+    res.bytesRead       = statistic.bytesRead + this->bytesRead;
     res.blocksToHash    = statistic.blocksToHash + this->blocksToHash;
     res.blocksHashed    = statistic.blocksHashed + this->blocksHashed;
     res.bytesToWrite    = statistic.bytesToWrite + this->bytesToWrite;

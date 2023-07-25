@@ -18,7 +18,7 @@ namespace volumeprotect {
 class VOLUMEPROTECT_API VolumeBackupTask : public VolumeProtectTask {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
-    
+
     bool            Start() override;
     TaskStatistics  GetStatistics() const override;
 
@@ -40,7 +40,7 @@ private:
 
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;
-    
+
     // statistics
     mutable std::mutex m_statisticMutex;
     TaskStatistics  m_currentSessionStatistics;     // current running session statistics

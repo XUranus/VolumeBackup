@@ -1,7 +1,7 @@
 /*
  * ================================================================
  *   Copyright (C) 2023 XUranus All rights reserved.
- *   
+ *
  *   File:         voltool.cpp
  *   Author:       XUranus
  *   Date:         2023-07-01
@@ -55,7 +55,7 @@ private:
 /**
  * @brief logic volume info
  * https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew
- * 
+ *
  */
 struct VolumeInfo {
     std::string     volumeName;

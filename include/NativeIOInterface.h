@@ -49,7 +49,7 @@ private:
  * @brief DataReader and DataWriter provide basic I/O interface
  *  for VolumeDataReader/VolumeDataWriter, FileDataReader/FileDataWriter to implement.
  *  Implement this interface if need to access other data source, ex: cloud, tape ...
- * 
+ *
  */
 class VOLUMEPROTECT_API DataReader {
 public:
@@ -69,7 +69,7 @@ public:
 
 /**
  * @brief provide VolumeDataReader/VolumeDataWriter, FileDataReader/FileDataWriter implement using native API
- * 
+ *
  */
 class VOLUMEPROTECT_API SystemDataReader : public DataReader {
 public:

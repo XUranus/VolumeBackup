@@ -24,8 +24,8 @@ void PrintHelp()
 
 int ExecVolumeRestore(
     const std::string& 	volumePath,
-	const std::string&	copyDataDirPath,
-	const std::string&	copyMetaDirPath)
+    const std::string&	copyDataDirPath,
+    const std::string&	copyMetaDirPath)
 {
     VolumeRestoreConfig restoreConfig {};
     restoreConfig.volumePath = volumePath;
@@ -45,7 +45,7 @@ int ExecVolumeRestore(
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     std::cout << "volume restore task completed!" << std::endl;
-    return 0;    
+    return 0;
 }
 
 int ExecVolumeBackup(
@@ -115,7 +115,7 @@ int main(int argc, const char** argv)
     if (volumePath.empty() || copyDataDirPath.empty() || copyMetaDirPath.empty()) {
         PrintHelp();
         return 1;
-    } 
+    }
     std::cout << "volumePath: " << volumePath << std::endl;
     std::cout << "copyDataDirPath: " << copyDataDirPath << std::endl;
     std::cout << "copyMetaDirPath: " << copyMetaDirPath << std::endl;

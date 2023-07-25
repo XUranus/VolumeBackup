@@ -1,11 +1,11 @@
 /*
  * ================================================================
  *   Copyright (C) 2023 XUranus All rights reserved.
- *   
+ *
  *   File:         GetOption.h
  *   Author:       XUranus
  *   Date:         2023-06-29
- *   Description:  
+ *   Description:
  * ==================================================================
  */
 

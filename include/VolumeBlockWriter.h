@@ -39,7 +39,7 @@ public:
 
     // build a writer writing to volume
     static std::shared_ptr<VolumeBlockWriter> BuildVolumeWriter(
-    	std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
+        std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
         std::shared_ptr<VolumeTaskSharedContext> sharedContext
     );
 
@@ -57,7 +57,7 @@ private:
     TargetType      m_targetType;
     std::string     m_targetPath;
     std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
-    
+
     // mutable fields
     std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
     std::thread                                         m_writerThread;

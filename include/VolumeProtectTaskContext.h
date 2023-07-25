@@ -55,10 +55,10 @@ struct VOLUMEPROTECT_API SessionCounter {
  * Split a logical volume into multiple sessions
  * Sach session(default 1TB) corresponding to a SHA256 checksum binary file(8MB) and a data slice file(1TB)
  * Each backup/restore task involves one or more sessions represented by struct VolumeTaskSession
- * 
+ *
  *       ...      |<------session[i]------>|<-----session[i+1]----->|<-----session[i+2]----->|   ...
  * |===================================================================================================| logical volume
- * |     ...      |----- sessionSize ------|    
+ * |     ...      |----- sessionSize ------|
  * 0         sessionOffset   sessionOffset + sessionSize
  */
 

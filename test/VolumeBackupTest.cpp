@@ -1,10 +1,10 @@
 /*================================================================
 *   Copyright (C) 2023 XUranus All rights reserved.
-*   
+*
 *   File:         VolumeBackupTest.cpp
 *   Author:       XUranus
 *   Date:         2023-07-20
-*   Description:  
+*   Description:
 *
 ================================================================*/
 
@@ -125,12 +125,12 @@ static void InitSessionBlockWriter(
 }
 
 static void InitSessionBlockHasher(
-	std::shared_ptr<VolumeTaskSession> session)
+    std::shared_ptr<VolumeTaskSession> session)
 {
     uint32_t singleChecksumSize = 32LU; // SHA-256
     std::string previousChecksumBinPath = "/dummy/checksum1";
     std::string lastestChecksumBinPath = "/dummy/checksum2";
-    
+
     // init hasher context
     uint64_t prevChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
     uint64_t lastestChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
@@ -350,7 +350,7 @@ TEST_F(VolumeBackupTest, VolumeBackTaskMockInvalidVolume)
     backupConfig.volumePath = "/dev/dummy";
 
     auto backupTaskMock = std::make_shared<VolumeBackupTaskMock>(backupConfig, 4LLU * ONE_GB);
-    
+
     EXPECT_CALL(*backupTaskMock, SaveVolumeCopyMetaShouldFail())
         .WillRepeatedly(Return(true));
     // backupTaskMock will failed at saving copy meta json
