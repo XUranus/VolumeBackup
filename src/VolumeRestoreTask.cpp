@@ -146,7 +146,7 @@ bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeTaskSession> s
         return false;
     }
     DBGLOG("start restore session writer");
-    if (!session->writerTask->Start() ) {
+    if (!session->writerTask->Start()) {
         ERRLOG("restore session writerTask start failed");
         return false;
     }

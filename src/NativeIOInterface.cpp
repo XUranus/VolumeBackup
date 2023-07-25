@@ -167,7 +167,7 @@ SystemDataReader::~SystemDataReader()
 SystemDataWriter::SystemDataWriter(const std::string& path)
 {
 #ifdef __linux__
-    m_handle = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    m_handle = ::open(path.c_str(), O_RDWR | O_EXCL, S_IRUSR | S_IWUSR);
 #endif
 #ifdef _WIN32
     std::wstring wpath = Utf8ToUtf16(path);
@@ -233,6 +233,11 @@ SystemDataWriter::~SystemDataWriter()
 bool volumeprotect::native::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode)
 {
 #ifdef __linux__
+    int fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    if (fd < 0) {
+    	return false;
+    }
+    ::close(fd);
     if (::truncate(path.c_str(), size) < 0) {
         errorCode = static_cast<ErrCodeType>(errno);
         return false;
@@ -375,7 +380,8 @@ static uint64_t GetVolumeSizeWin32(const std::string& devicePath)
 #endif
 
 #ifdef __linux__
-static uint64_t GetVolumeSizeLinux(const std::string& devicePath) {
+static uint64_t GetVolumeSizeLinux(const std::string& devicePath)
+{
     int fd = ::open(devicePath.c_str(), O_RDONLY);
     if (fd < 0) {
         throw SystemApiException("failed to open device", errno);

@@ -73,7 +73,8 @@ bool VolumeBlockReader::Start()
     return true;
 }
 
-VolumeBlockReader::~VolumeBlockReader() {
+VolumeBlockReader::~VolumeBlockReader()
+{
     if (m_readerThread.joinable()) {
         m_readerThread.join();
     }

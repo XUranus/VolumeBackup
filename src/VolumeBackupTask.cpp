@@ -176,7 +176,7 @@ bool VolumeBackupTask::StartBackupSession(std::shared_ptr<VolumeTaskSession> ses
         return false;
     }
     DBGLOG("start backup session writer");
-    if (!session->writerTask->Start() ) {
+    if (!session->writerTask->Start()) {
         ERRLOG("backup session writer start failed");
         return false;
     }

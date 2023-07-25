@@ -12,7 +12,8 @@
 
 namespace volumeprotect {
 
-enum class SourceType{
+enum class SourceType
+{
     VOLUME = 0,
     COPYFILE = 1
 };

@@ -23,7 +23,7 @@ const uint64_t DEFAULT_SESSION_SIZE = ONE_TB;
 const uint32_t DEFAULT_HASHER_NUM = 8LU;
 
 /*
- *volume backup/restore facade and common struct defines
+ * volume backup/restore facade and common struct defines
  */
 
 enum class VOLUMEPROTECT_API CopyType {
