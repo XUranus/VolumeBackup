@@ -107,10 +107,12 @@ void VolumeBlockReader::MainThread()
             m_sourceOffset, m_sourceLength, currentOffset);
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
-            return;
+            break;
         }
 
         if (m_sourceOffset + m_sourceLength <= currentOffset) { // read completed
+            m_status = TaskStatus::SUCCEED;
+            INFOLOG("reader read completed successfully");
             break;
         }
 
@@ -127,7 +129,7 @@ void VolumeBlockReader::MainThread()
         if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
             ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
             m_status = TaskStatus::FAILED;
-            return;
+            break;
         }
         // push readed block to queue (convert to reader offset to sessionOffset)
         VolumeConsumeBlock consumeBlock {
@@ -147,12 +149,11 @@ void VolumeBlockReader::MainThread()
         m_sharedContext->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
     }
     // handle success
-    INFOLOG("reader read completed successfully");
-    m_status = TaskStatus::SUCCEED;
     if (m_sharedConfig->hasherEnabled) {
         m_sharedContext->hashingQueue->Finish();
     } else {
         m_sharedContext->writeQueue->Finish();
     }
+    INFOLOG("reader thread terminated");
     return;
 }

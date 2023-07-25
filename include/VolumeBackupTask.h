@@ -28,11 +28,11 @@ private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
     bool StartBackupSession(std::shared_ptr<VolumeTaskSession> session) const;
-    bool InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
+    virtual bool InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
     bool IsIncrementBackup() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
-    bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
+    virtual bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
 
 private:
     uint64_t                                m_volumeSize;
