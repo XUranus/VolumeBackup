@@ -11,6 +11,7 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
+#include "VolumeUtils.h"
 
 namespace volumeprotect {
 
@@ -28,6 +29,7 @@ private:
     void ThreadFunc();
     bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
+    virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
     bool IsIncrementCopy() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);

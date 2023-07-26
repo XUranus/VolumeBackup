@@ -71,7 +71,7 @@ bool VolumeRestoreTask::Prepare()
 
     // 1. read copy meta json and validate volume
     VolumeCopyMeta volumeCopyMeta {};
-    if (!util::ReadVolumeCopyMeta(m_restoreConfig->copyMetaDirPath, volumeCopyMeta)) {
+    if (!ReadVolumeCopyMeta(m_restoreConfig->copyMetaDirPath, volumeCopyMeta)) {
         ERRLOG("failed to write copy meta to dir: %s", m_restoreConfig->copyMetaDirPath.c_str());
         return false;
     }
@@ -125,12 +125,20 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
     }
 
     // // 3. check and init writer
-    session->writerTask = VolumeBlockWriter::BuildVolumeWriter(session->sharedConfig, session->sharedContext);
+    session->writerTask = VolumeBlockWriter::BuildVolumeWriter(
+        session->sharedConfig,
+        session->sharedContext
+    );
     if (session->writerTask == nullptr) {
         ERRLOG("restore session failed to init writer task");
         return false;
     }
     return true;
+}
+
+bool VolumeRestoreTask::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
+{
+    return util::ReadVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta);
 }
 
 bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const
