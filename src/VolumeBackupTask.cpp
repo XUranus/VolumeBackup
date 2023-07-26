@@ -23,11 +23,12 @@ using namespace volumeprotect::util;
 namespace {
     constexpr auto DEFAULT_ALLOCATOR_BLOCK_NUM = 32;
     constexpr auto DEFAULT_QUEUE_SIZE = 32;
+    constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
 }
 
 VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
- : m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig)),
-   m_volumeSize(volumeSize)
+  : m_volumeSize(volumeSize),
+    m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig)) 
 {}
 
 VolumeBackupTask::~VolumeBackupTask()
@@ -98,6 +99,7 @@ bool VolumeBackupTask::Prepare()
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
         session.sharedConfig->volumePath = m_backupConfig->volumePath;
         session.sharedConfig->hasherEnabled = true;
+        session.sharedConfig->hasherWorkerNum = m_backupConfig->hasherNum;
         session.sharedConfig->blockSize = m_backupConfig->blockSize;
         session.sharedConfig->sessionOffset = sessionOffset;
         session.sharedConfig->sessionSize = sessionSize;
@@ -171,7 +173,7 @@ bool VolumeBackupTask::StartBackupSession(std::shared_ptr<VolumeTaskSession> ses
         return false;
     }
     DBGLOG("start backup session hasher");
-    if (!session->hasherTask->Start() ) {
+    if (!session->hasherTask->Start()) {
         ERRLOG("backup session hasher start failed");
         return false;
     }
@@ -221,7 +223,7 @@ void VolumeBackupTask::ThreadFunc()
                 session->sharedContext->counter->blocksToHash.load(), session->sharedContext->counter->blocksHashed.load(),
                 session->sharedContext->counter->bytesToWrite.load(), session->sharedContext->counter->bytesWritten.load());
             UpdateRunningSessionStatistics(session);
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
         UpdateCompletedSessionStatistics(session);

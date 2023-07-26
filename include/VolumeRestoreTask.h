@@ -27,7 +27,7 @@ private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
     bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
-    bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
+    virtual bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
     bool IsIncrementCopy() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);

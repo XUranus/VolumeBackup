@@ -18,6 +18,10 @@
 
 using namespace volumeprotect;
 
+namespace {
+    constexpr auto READER_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
+}
+
 // build a reader reading from volume (block device)
 std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
@@ -120,7 +124,7 @@ void VolumeBlockReader::MainThread()
         char* buffer = m_sharedContext->allocator->bmalloc();
         if (buffer == nullptr) {
             DBGLOG("failed to malloc, retry in 100ms");
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(READER_CHECK_SLEEP_INTERVAL);
             continue;
         }
         nBytesToRead = defaultBufferSize;

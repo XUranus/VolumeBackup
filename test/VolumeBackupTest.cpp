@@ -33,6 +33,7 @@ namespace {
     constexpr auto DEFAULT_MOCK_SESSION_BLOCK_SIZE = 4LLU * ONE_MB;
     constexpr auto DEFAULT_MOCK_SESSION_SIZE = 512LLU * ONE_MB;
     constexpr auto DEFAULT_MOCK_HASHER_NUM = 8LU;
+    constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::milliseconds(100);
 }
 
 class VolumeBackupTest : public ::testing::Test {
@@ -41,7 +42,7 @@ protected:
         using namespace xuranus::minilogger;
         LoggerConfig conf {};
         conf.target = LoggerTarget::STDOUT;
-        Logger::GetInstance()->SetLogLevel(LoggerLevel::INFO);
+        Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
         if (!Logger::GetInstance()->Init(conf)) {
             std::cerr << "Init logger failed" << std::endl;
         }
@@ -81,7 +82,6 @@ static void InitSessionBasic(std::shared_ptr<VolumeTaskSession> session)
     sharedConfig->hasherEnabled = true;
     sharedConfig->volumePath = volumePath;
     sharedConfig->copyFilePath = targetPath;
-    sharedConfig->hasherEnabled = true;
     session->sharedConfig = sharedConfig;
 }
 
@@ -138,7 +138,8 @@ static void InitSessionBlockHasher(
     auto prevChecksumTable = new char[lastestChecksumTableSize];
 
     VolumeBlockHasherParam hasherParam {
-        session->sharedConfig, session->sharedContext, HasherForwardMode::DIRECT, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
+        session->sharedConfig, session->sharedContext, DEFAULT_HASHER_NUM,
+        HasherForwardMode::DIRECT, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
         prevChecksumTable, prevChecksumTableSize,
         lastestChecksumTable, lastestChecksumTableSize
     };
@@ -225,14 +226,8 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskSucess)
     EXPECT_TRUE(session->writerTask->Start());
 
     // wait all component to terminate
-    while (!session->readerTask->IsTerminated()) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    while (!session->writerTask->IsTerminated()) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    while (!session->hasherTask->IsTerminated()) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+    while (!session->IsTerminated()) {
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
     }
     EXPECT_EQ(session->readerTask->GetStatus(), TaskStatus::SUCCEED);
     EXPECT_EQ(session->writerTask->GetStatus(), TaskStatus::SUCCEED);
@@ -267,14 +262,12 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskReadFailed)
     InitSessionBlockHasher(session);
 
     EXPECT_FALSE(session->readerTask->Start());
+    EXPECT_TRUE(session->hasherTask->Start());
     EXPECT_FALSE(session->writerTask->Start());
 
     // wait all component to terminate
-    while (!session->readerTask->IsTerminated()) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    while (!session->writerTask->IsTerminated()) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+    while (!session->IsTerminated()) {
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
     }
     EXPECT_EQ(session->readerTask->GetStatus(), TaskStatus::FAILED);
     EXPECT_EQ(session->writerTask->GetStatus(), TaskStatus::FAILED);
@@ -305,7 +298,7 @@ TEST_F(VolumeBackupTest, VolumeBackTaskMockSuccess)
     EXPECT_TRUE(backupTaskMock->Start());
     while (!backupTaskMock->IsTerminated()) {
         backupTaskMock->GetStatistics();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
     }
     EXPECT_EQ(backupTaskMock->GetStatus(), TaskStatus::SUCCEED);
 }
@@ -334,7 +327,7 @@ TEST_F(VolumeBackupTest, VolumeBackTaskMockWithReaderWriterFail)
     EXPECT_TRUE(backupTaskMock->Start());
     while (!backupTaskMock->IsTerminated()) {
         backupTaskMock->GetStatistics();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
     }
     EXPECT_EQ(backupTaskMock->GetStatus(), TaskStatus::FAILED);
 }
@@ -358,7 +351,7 @@ TEST_F(VolumeBackupTest, VolumeBackTaskMockInvalidVolume)
     EXPECT_FALSE(backupTaskMock->Start());
     while (!backupTaskMock->IsTerminated()) {
         backupTaskMock->GetStatistics();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
     }
     backupTaskMock->Abort();
     EXPECT_EQ(backupTaskMock->GetStatus(), TaskStatus::FAILED);

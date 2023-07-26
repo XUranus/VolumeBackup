@@ -107,8 +107,8 @@ VolumeBlockWriter::~VolumeBlockWriter()
 VolumeBlockWriter::VolumeBlockWriter(const VolumeBlockWriterParam& param)
   : m_targetType(param.targetType),
     m_targetPath(param.targetPath),
-    m_sharedContext(param.sharedContext),
     m_sharedConfig(param.sharedConfig),
+    m_sharedContext(param.sharedContext),
     m_dataWriter(param.dataWriter)
 {}
 

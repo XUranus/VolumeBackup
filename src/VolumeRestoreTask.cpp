@@ -23,6 +23,7 @@ using namespace volumeprotect::util;
 namespace {
     constexpr auto DEFAULT_ALLOCATOR_BLOCK_NUM = 32;
     constexpr auto DEFAULT_QUEUE_SIZE = 32;
+    constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
 }
 
 VolumeRestoreTask::VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig)
@@ -192,7 +193,7 @@ void VolumeRestoreTask::ThreadFunc()
                 session->sharedContext->counter->bytesToWrite.load(),
                 session->sharedContext->counter->bytesWritten.load());
             UpdateRunningSessionStatistics(session);
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
         UpdateCompletedSessionStatistics(session);

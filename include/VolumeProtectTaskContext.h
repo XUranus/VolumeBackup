@@ -68,6 +68,7 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
     uint64_t        sessionSize;
     uint32_t        blockSize;
     bool            hasherEnabled;
+    uint32_t        hasherWorkerNum;
     std::string     volumePath;
     std::string     copyFilePath;
 

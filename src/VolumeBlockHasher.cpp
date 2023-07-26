@@ -16,6 +16,7 @@
 namespace {
     const uint64_t DEFAULT_CHECKSUM_TABLE_CAPACITY = 1024 * 1024 * 8; // 8MB
     const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
+    const uint32_t MAX_HASHER_WORKER_NUM = 32;
 }
 
 using namespace volumeprotect;
@@ -55,6 +56,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDirectHasher(
     VolumeBlockHasherParam param {
         sharedConfig,
         sharedContext,
+        sharedConfig->hasherWorkerNum,
         HasherForwardMode::DIRECT,
         "",
         sharedConfig->lastestChecksumBinPath,
@@ -115,6 +117,7 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
     VolumeBlockHasherParam param {
         sharedConfig,
         sharedContext,
+        sharedConfig->hasherWorkerNum,
         HasherForwardMode::DIFF,
         prevChecksumBinPath,
         lastestChecksumBinPath,
@@ -129,14 +132,15 @@ std::shared_ptr<VolumeBlockHasher> VolumeBlockHasher::BuildDiffHasher(
 }
 
 VolumeBlockHasher::VolumeBlockHasher(const VolumeBlockHasherParam& param)
-  : m_sharedConfig(param.sharedConfig),
-    m_sharedContext(param.sharedContext),
+  : m_singleChecksumSize(param.singleChecksumSize),
     m_forwardMode(param.forwardMode),
-    m_prevChecksumBinPath(param.prevChecksumBinPath),
-    m_lastestChecksumBinPath(param.lastestChecksumBinPath),
-    m_singleChecksumSize(param.singleChecksumSize),
     m_prevChecksumTable(param.prevChecksumTable),
     m_prevChecksumTableSize(param.prevChecksumTableSize),
+    m_prevChecksumBinPath(param.prevChecksumBinPath),
+    m_lastestChecksumBinPath(param.lastestChecksumBinPath),
+    m_workerThreadNum(param.workerThreadNum),
+    m_sharedConfig(param.sharedConfig),
+    m_sharedContext(param.sharedContext),
     m_lastestChecksumTable(param.lastestChecksumTable),
     m_lastestChecksumTableSize(param.lastestChecksumTableSize)
 {}
@@ -146,7 +150,7 @@ bool VolumeBlockHasher::Start()
     if (m_status != TaskStatus::INIT) {
         return false;
     }
-    if (m_workerThreadNum == 0) { // invalid parameter
+    if (m_workerThreadNum == 0 || m_workerThreadNum > MAX_HASHER_WORKER_NUM) { // invalid parameter
         m_status = TaskStatus::FAILED;
         return false;
     }
