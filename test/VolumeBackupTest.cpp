@@ -69,12 +69,12 @@ public:
     MOCK_METHOD(native::ErrCodeType, Error, (), (override));
 };
 
-static void InitSessionBasic(std::shared_ptr<VolumeTaskSession> session)
+static void InitSessionSharedConfig(std::shared_ptr<VolumeTaskSession> session)
 {
     std::string volumePath = "/dummy/volumePath";
     std::string targetPath = "/dummy/targetPath";
     uint64_t offset = 0LLU;
-    uint64_t length = 600 * ONE_MB;
+    uint64_t length = 1000 * ONE_MB; // make it not divide by block size
     auto sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
     sharedConfig->sessionOffset = 0LLU;
     sharedConfig->sessionSize = length;
@@ -143,7 +143,7 @@ static void InitSessionBlockHasher(
 
     VolumeBlockHasherParam hasherParam {
         session->sharedConfig, session->sharedContext, DEFAULT_HASHER_NUM,
-        HasherForwardMode::DIRECT, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
+        HasherForwardMode::DIFF, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
         prevChecksumTable, prevChecksumTableSize,
         lastestChecksumTable, lastestChecksumTableSize
     };
@@ -221,7 +221,7 @@ TEST_F(VolumeBackupTest, VolumeBackupTask_Sucess)
 
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
-    InitSessionBasic(session);
+    InitSessionSharedConfig(session);
     InitSessionSharedContext(session);
     InitSessionBlockVolumeReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
     InitSessionBlockCopyWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
@@ -266,7 +266,7 @@ TEST_F(VolumeBackupTest, VolumeBackupTask_ReadWriteFail)
 
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
-    InitSessionBasic(session);
+    InitSessionSharedConfig(session);
     InitSessionSharedContext(session);
     InitSessionBlockVolumeReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
     InitSessionBlockCopyWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
@@ -289,7 +289,7 @@ TEST_F(VolumeBackupTest, VolumeBackupTask_DataReaderNull)
 {
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
-    InitSessionBasic(session);
+    InitSessionSharedConfig(session);
     InitSessionSharedContext(session);
     InitSessionBlockVolumeReader(session, nullptr);
     InitSessionBlockCopyWriter(session, nullptr);
@@ -319,7 +319,7 @@ TEST_F(VolumeBackupTest, VolumeBackupTask_DataReaderInvalid)
 
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
-    InitSessionBasic(session);
+    InitSessionSharedConfig(session);
     InitSessionSharedContext(session);
     InitSessionBlockVolumeReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
     InitSessionBlockCopyWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
@@ -383,6 +383,7 @@ TEST_F(VolumeBackupTest, VolumeBackTask_MockAbort)
         .WillRepeatedly(Return(false));
 
     EXPECT_TRUE(backupTaskMock->Start());
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     backupTaskMock->Abort();
     while (!backupTaskMock->IsTerminated()) {
         backupTaskMock->GetStatistics();
@@ -628,6 +629,7 @@ TEST_F(VolumeBackupTest, VolumeRestoreTask_MockAbort)
 
     EXPECT_TRUE(restoreTaskMock->Start());
     // twice start will fail
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     restoreTaskMock->Abort();
     while (!restoreTaskMock->IsTerminated()) {
         restoreTaskMock->GetStatistics();
@@ -670,3 +672,75 @@ TEST_F(VolumeBackupTest, BuildDiffHasher_Fail)
     EXPECT_TRUE(VolumeBlockHasher::BuildDiffHasher(sharedConfig, sharedContext) == nullptr);
 }
 
+TEST_F(VolumeBackupTest, BuildCopyWriter_Fail)
+{
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
+        std::make_shared<VolumeTaskSharedConfig>();
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext =
+        std::make_shared<VolumeTaskSharedContext>();
+    sharedConfig->sessionSize = 512 * ONE_MB;
+    sharedConfig->copyFilePath = "/dummy/dummycopy";
+    EXPECT_TRUE(VolumeBlockWriter::BuildCopyWriter(sharedConfig, sharedContext) == nullptr);
+}
+
+TEST_F(VolumeBackupTest, BuildVolumeWriter_Fail)
+{
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
+        std::make_shared<VolumeTaskSharedConfig>();
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext =
+        std::make_shared<VolumeTaskSharedContext>();
+    sharedConfig->sessionSize = 512 * ONE_MB;
+    sharedConfig->volumePath = "/dummy/dummyvolume";
+    EXPECT_TRUE(VolumeBlockWriter::BuildVolumeWriter(sharedConfig, sharedContext) == nullptr);
+}
+
+TEST_F(VolumeBackupTest, Hasher_StartFail1)
+{
+    uint32_t hasherNum = 0; // invalid hasher num
+    uint32_t singleChecksumSize = 32LU; // SHA-256
+    std::string previousChecksumBinPath = "/dummy/checksum1";
+    std::string lastestChecksumBinPath = "/dummy/checksum2";
+    auto session = std::make_shared<VolumeTaskSession>();
+    InitSessionSharedConfig(session);
+
+    // init hasher context
+    uint64_t prevChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
+    uint64_t lastestChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
+    auto lastestChecksumTable = new char[prevChecksumTableSize];
+    auto prevChecksumTable = new char[lastestChecksumTableSize];
+
+    VolumeBlockHasherParam hasherParam {
+        session->sharedConfig, session->sharedContext, hasherNum,
+        HasherForwardMode::DIFF, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
+        prevChecksumTable, prevChecksumTableSize,
+        lastestChecksumTable, lastestChecksumTableSize
+    };
+    auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
+    EXPECT_FALSE(volumeBlockHasher->Start());
+}
+
+TEST_F(VolumeBackupTest, Hasher_StartFail2)
+{
+    uint32_t singleChecksumSize = 32LU; // SHA-256
+    std::string previousChecksumBinPath = "/dummy/checksum1";
+    std::string lastestChecksumBinPath = "/dummy/checksum2";
+    auto session = std::make_shared<VolumeTaskSession>();
+    InitSessionSharedConfig(session);
+    // disable hasher
+    session->sharedConfig->hasherEnabled = false;
+
+    // init hasher context
+    uint64_t prevChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
+    uint64_t lastestChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
+    auto lastestChecksumTable = new char[prevChecksumTableSize];
+    auto prevChecksumTable = new char[lastestChecksumTableSize];
+
+    VolumeBlockHasherParam hasherParam {
+        session->sharedConfig, session->sharedContext, DEFAULT_HASHER_NUM,
+        HasherForwardMode::DIFF, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
+        prevChecksumTable, prevChecksumTableSize,
+        lastestChecksumTable, lastestChecksumTableSize
+    };
+    auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
+    EXPECT_FALSE(volumeBlockHasher->Start());
+}

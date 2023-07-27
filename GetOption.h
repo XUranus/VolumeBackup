@@ -9,8 +9,8 @@
  * ==================================================================
  */
 
-#ifndef _XURANUS_CPPUTILS_GETOPTION_HEADER_
-#define _XURANUS_CPPUTILS_GETOPTION_HEADER_
+#ifndef XURANUS_CPPUTILS_GETOPTION_HEADER
+#define XURANUS_CPPUTILS_GETOPTION_HEADER
 
 #include <array>
 #include <string>
