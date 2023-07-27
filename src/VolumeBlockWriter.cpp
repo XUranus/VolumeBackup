@@ -144,7 +144,7 @@ void VolumeBlockWriter::MainThread()
             ERRLOG("write %llu bytes failed, error code = %u", writerOffset, errorCode);
             m_status = TaskStatus::FAILED;
             m_sharedContext->allocator->bfree(buffer);
-            return;
+            // writer not return (avoid queue to block reader)
         }
 
         m_sharedContext->allocator->bfree(buffer);

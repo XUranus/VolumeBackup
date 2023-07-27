@@ -42,7 +42,7 @@ protected:
         using namespace xuranus::minilogger;
         LoggerConfig conf {};
         conf.target = LoggerTarget::STDOUT;
-        Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
+        Logger::GetInstance()->SetLogLevel(LoggerLevel::ERROR);
         if (!Logger::GetInstance()->Init(conf)) {
             std::cerr << "Init logger failed" << std::endl;
         }
@@ -74,7 +74,7 @@ static void InitSessionBasic(std::shared_ptr<VolumeTaskSession> session)
     std::string volumePath = "/dummy/volumePath";
     std::string targetPath = "/dummy/targetPath";
     uint64_t offset = 0LLU;
-    uint64_t length = 512 * ONE_MB;
+    uint64_t length = 600 * ONE_MB;
     auto sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
     sharedConfig->sessionOffset = 0LLU;
     sharedConfig->sessionSize = length;
@@ -200,7 +200,7 @@ bool VolumeBackupTaskMock::InitBackupSessionContext(std::shared_ptr<VolumeTaskSe
     return true;
 }
 
-TEST_F(VolumeBackupTest, VolumeBackupTaskSucess)
+TEST_F(VolumeBackupTest, VolumeBackupTask_Sucess)
 {
     // init mock
     auto dataReaderMock = std::make_shared<DataReaderMock>();
@@ -245,7 +245,60 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskSucess)
     EXPECT_EQ(session->hasherTask->GetStatus(), TaskStatus::SUCCEED);
 }
 
-TEST_F(VolumeBackupTest, VolumeBackupTaskReadFailed)
+TEST_F(VolumeBackupTest, VolumeBackupTask_ReadWriteFail)
+{
+    // init mock
+    auto dataReaderMock = std::make_shared<DataReaderMock>();
+    EXPECT_CALL(*dataReaderMock, Read(_, _, _, _))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*dataReaderMock, Ok())
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*dataReaderMock, Error())
+        .WillRepeatedly(Return(static_cast<native::ErrCodeType>(0)));
+
+    auto dataWriterMock = std::make_shared<DataWriterMock>();
+    EXPECT_CALL(*dataWriterMock, Write(_, _, _, _))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*dataWriterMock, Ok())
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*dataWriterMock, Error())
+        .WillRepeatedly(Return(static_cast<native::ErrCodeType>(0)));
+
+    // init session
+    auto session = std::make_shared<VolumeTaskSession>();
+    InitSessionBasic(session);
+    InitSessionSharedContext(session);
+    InitSessionBlockVolumeReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
+    InitSessionBlockCopyWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
+    InitSessionBlockHasher(session);
+
+    EXPECT_TRUE(session->readerTask->Start());
+    EXPECT_TRUE(session->hasherTask->Start());
+    EXPECT_TRUE(session->writerTask->Start());
+
+    // wait all component to terminate
+    while (!session->IsTerminated()) {
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+    }
+    EXPECT_EQ(session->readerTask->GetStatus(), TaskStatus::FAILED);
+    EXPECT_EQ(session->writerTask->GetStatus(), TaskStatus::SUCCEED);
+    EXPECT_EQ(session->hasherTask->GetStatus(), TaskStatus::SUCCEED);
+}
+
+TEST_F(VolumeBackupTest, VolumeBackupTask_DataReaderNull)
+{
+    // init session
+    auto session = std::make_shared<VolumeTaskSession>();
+    InitSessionBasic(session);
+    InitSessionSharedContext(session);
+    InitSessionBlockVolumeReader(session, nullptr);
+    InitSessionBlockCopyWriter(session, nullptr);
+
+    EXPECT_FALSE(session->readerTask->Start());
+    EXPECT_FALSE(session->writerTask->Start());
+}
+
+TEST_F(VolumeBackupTest, VolumeBackupTask_DataReaderInvalid)
 {
     // init mock (Read call failed)
     auto dataReaderMock = std::make_shared<DataReaderMock>();
@@ -281,11 +334,11 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskReadFailed)
     session->Abort();
 }
 
-TEST_F(VolumeBackupTest, VolumeBackTaskMockSuccess)
+TEST_F(VolumeBackupTest, VolumeBackTask_MockSuccess)
 {
     VolumeBackupConfig backupConfig;
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
-    backupConfig.copyType = CopyType::FULL;
+    backupConfig.copyType = CopyType::INCREMENT;
     backupConfig.hasherEnabled = true;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
     backupConfig.sessionSize = DEFAULT_MOCK_SESSION_SIZE;
@@ -309,7 +362,36 @@ TEST_F(VolumeBackupTest, VolumeBackTaskMockSuccess)
     EXPECT_EQ(backupTaskMock->GetStatus(), TaskStatus::SUCCEED);
 }
 
-TEST_F(VolumeBackupTest, VolumeBackTaskMockWithReaderWriterFail)
+TEST_F(VolumeBackupTest, VolumeBackTask_MockAbort)
+{
+    VolumeBackupConfig backupConfig;
+    backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
+    backupConfig.copyType = CopyType::INCREMENT;
+    backupConfig.hasherEnabled = true;
+    backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
+    backupConfig.sessionSize = DEFAULT_MOCK_SESSION_SIZE;
+    backupConfig.volumePath = "/dev/dummy";
+
+    auto backupTaskMock = std::make_shared<VolumeBackupTaskMock>(backupConfig, 1LLU * ONE_GB); // 2 session
+
+    EXPECT_CALL(*backupTaskMock, DataReaderReadShouldFail())
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*backupTaskMock, DataWriterWriteShouldFail())
+        .WillRepeatedly(Return(false));
+    // mock SaveVolumeCopyMetaShouldFail() from to force return false, skip failure of saving copy meta json
+    EXPECT_CALL(*backupTaskMock, SaveVolumeCopyMetaShouldFail())
+        .WillRepeatedly(Return(false));
+
+    EXPECT_TRUE(backupTaskMock->Start());
+    backupTaskMock->Abort();
+    while (!backupTaskMock->IsTerminated()) {
+        backupTaskMock->GetStatistics();
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+    }
+    EXPECT_EQ(backupTaskMock->GetStatus(), TaskStatus::ABORTED);
+}
+
+TEST_F(VolumeBackupTest, VolumeBackTask_MockWithReaderFail)
 {
     VolumeBackupConfig backupConfig;
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
@@ -325,12 +407,14 @@ TEST_F(VolumeBackupTest, VolumeBackTaskMockWithReaderWriterFail)
     EXPECT_CALL(*backupTaskMock, DataReaderReadShouldFail())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*backupTaskMock, DataWriterWriteShouldFail())
-        .WillRepeatedly(Return(true));
+        .WillRepeatedly(Return(false));
     // mock SaveVolumeCopyMetaShouldFail() from to force return false, skip failure of saving copy meta json
     EXPECT_CALL(*backupTaskMock, SaveVolumeCopyMetaShouldFail())
         .WillRepeatedly(Return(false));
 
     EXPECT_TRUE(backupTaskMock->Start());
+    // twice start will fail
+    EXPECT_FALSE(backupTaskMock->Start());
     while (!backupTaskMock->IsTerminated()) {
         backupTaskMock->GetStatistics();
         std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
@@ -338,7 +422,38 @@ TEST_F(VolumeBackupTest, VolumeBackTaskMockWithReaderWriterFail)
     EXPECT_EQ(backupTaskMock->GetStatus(), TaskStatus::FAILED);
 }
 
-TEST_F(VolumeBackupTest, BuildBackupTaskFailed)
+TEST_F(VolumeBackupTest, VolumeBackTask_MockWithWriterFail)
+{
+    VolumeBackupConfig backupConfig;
+    backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
+    backupConfig.copyType = CopyType::FULL;
+    backupConfig.hasherEnabled = true;
+    backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
+    backupConfig.sessionSize = DEFAULT_MOCK_SESSION_SIZE;
+    backupConfig.volumePath = "/dev/dummy";
+
+    auto backupTaskMock = std::make_shared<VolumeBackupTaskMock>(backupConfig, 1LLU * ONE_GB); // 2 session
+
+    // mock DataReaderReadShouldFail() from to force return false
+    EXPECT_CALL(*backupTaskMock, DataReaderReadShouldFail())
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*backupTaskMock, DataWriterWriteShouldFail())
+        .WillRepeatedly(Return(true));
+    // mock SaveVolumeCopyMetaShouldFail() from to force return false, skip failure of saving copy meta json
+    EXPECT_CALL(*backupTaskMock, SaveVolumeCopyMetaShouldFail())
+        .WillRepeatedly(Return(false));
+
+    EXPECT_TRUE(backupTaskMock->Start());
+    // twice start will fail
+    EXPECT_FALSE(backupTaskMock->Start());
+    while (!backupTaskMock->IsTerminated()) {
+        backupTaskMock->GetStatistics();
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+    }
+    EXPECT_EQ(backupTaskMock->GetStatus(), TaskStatus::FAILED);
+}
+
+TEST_F(VolumeBackupTest, BuildBackupTask_Failed)
 {
     VolumeBackupConfig backupConfig {};
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
@@ -352,7 +467,7 @@ TEST_F(VolumeBackupTest, BuildBackupTaskFailed)
 }
 
 
-TEST_F(VolumeBackupTest, VolumeBackTaskMockInvalidVolume)
+TEST_F(VolumeBackupTest, VolumeBackTask_MockInvalidVolume)
 {
     VolumeBackupConfig backupConfig;
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
@@ -467,7 +582,7 @@ bool VolumeRestoreTaskMock::InitRestoreSessionContext(std::shared_ptr<VolumeTask
     return true;
 }
 
-TEST_F(VolumeBackupTest, VolumeRestoreTaskMockSuccess)
+TEST_F(VolumeBackupTest, VolumeRestoreTask_MockSuccess)
 {
     VolumeRestoreConfig restoreConfig;
     restoreConfig.copyDataDirPath = "/dummy/dummyData";
@@ -485,6 +600,8 @@ TEST_F(VolumeBackupTest, VolumeRestoreTaskMockSuccess)
         .WillRepeatedly(Return(false));
 
     EXPECT_TRUE(restoreTaskMock->Start());
+    // twice start will fail
+    EXPECT_FALSE(restoreTaskMock->Start());
     while (!restoreTaskMock->IsTerminated()) {
         restoreTaskMock->GetStatistics();
         std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
@@ -492,8 +609,35 @@ TEST_F(VolumeBackupTest, VolumeRestoreTaskMockSuccess)
     EXPECT_EQ(restoreTaskMock->GetStatus(), TaskStatus::SUCCEED);
 }
 
+TEST_F(VolumeBackupTest, VolumeRestoreTask_MockAbort)
+{
+    VolumeRestoreConfig restoreConfig;
+    restoreConfig.copyDataDirPath = "/dummy/dummyData";
+    restoreConfig.copyMetaDirPath = "/dummy/dummyMeta";
+    restoreConfig.volumePath = "/dev/dummy/dummyVolume";
+
+    auto restoreTaskMock = std::make_shared<VolumeRestoreTaskMock>(restoreConfig); // 2 session
+
+    EXPECT_CALL(*restoreTaskMock, DataReaderReadShouldFail())
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*restoreTaskMock, DataWriterWriteShouldFail())
+        .WillRepeatedly(Return(false));
+    // mock SaveVolumeCopyMetaShouldFail() from to force return false, skip failure of saving copy meta json
+    EXPECT_CALL(*restoreTaskMock, ReadVolumeCopyMetaShouldFail())
+        .WillRepeatedly(Return(false));
+
+    EXPECT_TRUE(restoreTaskMock->Start());
+    // twice start will fail
+    restoreTaskMock->Abort();
+    while (!restoreTaskMock->IsTerminated()) {
+        restoreTaskMock->GetStatistics();
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+    }
+    EXPECT_EQ(restoreTaskMock->GetStatus(), TaskStatus::ABORTED);
+}
+
 // Test Basic Component From Here...
-TEST_F(VolumeBackupTest, BuildRestoreTaskInvalidVolume)
+TEST_F(VolumeBackupTest, BuildRestoreTask_InvalidVolume)
 {
     VolumeRestoreConfig restoreConfig;
     restoreConfig.copyDataDirPath = "/dummy/dummyData";
@@ -502,7 +646,7 @@ TEST_F(VolumeBackupTest, BuildRestoreTaskInvalidVolume)
     EXPECT_TRUE(VolumeProtectTask::BuildRestoreTask(restoreConfig) == nullptr);
 }
 
-TEST_F(VolumeBackupTest, BuildDirectHasherSuccess)
+TEST_F(VolumeBackupTest, BuildDirectHasher_Success)
 {
     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
         std::make_shared<VolumeTaskSharedConfig>();
@@ -514,7 +658,7 @@ TEST_F(VolumeBackupTest, BuildDirectHasherSuccess)
     EXPECT_TRUE(VolumeBlockHasher::BuildDirectHasher(sharedConfig, sharedContext) != nullptr);
 }
 
-TEST_F(VolumeBackupTest, BuildDiffHasherFail)
+TEST_F(VolumeBackupTest, BuildDiffHasher_Fail)
 {
     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
         std::make_shared<VolumeTaskSharedConfig>();
@@ -525,3 +669,4 @@ TEST_F(VolumeBackupTest, BuildDiffHasherFail)
     sharedConfig->hasherWorkerNum = DEFAULT_HASHER_NUM;
     EXPECT_TRUE(VolumeBlockHasher::BuildDiffHasher(sharedConfig, sharedContext) == nullptr);
 }
+
