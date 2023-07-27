@@ -45,7 +45,14 @@ IF (${COVERAGE} STREQUAL "lcov")
     SETUP_TARGET_FOR_COVERAGE_LCOV(
         NAME "volumebackup_coverage_test"
         EXECUTABLE make test
-        EXCLUDE "${PROJECT_SOURCE_DIR}/test/*" "/usr/include/*" "*googlemock*" "*googletest*" "${PROJECT_SOURCE_DIR}/module/*"
+        EXCLUDE
+        "${PROJECT_SOURCE_DIR}/test/*"
+        "/usr/include/*"
+        "*googlemock*"
+        "*googletest*"
+        "${PROJECT_SOURCE_DIR}/module/*"
+        "*VolumeUtils*"
+        "*NativeIOInterface*"
     )
 ENDIF()
 
@@ -57,6 +64,14 @@ MESSAGE("code coverage is enabled, using gcovr")
         NAME "volumebackup_coverage_test"
         EXECUTABLE make test
         BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
-        EXCLUDE "${PROJECT_SOURCE_DIR}/test/*" "/usr/include/*" "*googlemock*" "*googletest*" "*build*" "${PROJECT_SOURCE_DIR}/module/*"
+        EXCLUDE
+        "${PROJECT_SOURCE_DIR}/test/*"
+        "/usr/include/*"
+        "*googlemock*"
+        "*googletest*"
+        "*build*"
+        "${PROJECT_SOURCE_DIR}/module/*"
+        "*VolumeUtils*"
+        "*NativeIOInterface*"
     )
 ENDIF()

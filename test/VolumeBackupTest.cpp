@@ -151,6 +151,8 @@ static void InitSessionBlockHasher(
     session->hasherTask = volumeBlockHasher;
 }
 
+// Test Backup From Here...
+
 class VolumeBackupTaskMock : public VolumeBackupTask
 {
 public:
@@ -228,6 +230,11 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskSucess)
     EXPECT_TRUE(session->readerTask->Start());
     EXPECT_TRUE(session->hasherTask->Start());
     EXPECT_TRUE(session->writerTask->Start());
+
+    // start twice will fail
+    EXPECT_FALSE(session->readerTask->Start());
+    EXPECT_FALSE(session->hasherTask->Start());
+    EXPECT_FALSE(session->writerTask->Start());
 
     // wait all component to terminate
     while (!session->IsTerminated()) {
@@ -465,7 +472,7 @@ TEST_F(VolumeBackupTest, VolumeRestoreTaskMockSuccess)
     VolumeRestoreConfig restoreConfig;
     restoreConfig.copyDataDirPath = "/dummy/dummyData";
     restoreConfig.copyMetaDirPath = "/dummy/dummyMeta";
-    restoreConfig.volumePath = "/dev/dummy";
+    restoreConfig.volumePath = "/dev/dummy/dummyVolume";
 
     auto restoreTaskMock = std::make_shared<VolumeRestoreTaskMock>(restoreConfig); // 2 session
 
@@ -485,3 +492,36 @@ TEST_F(VolumeBackupTest, VolumeRestoreTaskMockSuccess)
     EXPECT_EQ(restoreTaskMock->GetStatus(), TaskStatus::SUCCEED);
 }
 
+// Test Basic Component From Here...
+TEST_F(VolumeBackupTest, BuildRestoreTaskInvalidVolume)
+{
+    VolumeRestoreConfig restoreConfig;
+    restoreConfig.copyDataDirPath = "/dummy/dummyData";
+    restoreConfig.copyMetaDirPath = "/dummy/dummyMeta";
+    restoreConfig.volumePath = "/dev/dummy/dummyVolume";
+    EXPECT_TRUE(VolumeProtectTask::BuildRestoreTask(restoreConfig) == nullptr);
+}
+
+TEST_F(VolumeBackupTest, BuildDirectHasherSuccess)
+{
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
+        std::make_shared<VolumeTaskSharedConfig>();
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext =
+        std::make_shared<VolumeTaskSharedContext>();
+    sharedConfig->sessionSize = 512 * ONE_MB;
+    sharedConfig->blockSize = 4 * ONE_MB;
+    sharedConfig->hasherWorkerNum = DEFAULT_HASHER_NUM;
+    EXPECT_TRUE(VolumeBlockHasher::BuildDirectHasher(sharedConfig, sharedContext) != nullptr);
+}
+
+TEST_F(VolumeBackupTest, BuildDiffHasherFail)
+{
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
+        std::make_shared<VolumeTaskSharedConfig>();
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext =
+        std::make_shared<VolumeTaskSharedContext>();
+    sharedConfig->sessionSize = 512 * ONE_MB;
+    sharedConfig->blockSize = 4 * ONE_MB;
+    sharedConfig->hasherWorkerNum = DEFAULT_HASHER_NUM;
+    EXPECT_TRUE(VolumeBlockHasher::BuildDiffHasher(sharedConfig, sharedContext) == nullptr);
+}
