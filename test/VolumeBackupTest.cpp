@@ -271,6 +271,7 @@ TEST_F(VolumeBackupTest, VolumeBackupTaskReadFailed)
     EXPECT_EQ(session->writerTask->GetStatus(), TaskStatus::FAILED);
     EXPECT_TRUE(session->readerTask->IsFailed());
     EXPECT_TRUE(session->writerTask->IsFailed());
+    session->Abort();
 }
 
 TEST_F(VolumeBackupTest, VolumeBackTaskMockSuccess)
@@ -421,7 +422,16 @@ VolumeRestoreTaskMock::VolumeRestoreTaskMock(const VolumeRestoreConfig& restoreC
 
 bool VolumeRestoreTaskMock::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
 {
-    return !ReadVolumeCopyMetaShouldFail();
+    if (ReadVolumeCopyMetaShouldFail()) {
+        return false;
+    }
+    volumeCopyMeta.copyType = 0;
+    volumeCopyMeta.volumeSize  = ONE_GB;
+    volumeCopyMeta.blockSize = 4 * ONE_MB;
+    volumeCopyMeta.copySlices = std::vector<std::pair<std::uint64_t, uint64_t>> {
+        { 0, ONE_MB * 512 }, { ONE_MB * 512, ONE_MB * 512 }
+    };
+    return true;
 }
 
 bool VolumeRestoreTaskMock::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const
@@ -474,3 +484,4 @@ TEST_F(VolumeBackupTest, VolumeRestoreTaskMockSuccess)
     }
     EXPECT_EQ(restoreTaskMock->GetStatus(), TaskStatus::SUCCEED);
 }
+
