@@ -1,5 +1,5 @@
-#ifndef VOLUME_BLOCKING_QUEUE_H
-#define VOLUME_BLOCKING_QUEUE_H
+#ifndef VOLUMEBACKUP_BLOCKING_QUEUE_H
+#define VOLUMEBACKUP_BLOCKING_QUEUE_H
 
 #include <queue>
 #include <mutex>
@@ -13,15 +13,15 @@ class VOLUMEPROTECT_API BlockingQueue {
 public:
     BlockingQueue(std::size_t maxSize);
 
-    bool Push(const T&);    // blocking push, return false if queue is set to finished
+    bool BlockingPush(const T&);    // blocking push, return false if queue is set to finished
 
-    bool Pop(T&);           // blocking pop, return false if queue is set to finished and empty
+    bool BlockingPop(T&);           // blocking pop, return false if queue is set to finished and empty
 
     void Finish();
 
-    bool TryPush(const T&); // non-blocking push
+    bool TryBlockingPush(const T&); // non-blocking push
 
-    bool TryPop(T&);        // non-blocking pop
+    bool TryBlockingPop(T&);        // non-blocking pop
 
     bool Empty();
 
@@ -50,7 +50,7 @@ BlockingQueue<T>::BlockingQueue(std::size_t maxSize)
  * @return false if queue is set to finish
  */
 template<typename T>
-bool BlockingQueue<T>::Push(const T &v)
+bool BlockingQueue<T>::BlockingPush(const T &v)
 {
     std::unique_lock<std::mutex> lk(m_mutex);
     if (m_finished) {
@@ -58,7 +58,7 @@ bool BlockingQueue<T>::Push(const T &v)
     }
     m_notFull.wait(lk, [&](){ return m_queue.size() < m_maxSize; });
     m_queue.push(v);
-    DBGLOG("Push one, size remain %d", m_queue.size());
+    DBGLOG("BlockingPush one, size remain %d", m_queue.size());
     m_notEmpty.notify_one();
     return true;
 }
@@ -72,7 +72,7 @@ bool BlockingQueue<T>::Push(const T &v)
  * @return false if queue is empty and has been set to finished
  */
 template<typename T>
-bool BlockingQueue<T>::Pop(T &v)
+bool BlockingQueue<T>::BlockingPop(T &v)
 {
     std::unique_lock<std::mutex> lk(m_mutex);
     m_notEmpty.wait(lk, [&](){ return !m_queue.empty() || m_finished; });
@@ -81,13 +81,13 @@ bool BlockingQueue<T>::Pop(T &v)
     }
     v = m_queue.front();
     m_queue.pop();
-    DBGLOG("Pop one, size remain %d", m_queue.size());
+    DBGLOG("BlockingPop one, size remain %d", m_queue.size());
     m_notFull.notify_one();
     return true;
 }
 
 /**
- * @brief to mark the queue to finished, no more item should be pushed anymore and Pop may return false once empty
+ * @brief to mark the queue to finished, no more item should be pushed anymore and BlockingPop may return false once empty
  *
  * @tparam T
  */
@@ -109,7 +109,7 @@ void BlockingQueue<T>::Finish()
  * @return false if push failed
  */
 template<typename T>
-bool BlockingQueue<T>::TryPush(const T& v)
+bool BlockingQueue<T>::TryBlockingPush(const T& v)
 {
     std::unique_lock<std::mutex> lk(m_mutex);
     if (m_finished || m_queue.size() >= m_maxSize) {
@@ -129,7 +129,7 @@ bool BlockingQueue<T>::TryPush(const T& v)
  * @return false if pop failed
  */
 template<typename T>
-bool BlockingQueue<T>::TryPop(T& v)
+bool BlockingQueue<T>::TryBlockingPop(T& v)
 {
     std::unique_lock<std::mutex> lk(m_mutex);
     if (m_queue.empty()) {

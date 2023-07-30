@@ -1,5 +1,5 @@
-#ifndef VOLUME_BACKUP_TASK_H
-#define VOLUME_BACKUP_TASK_H
+#ifndef VOLUMEBACKUP_BACKUPTASK_HEADER
+#define VOLUMEBACKUP_BACKUPTASK_HEADER
 
 #include <cstdint>
 #include <memory>

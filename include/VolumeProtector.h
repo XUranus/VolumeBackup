@@ -1,6 +1,6 @@
 
-#ifndef VOLUME_PROTECT_FACADE_H
-#define VOLUME_PROTECT_FACADE_H
+#ifndef VOLUMEBACKUP_PROTECT_FACADE_HEADER
+#define VOLUMEBACKUP_PROTECT_FACADE_HEADER
 
 #include <string>
 #include <cstdint>
@@ -42,13 +42,15 @@ struct VOLUMEPROTECT_API VolumeBackupConfig {
     uint64_t        sessionSize     { DEFAULT_SESSION_SIZE };// default sesson size used to split session
     uint64_t        hasherNum       { DEFAULT_HASHER_NUM };  // hasher worker count, set to the num of processors
     bool            hasherEnabled   { true };                // if set to false, won't compute sha256
+    bool            enableCheckpoint{ true };                // start from checkpoint if exists
 };
 
 // immutable config, used to build volume restore task
 struct VOLUMEPROTECT_API VolumeRestoreConfig {
-    std::string     volumePath;                          // path of the block device (volume)
+    std::string     volumePath;                             // path of the block device (volume)
     std::string	    copyDataDirPath;
     std::string	    copyMetaDirPath;
+    bool            enableCheckpoint { true };              // start from checkpoint if exists
 };
 
 enum class VOLUMEPROTECT_API TaskStatus {

@@ -12,6 +12,11 @@
 
 using namespace volumeprotect;
 
+namespace {
+    constexpr uint32_t BITS_PER_UINT32 = 32;
+    constexpr uint32_t BITMAP_RSHIFT = 5; // 2^5 = 32
+}
+
 VolumeBlockAllocator::VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum)
     : m_blockSize(blockSize), m_blockNum(blockNum)
 {
@@ -58,6 +63,43 @@ void VolumeBlockAllocator::bfree(char* ptr)
     // reach err here
     throw std::runtime_error("bfree error: bad address");
 }
+
+// implement bitmap
+
+Bitmap::Bitmap(uint64_t size)
+    :m_size(size)
+{
+    m_capacity = m_size / BITS_PER_UINT32 + 1;
+    m_table = std::make_unique<uint32_t[]>(m_capacity);
+}
+
+void Bitmap::Set(uint64_t index)
+{
+    if (index >= m_size) { // illegal argument 
+        return;
+    }
+    m_table[index >> BITMAP_RSHIFT] |= ((uint32_t)1) << (index % BITS_PER_UINT32);
+}
+
+bool Bitmap::Test(uint64_t index) const
+{
+    if (index >= m_size) { //illegal argument
+        return false;
+    }
+    return m_table[index >> BITMAP_RSHIFT] & (((uint32_t)1) << (index % BITS_PER_UINT32)) != 0;
+}
+
+uint64_t Bitmap::FirstIndexUnset() const
+{
+    for (uint64_t index = 0; index < m_size; ++index) {
+        if (!Test(index)) {
+            return index;
+        }
+    }
+    return m_size;
+}
+
+// implement VolumeTaskSession
 
 bool VolumeTaskSession::IsTerminated() const
 {

@@ -1,7 +1,7 @@
 
 
-#ifndef VOLUME_PROTECT_TASK_CONTEXT_H
-#define VOLUME_PROTECT_TASK_CONTEXT_H
+#ifndef VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
+#define VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 
 #include <atomic>
 #include <cstdint>
@@ -11,7 +11,8 @@
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
-#include "BlockingQueue.h"
+#include "BlockingQueue.h" 
+#include "CheckpointManager.h"
 
 namespace volumeprotect {
 
@@ -22,6 +23,7 @@ class VolumeBlockHasher;
 // commpound struct used for hash/writer consuming
 struct VOLUMEPROTECT_API VolumeConsumeBlock {
     char*           ptr;
+    uint64_t        index;
     uint64_t        volumeOffset;
     uint32_t        length;
 };
@@ -52,6 +54,22 @@ struct VOLUMEPROTECT_API SessionCounter {
 };
 
 /**
+ * @brief A dynamic version of std::bitset, used to record index of block written.
+ * for 1TB session, max blocks cnt 262144, max bitmap size = 32768 bytes
+ */
+class Bitmap {
+public:
+    explicit Bitmap(uint64_t size);
+    bool Test(uint64_t index) const;
+    void Set(uint64_t index);
+    uint64_t FirstIndexUnset() const;
+private:
+    std::unique_ptr<uint32_t[]>     m_table { nullptr };
+    uint64_t                        m_size  { 0 };
+    uint64_t                        m_capacity { 0 };
+};
+
+/**
  * Split a logical volume into multiple sessions
  * Sach session(default 1TB) corresponding to a SHA256 checksum binary file(8MB) and a data slice file(1TB)
  * Each backup/restore task involves one or more sessions represented by struct VolumeTaskSession
@@ -68,6 +86,7 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
     uint64_t        sessionSize;
     uint32_t        blockSize;
     bool            hasherEnabled;
+    bool            checkpointEnabled;
     uint32_t        hasherWorkerNum;
     std::string     volumePath;
     std::string     copyFilePath;
@@ -79,10 +98,11 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
 
 struct VOLUMEPROTECT_API VolumeTaskSharedContext {
     // shared container context
-    std::shared_ptr<SessionCounter>                     counter         { nullptr };
-    std::shared_ptr<VolumeBlockAllocator>               allocator       { nullptr };
-    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue    { nullptr };
-    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue      { nullptr };
+    std::shared_ptr<Bitmap>                             writerBitmap            { nullptr };
+    std::shared_ptr<SessionCounter>                     counter                 { nullptr };
+    std::shared_ptr<VolumeBlockAllocator>               allocator               { nullptr };
+    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue            { nullptr };
+    std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue              { nullptr };
 };
 
 struct VOLUMEPROTECT_API VolumeTaskSession {

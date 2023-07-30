@@ -1,3 +1,6 @@
+#ifndef VOLUMEBACKUP_PROTECT_MACROS_HEADER
+#define VOLUMEBACKUP_PROTECT_MACROS_HEADER
+
 #include <cassert>
 
  /*
@@ -34,4 +37,6 @@ static_assert(false, "conflict macro, both __linux__ and _WIN32 defined!");
 #ifndef _WIN32
 static_assert(false, "platform unsupported, none of __linux__ and _WIN32 defined!");
 #endif
+#endif
+
 #endif

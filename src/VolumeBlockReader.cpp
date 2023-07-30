@@ -35,7 +35,15 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
     if (!dataReader->Ok()) {
         ERRLOG("failed to init VolumeDataReader, path = %s, error = %u", volumePath.c_str(), dataReader->Error());
     }
-    VolumeBlockReaderParam param { SourceType::VOLUME, volumePath, offset, length, dataReader, sharedConfig, sharedContext };
+    VolumeBlockReaderParam param {
+        SourceType::VOLUME,
+        volumePath,
+        offset,
+        length,
+        dataReader,
+        sharedConfig,
+        sharedContext
+    };
     return std::make_shared<VolumeBlockReader>(param);
 }
 
@@ -52,7 +60,15 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     if (!dataReader->Ok()) {
         ERRLOG("failed to init FileDataReader, path = %s, error = %u", copyFilePath.c_str(), dataReader->Error());
     }
-    VolumeBlockReaderParam param { SourceType::COPYFILE, copyFilePath, offset, length, dataReader, sharedConfig, sharedContext };
+    VolumeBlockReaderParam param {
+        SourceType::COPYFILE,
+        copyFilePath,
+        offset,
+        length,
+        dataReader,
+        sharedConfig,
+        sharedContext
+    };
     return std::make_shared<VolumeBlockReader>(param);
 }
 
@@ -95,29 +111,54 @@ VolumeBlockReader::VolumeBlockReader(const VolumeBlockReaderParam& param)
     m_dataReader(param.dataReader)
 {}
 
+/**
+ * @brief redirect current offset/index from checkpoint bitmap
+ */
+uint64_t VolumeBlockReader::InitCurrentOffset() const
+{
+    uint64_t currentOffset = m_sourceOffset;
+    if (m_sharedConfig->checkpointEnabled) {
+        uint64_t index = m_sharedContext->writerBitmap->FirstIndexUnset();
+        currentOffset += index * m_sharedConfig->blockSize;
+        INFOLOG("init current offset to %llu from bitmap for continuation", currentOffset);
+    }
+    return currentOffset;
+}
+
+uint64_t VolumeBlockReader::InitIndex() const
+{
+    uint64_t index = 0;
+    if (m_sharedConfig->checkpointEnabled) {
+        index = m_sharedContext->writerBitmap->FirstIndexUnset();
+        INFOLOG("init index to %llu from bitmap for continuation", index);
+    }
+    return index;
+}
+
 void VolumeBlockReader::MainThread()
 {
     // Open the device file for reading
-    uint32_t defaultBufferSize = m_sharedConfig->blockSize;
-    uint64_t currentOffset = m_sourceOffset;
+    uint64_t index = InitIndex(); // used to locate position of a block within a session
+    uint64_t currentOffset = InitCurrentOffset();
+    uint64_t bytesRemain = m_sourceLength;
     uint32_t nBytesToRead = 0;
     native::ErrCodeType errorCode = 0;
 
     // read from currentOffset
-    m_sharedContext->counter->bytesToRead += m_sourceLength;
-    DBGLOG("reader thread start, sourceOffset: %llu ", m_sourceOffset);
+    m_sharedContext->counter->bytesToRead += bytesRemain;
+    DBGLOG("reader start, index: %llu, src offset: %llu , length: %llu", index, m_sourceOffset, m_sourceLength);
 
     while (true) {
-        DBGLOG("reader thread check, sourceOffset: %llu, sourceLength %llu, currentOffset: %llu",
-            m_sourceOffset, m_sourceLength, currentOffset);
-        if (m_abort) {
-            m_status = TaskStatus::ABORTED;
+        bytesRemain =  m_sourceOffset + m_sourceLength - currentOffset;
+        DBGLOG("thread check, current offset %llu, remain: %llu", currentOffset, bytesRemain);
+        if (bytesRemain <= currentOffset) { // read completed
+            m_status = TaskStatus::SUCCEED;
+            INFOLOG("reader read completed successfully");
             break;
         }
 
-        if (m_sourceOffset + m_sourceLength <= currentOffset) { // read completed
-            m_status = TaskStatus::SUCCEED;
-            INFOLOG("reader read completed successfully");
+        if (m_abort) {
+            m_status = TaskStatus::ABORTED;
             break;
         }
 
@@ -127,38 +168,27 @@ void VolumeBlockReader::MainThread()
             std::this_thread::sleep_for(READER_CHECK_SLEEP_INTERVAL);
             continue;
         }
-        nBytesToRead = defaultBufferSize;
-        if (m_sourceOffset + m_sourceLength - currentOffset < defaultBufferSize) {
-            nBytesToRead = static_cast<uint32_t>(m_sourceOffset + m_sourceLength - currentOffset);
-        }
+        nBytesToRead = static_cast<uint32_t>(min(bytesRemain, static_cast<uint64_t>(m_sharedConfig->blockSize)));
         if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
             ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
             m_status = TaskStatus::FAILED;
             break;
         }
         // push readed block to queue (convert to reader offset to sessionOffset)
-        VolumeConsumeBlock consumeBlock {
-            buffer,
-            (currentOffset - m_sourceOffset + m_sharedConfig->sessionOffset),
-            nBytesToRead
-        };
-        DBGLOG("reader push consume block (%p, %llu, %u)",
-            consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length);
+        uint64_t consumeBlockOffset = currentOffset - m_sourceOffset + m_sharedConfig->sessionOffset;
+        VolumeConsumeBlock consumeBlock { buffer, index++, consumeBlockOffset, nBytesToRead };
+        DBGLOG("push block (%llu, %llu, %u)", consumeBlock.index, consumeBlock.volumeOffset, consumeBlock.length);
         if (m_sharedConfig->hasherEnabled) {
             ++m_sharedContext->counter->blocksToHash;
-            m_sharedContext->hashingQueue->Push(consumeBlock);
+            m_sharedContext->hashingQueue->BlockingPush(consumeBlock);
         } else {
-            m_sharedContext->writeQueue->Push(consumeBlock);
+            m_sharedContext->writeQueue->BlockingPush(consumeBlock);
         }
         currentOffset += static_cast<uint64_t>(nBytesToRead);
         m_sharedContext->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
     }
-    // handle success
-    if (m_sharedConfig->hasherEnabled) {
-        m_sharedContext->hashingQueue->Finish();
-    } else {
-        m_sharedContext->writeQueue->Finish();
-    }
+    // handle terminiation (success/fail/aborted)
+    m_sharedConfig->hasherEnabled ? m_sharedContext->hashingQueue->Finish() : m_sharedContext->writeQueue->Finish();
     INFOLOG("reader thread terminated");
     return;
 }

@@ -120,18 +120,20 @@ void VolumeBlockWriter::MainThread()
 
     while (true) {
         if (m_abort) {
+            INFOLOG("VolumeBlockWriter aborted");
             m_status = TaskStatus::ABORTED;
             return;
         }
         DBGLOG("check writer thread");
 
-        if (!m_sharedContext->writeQueue->Pop(consumeBlock)) {
+        if (!m_sharedContext->writeQueue->BlockingPop(consumeBlock)) {
             break; // queue has been finished
         }
 
         char* buffer = consumeBlock.ptr;
         uint64_t writerOffset = consumeBlock.volumeOffset;
         uint32_t len = consumeBlock.length;
+        uint64_t index = consumeBlock.index;
 
         // 1. volume => file   (file writer),   writerOffset = volumeOffset - sessionOffset
         // 2. file   => volume (volume writer), writerOffset = volumeOffset
@@ -146,7 +148,7 @@ void VolumeBlockWriter::MainThread()
             m_sharedContext->allocator->bfree(buffer);
             // writer not return (avoid queue to block reader)
         }
-
+        m_sharedContext->writerBitmap->Set(index);
         m_sharedContext->allocator->bfree(buffer);
         m_sharedContext->counter->bytesWritten += len;
     }

@@ -74,6 +74,7 @@ bool VolumeBackupTask::Prepare()
     volumeCopyMeta.copyType = static_cast<int>(m_backupConfig->copyType);
     volumeCopyMeta.volumeSize = m_volumeSize;
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
+    volumeCopyMeta.volumePath = volumePath;
 
     if (IsIncrementBackup()) {
         // TODO:: validate increment backup meta
@@ -128,6 +129,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
 
     // 2. check and init reader
     session->readerTask = VolumeBlockReader::BuildVolumeReader(
@@ -223,6 +225,7 @@ void VolumeBackupTask::ThreadFunc()
                 session->sharedContext->counter->blocksToHash.load(), session->sharedContext->counter->blocksHashed.load(),
                 session->sharedContext->counter->bytesToWrite.load(), session->sharedContext->counter->bytesWritten.load());
             UpdateRunningSessionStatistics(session);
+            util::SaveSessionWriterBitmap(session);
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");

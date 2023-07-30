@@ -59,11 +59,6 @@ TaskStatistics VolumeRestoreTask::GetStatistics() const
     return m_completedSessionStatistics + m_currentSessionStatistics;
 }
 
-bool VolumeRestoreTask::IsIncrementCopy() const
-{
-    return m_incrementCopy;
-}
-
 // split session and write back
 bool VolumeRestoreTask::Prepare()
 {
@@ -113,6 +108,7 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
         session->sharedConfig->blockSize,
         DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
 
     // 2. check and init reader
     session->readerTask = VolumeBlockReader::BuildCopyReader(

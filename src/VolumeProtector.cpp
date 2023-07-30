@@ -7,15 +7,15 @@ using namespace volumeprotect;
 
 /*
  * backup copy folder herichical
- * Example of sessionSize 1024, volumeSize 3072
- * 1. Full Copy
+ * Example of session size 1024 bytes, volume size 3072 bytes
+ * Full/Synethetic Copy:
  *  ${CopyID}
  *       |
- *      ${UUID}
+ *      ${Volume UUID}
  *          |------data
  *          |       |------0.1024.data.full.bin
- *          |       |------1024.1024.data.full.bin
- *          |       |------2048.1024.data.full.bin
+ *          |       |------1024.1024.copydata.bin
+ *          |       |------2048.1024.copydata.bin
  *          |
  *          |------meta
  *                  |------volumecopy.meta.json
@@ -23,20 +23,6 @@ using namespace volumeprotect;
  *                  |------1024.1024.sha256.meta.bin
  *                  |------2048.1024.sha256.meta.bin
  *
- * 2. Increment Copy
- *  ${CopyID}
- *       |
- *      ${UUID}
- *          |------data (sparse file)
- *          |       |------0.1024.data.inc.bin
- *          |       |------1024.1024.data.inc.bin
- *          |       |------2048.1024.data.inc.bin
- *          |
- *          |------meta
- *                  |------volumecopy.meta.json
- *                  |------0.1024.sha256.meta.bin
- *                  |------1024.1024.sha256.meta.bin
- *                  |------2048.1024.sha256.meta.bin
  */
 
 std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)

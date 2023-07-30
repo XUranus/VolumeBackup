@@ -1,5 +1,5 @@
-#ifndef VOLUME_RESTORE_TASK_H
-#define VOLUME_RESTORE_TASK_H
+#ifndef VOLUMEBACKUP_RESTORE_TASK_HEADER
+#define VOLUMEBACKUP_RESTORE_TASK_HEADER
 
 #include <cstdint>
 #include <memory>
@@ -30,7 +30,6 @@ private:
     bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
-    bool IsIncrementCopy() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
 private:
@@ -39,7 +38,6 @@ private:
 
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;
-    bool            m_incrementCopy { false };
 
     // statistics
     mutable std::mutex m_statisticMutex;

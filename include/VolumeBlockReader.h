@@ -1,5 +1,5 @@
-#ifndef VOLUME_BLOCK_READER_H
-#define VOLUME_BLOCK_READER_H
+#ifndef VOLUMEBACKUP_BLOCK_READER_HEADER
+#define VOLUMEBACKUP_BLOCK_READER_HEADER
 
 #include <cstdint>
 #include <string>
@@ -54,6 +54,8 @@ public:
 
 private:
     void MainThread();
+    uint64_t InitCurrentOffset() const;
+    uint64_t InitIndex() const;
 
 private:
     // immutable fields

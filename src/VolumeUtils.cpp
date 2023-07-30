@@ -13,6 +13,14 @@ namespace {
     constexpr auto SEPARATOR = "/";
 #endif
     constexpr auto VOLUME_COPY_META_JSON_FILENAME = "volumecopy.meta.json";
+    constexpr auto SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX = ".sha256.meta.bin";
+    constexpr auto COPY_BINARY_FILENAME_SUFFIX = ".copydata.bin";
+    constexpr auto WRITER_BITMAP_FILENAME_SUFFIX = ".checkpoint.bin";
+}
+
+inline std::string ConcatSessionFileName(uint64_t sessionOffset, uint64_t sessionSize, const std::string& suffix)
+{
+    return std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + suffix;
 }
 
 std::string volumeprotect::util::GetChecksumBinPath(
@@ -20,23 +28,26 @@ std::string volumeprotect::util::GetChecksumBinPath(
     uint64_t sessionOffset,
     uint64_t sessionSize)
 {
-    std::string suffix = ".sha256.meta.bin";
-    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + suffix;
+    std::string filename = ConcatSessionFileName(sessionOffset, sessionSize, SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX);
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
 std::string volumeprotect::util::GetCopyFilePath(
     const std::string& copyDataDirPath,
-    CopyType copyType,
     uint64_t sessionOffset,
     uint64_t sessionSize)
 {
-    std::string suffix = ".data.full.bin";
-    if (copyType == CopyType::INCREMENT) {
-        suffix = ".data.inc.bin";
-    }
-    std::string filename = std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + suffix;
+    std::string filename = ConcatSessionFileName(sessionOffset, sessionSize, COPY_BINARY_FILENAME_SUFFIX);
     return copyDataDirPath + SEPARATOR + filename;
+}
+
+std::string volumeprotect::util::GetWriterBitmapFilePath(
+    const std::string&          copyMetaDirPath,
+    uint64_t                    sessionOffset,
+    uint64_t                    sessionSize)
+{
+    std::string filename = ConcatSessionFileName(sessionOffset, sessionSize, WRITER_BITMAP_FILENAME_SUFFIX);
+    return copyMetaDirPath + SEPARATOR + filename; 
 }
 
 bool volumeprotect::util::WriteVolumeCopyMeta(
@@ -87,3 +98,14 @@ bool volumeprotect::util::ReadVolumeCopyMeta(
     }
     return true;
 }
+
+void volumeprotect::util::SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session)
+{
+    try {
+        std::string filename = session->sharedConfig->sessionOffset
+        std::ifstream file(filepath, std::ios::binary | std::ios::trunc);
+    } catch (std::exception& e) {
+        ERRLOG();
+    }
+}
+

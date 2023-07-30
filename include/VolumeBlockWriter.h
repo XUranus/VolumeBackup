@@ -1,6 +1,6 @@
 
-#ifndef VOLUME_BLOCK_WRITER_H
-#define VOLUME_BLOCK_WRITER_H
+#ifndef VOLUMEBACKUP_BLOCK_WRITER_HEADER
+#define VOLUMEBACKUP_BLOCK_WRITER_HEADER
 
 #include <iostream>
 #include <memory>

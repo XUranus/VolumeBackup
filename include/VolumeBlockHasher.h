@@ -1,6 +1,6 @@
 
-#ifndef VOLUME_BLOCK_HASHER_H
-#define VOLUME_BLOCK_HASHER_H
+#ifndef VOLUMEBACKUP_BLOCK_HASHER_HEADER
+#define VOLUMEBACKUP_BLOCK_HASHER_HEADER
 
 #include <cstdint>
 #include <memory>
@@ -26,15 +26,15 @@ enum class VOLUMEPROTECT_API  HasherForwardMode {
 struct VOLUMEPROTECT_API VolumeBlockHasherParam {
     std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
     std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
-    uint32_t            workerThreadNum;
-    HasherForwardMode   forwardMode;
-    std::string         prevChecksumBinPath;
-    std::string         lastestChecksumBinPath;
-    uint32_t            singleChecksumSize;
-    char*               prevChecksumTable;
-    uint64_t            prevChecksumTableSize;
-    char*               lastestChecksumTable;
-    uint64_t            lastestChecksumTableSize;
+    uint32_t                    workerThreadNum;
+    HasherForwardMode           forwardMode;
+    std::string                 prevChecksumBinPath;
+    std::string                 lastestChecksumBinPath;
+    uint32_t                    singleChecksumSize;
+    std::shared_ptr<char[]>     prevChecksumTable;
+    uint64_t                    prevChecksumTableSize;
+    std::shared_ptr<char[]>     lastestChecksumTable;
+    uint64_t                    lastestChecksumTableSize;
 };
 
 class VOLUMEPROTECT_API VolumeBlockHasher : public StatefulTask {
@@ -55,12 +55,12 @@ public:
 
     VolumeBlockHasher(const VolumeBlockHasherParam& param);
 
+    void SaveLatestChecksumBin();
+
 private:
     void WorkerThread(int workerIndex);
 
     void ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen);
-
-    void SaveLatestChecksumBin();
 
     void HandleWorkerTerminate();
 
@@ -68,7 +68,7 @@ private:
     // immutable
     uint32_t                m_singleChecksumSize    { 0 };
     HasherForwardMode       m_forwardMode           { HasherForwardMode::DIRECT };
-    char*                   m_prevChecksumTable     { nullptr };
+    std::shared_ptr<char[]> m_prevChecksumTable     { nullptr };
     uint64_t                m_prevChecksumTableSize { 0 };  // size in bytes
     std::string             m_prevChecksumBinPath;          // path of the checksum bin from previous copy
     std::string             m_lastestChecksumBinPath;       // path of the checksum bin to write latest copy
@@ -79,7 +79,7 @@ private:
     std::shared_ptr<VolumeTaskSharedConfig>     m_sharedConfig;
 
     // mutable
-    char*                                       m_lastestChecksumTable { nullptr }; // mutable, shared within worker
+    std::shared_ptr<char[]>                     m_lastestChecksumTable { nullptr }; // mutable, shared within worker
     uint64_t                                    m_lastestChecksumTableSize;         // bytes allocated
     std::shared_ptr<VolumeTaskSharedContext>    m_sharedContext;
 };
