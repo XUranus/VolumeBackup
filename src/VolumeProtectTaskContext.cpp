@@ -13,8 +13,8 @@
 using namespace volumeprotect;
 
 namespace {
-    constexpr uint32_t BITS_PER_UINT32 = 32;
-    constexpr uint32_t BITMAP_RSHIFT = 5; // 2^5 = 32
+    constexpr uint32_t BITS_PER_UINT8 = 8;
+    constexpr uint32_t BITMAP_RSHIFT = 3; // 2^3 = 8
 }
 
 VolumeBlockAllocator::VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum)
@@ -67,36 +67,54 @@ void VolumeBlockAllocator::bfree(char* ptr)
 // implement bitmap
 
 Bitmap::Bitmap(uint64_t size)
-    :m_size(size)
 {
-    m_capacity = m_size / BITS_PER_UINT32 + 1;
+    m_capacity = size / BITS_PER_UINT8 + 1;
     m_table = std::make_unique<uint32_t[]>(m_capacity);
 }
 
+Bitmap::Bitmap(std::unique_ptr<char[]> ptr, uint64_t capacity)
+    : m_capacity(capacity), m_table(ptr)
+{}
+
 void Bitmap::Set(uint64_t index)
 {
-    if (index >= m_size) { // illegal argument 
+    if (index >= m_capacity * BITS_PER_UINT8) { // illegal argument 
         return;
     }
-    m_table[index >> BITMAP_RSHIFT] |= ((uint32_t)1) << (index % BITS_PER_UINT32);
+    m_table[index >> BITMAP_RSHIFT] |= ((uint8_t)1) << (index % BITS_PER_UINT8);
 }
 
 bool Bitmap::Test(uint64_t index) const
 {
-    if (index >= m_size) { //illegal argument
+    if (index >= m_capacity * BITS_PER_UINT8) { //illegal argument
         return false;
     }
-    return m_table[index >> BITMAP_RSHIFT] & (((uint32_t)1) << (index % BITS_PER_UINT32)) != 0;
+    return m_table[index >> BITMAP_RSHIFT] & (((uint8_t)1) << (index % BITS_PER_UINT8)) != 0;
 }
 
 uint64_t Bitmap::FirstIndexUnset() const
 {
-    for (uint64_t index = 0; index < m_size; ++index) {
+    for (uint64_t index = 0; index < m_capacity * BITS_PER_UINT8; ++index) {
         if (!Test(index)) {
             return index;
         }
     }
     return m_size;
+}
+
+uint64_t Bitmap::Capacity() const
+{
+    return m_capacity;
+}
+
+uint64_t Bitmap::MaxIndex() const
+{
+    return m_capacity * BITS_PER_UINT8 - 1;
+}
+
+const uint8_t* Bitmap::Ptr() const
+{
+    return m_table.get();
 }
 
 // implement VolumeTaskSession

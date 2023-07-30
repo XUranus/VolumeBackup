@@ -60,13 +60,16 @@ struct VOLUMEPROTECT_API SessionCounter {
 class Bitmap {
 public:
     explicit Bitmap(uint64_t size);
+    Bitmap(std::unique_ptr<char[]> ptr, uint64_t capacity);
     bool Test(uint64_t index) const;
     void Set(uint64_t index);
     uint64_t FirstIndexUnset() const;
+    uint64_t Capacity() const;      // capacity in bytes
+    uint64_t MaxIndex() const;
+    const uint8_t* Ptr() const;
 private:
-    std::unique_ptr<uint32_t[]>     m_table { nullptr };
-    uint64_t                        m_size  { 0 };
-    uint64_t                        m_capacity { 0 };
+    std::unique_ptr<uint8_t[]>      m_table     { nullptr };
+    uint64_t                        m_capacity  { 0 };
 };
 
 /**

@@ -32,6 +32,8 @@ private:
     bool IsIncrementBackup() const;
     void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
     void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
+    void SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session);
+    void InitWriterBitmap(std::shared_ptr<VolumeTaskSession> session);
     virtual bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
 
 private:

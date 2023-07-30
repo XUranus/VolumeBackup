@@ -11,6 +11,7 @@
 #include "Json.h"
 #include "VolumeProtector.h"
 #include "NativeIOInterface.h"
+#include "VolumeProtectTaskContext.h"
 
 namespace volumeprotect {
 
@@ -57,9 +58,9 @@ VOLUMEPROTECT_API bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, c
 
 VOLUMEPROTECT_API bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 
-VOLUMEPROTECT_API void SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session);
+VOLUMEPROTECT_API bool SaveBitmap(const std::string& path, const Bitmap& bitmap);
 
-bool 
+VOLUMEPROTECT_API std::shared_ptr<Bitmap> ReadBitmap(const std::string& path);
 
 }
 }

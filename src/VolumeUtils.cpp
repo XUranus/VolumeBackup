@@ -18,12 +18,14 @@ namespace {
     constexpr auto WRITER_BITMAP_FILENAME_SUFFIX = ".checkpoint.bin";
 }
 
+using namespace volumeprotect;
+
 inline std::string ConcatSessionFileName(uint64_t sessionOffset, uint64_t sessionSize, const std::string& suffix)
 {
     return std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + suffix;
 }
 
-std::string volumeprotect::util::GetChecksumBinPath(
+std::string util::GetChecksumBinPath(
     const std::string& copyMetaDirPath,
     uint64_t sessionOffset,
     uint64_t sessionSize)
@@ -32,7 +34,7 @@ std::string volumeprotect::util::GetChecksumBinPath(
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
-std::string volumeprotect::util::GetCopyFilePath(
+std::string util::GetCopyFilePath(
     const std::string& copyDataDirPath,
     uint64_t sessionOffset,
     uint64_t sessionSize)
@@ -41,7 +43,7 @@ std::string volumeprotect::util::GetCopyFilePath(
     return copyDataDirPath + SEPARATOR + filename;
 }
 
-std::string volumeprotect::util::GetWriterBitmapFilePath(
+std::string util::GetWriterBitmapFilePath(
     const std::string&          copyMetaDirPath,
     uint64_t                    sessionOffset,
     uint64_t                    sessionSize)
@@ -50,7 +52,7 @@ std::string volumeprotect::util::GetWriterBitmapFilePath(
     return copyMetaDirPath + SEPARATOR + filename; 
 }
 
-bool volumeprotect::util::WriteVolumeCopyMeta(
+bool util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     const VolumeCopyMeta& volumeCopyMeta)
 {
@@ -74,7 +76,7 @@ bool volumeprotect::util::WriteVolumeCopyMeta(
     return true;
 }
 
-bool volumeprotect::util::ReadVolumeCopyMeta(
+bool util::ReadVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     VolumeCopyMeta& volumeCopyMeta)
 {
@@ -99,13 +101,58 @@ bool volumeprotect::util::ReadVolumeCopyMeta(
     return true;
 }
 
-void volumeprotect::util::SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session)
+bool util::SaveBitmap(const std::string& filepath, const Bitmap& bitmap)
 {
     try {
-        std::string filename = session->sharedConfig->sessionOffset
-        std::ifstream file(filepath, std::ios::binary | std::ios::trunc);
-    } catch (std::exception& e) {
-        ERRLOG();
+        std::ofstream file(filepath, std::ios::binary | std::ios::trunc);
+        if (!file.is_open()) {
+            ERRLOG("failed to open file %s to save bitmap file %s", filepath.c_str());
+            return false;
+        }
+        file.write(bitmap.Ptr(), bitmap.Capacity());
+        if (file.fail()) {
+            file.close();
+            ERRLOG("failed to write bitmap file %s, size %llu, errno: %d", filepath.c_str(), bitmap.Capacity(), errno);
+        }
+        file.close();
+    } catch (const std::exception& e) {
+        ERRLOG("failed to save bitmap file %s, exception: %s", filepath.c_str(), e.what());
+        return false;
+    } catch (...) {
+        ERRLOG("failed to save bitmap file %s, exception caught", filepath.c_str());
+        return false;
     }
+    return true;
 }
 
+std::shared_ptr<Bitmap> util::ReadBitmap(const std::string& filepath)
+{
+    uint64_t size = native::GetFileSize(path);
+    if (size == 0) {
+        return nullptr;
+    }
+    try {
+        auto buffer = std::make_unique<char[]>(size);
+        memset(buffer.get(), 0, size);
+        std::ifstream file(filepath, std::ios::binary);
+        if (!file.is_open()) {
+            ERRLOG("failed to open %s, errno = %d", filepath.c_str(), errno);
+            return nullptr;
+        }
+        file.write(buffer.get(), size);
+        if (file.fail()) {
+            ERRLOG("failed to read bitmap %s, errno: %d", filepath.c_str(), errno);
+            file.close();
+            return nullptr;
+        }
+        file.close();
+        return std::make_shared<Bitmap>(buffer, size);
+    } catch (const std::exception& e) {
+        ERRLOG("failed to read bitmap file %s, exception: %s", filepath.c_str(), e.what());
+        return nullptr;
+    } catch (...) {
+        ERRLOG("failed to read bitmap file %s, exception caught", filepath.c_str());
+        return nullptr;
+    }
+    return nullptr;
+}

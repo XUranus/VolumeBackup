@@ -129,7 +129,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+    InitWriterBitmap(session);
 
     // 2. check and init reader
     session->readerTask = VolumeBlockReader::BuildVolumeReader(
@@ -225,7 +225,7 @@ void VolumeBackupTask::ThreadFunc()
                 session->sharedContext->counter->blocksToHash.load(), session->sharedContext->counter->blocksHashed.load(),
                 session->sharedContext->counter->bytesToWrite.load(), session->sharedContext->counter->bytesWritten.load());
             UpdateRunningSessionStatistics(session);
-            util::SaveSessionWriterBitmap(session);
+            SaveSessionWriterBitmap(session);
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
@@ -233,6 +233,44 @@ void VolumeBackupTask::ThreadFunc()
     }
 
     m_status = TaskStatus::SUCCEED;
+    return;
+}
+
+void volumebackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> session)
+{
+    // checkpoint file path
+    std::string filepath = util::GetWriterBitmapFilePath(
+        m_backupConfig->outputCopyMetaDirPath,
+        session->sharedConfig->sessionOffset,
+        session->sharedConfig->sessionSize
+    );
+    if (!m_backupConfig->enableCheckpoint || !native::IsFileExists(filepath)) {
+        session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+        return;
+    }
+    std::shared_ptr<Bitmap> checkpointBitmap util::ReadBitmap(filepath);
+    if (checkpointBitmap == nullptr) {
+        WARNLOG("failed to read checkpoint writer bitmap from %s, fallback to reinit", filepath.c_str());
+        session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+        return;
+    }
+    WARNLOG("checkpoint writer bitmap found: %s , max index = %llu", filepath.c_str(), checkpointBitmap->MaxIndex());
+    session->sharedContext->writerBitmap = checkpointBitmap;
+}
+
+void VolumeBackupTask::SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session)
+{
+    if (!m_backupConfig->enableCheckpoint) {
+        return;
+    }
+    std::string filepath = util::GetWriterBitmapFilePath(
+        m_backupConfig->outputCopyMetaDirPath,
+        session->sharedConfig->sessionOffset,
+        session->sharedConfig->sessionSize
+    );
+    if (!util::SaveBitmap(filepath, *(session->sharedContext->writerBitmap)) {
+        ERRLOG("failed to save bitmap file");
+    }
     return;
 }
 
