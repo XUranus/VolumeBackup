@@ -132,21 +132,27 @@ std::shared_ptr<Bitmap> util::ReadBitmap(const std::string& filepath)
         return nullptr;
     }
     try {
-        auto buffer = std::unique_ptr<char[]>(new char[size]);
-        memset(buffer.get(), 0, size);
+        auto buffer = new (std::nothrow) char[size];
+        if (buffer == nullptr) {
+            ERRLOG("failed to malloc for bitmap, size = %llu", size);
+            return nullptr;
+        }
+        memset(buffer, 0, size);
         std::ifstream file(filepath, std::ios::binary);
         if (!file.is_open()) {
             ERRLOG("failed to open %s, errno = %d", filepath.c_str(), errno);
+            delete[] buffer;
             return nullptr;
         }
-        file.rdbuf().write(buffer.get(), size);
+        file.read(buffer, size);
         if (file.fail()) {
             ERRLOG("failed to read bitmap %s, errno: %d", filepath.c_str(), errno);
             file.close();
+            delete[] buffer;
             return nullptr;
         }
         file.close();
-        return std::make_shared<Bitmap>(buffer, size);
+        return std::make_shared<Bitmap>(reinterpret_cast<uint8_t*>(buffer), size);
     } catch (const std::exception& e) {
         ERRLOG("failed to read bitmap file %s, exception: %s", filepath.c_str(), e.what());
         return nullptr;

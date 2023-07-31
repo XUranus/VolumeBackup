@@ -74,8 +74,8 @@ Bitmap::Bitmap(uint64_t size)
     m_table = std::unique_ptr<uint8_t[]>(ptr); // avoid using make_unique (requiring CXX14)
 }
 
-Bitmap::Bitmap(std::unique_ptr<uint8_t[]> ptr, uint64_t capacity)
-    : m_capacity(capacity), m_table(ptr.release())
+Bitmap::Bitmap(uint8_t* ptr, uint64_t capacity)
+    : m_capacity(capacity), m_table(ptr)
 {}
 
 void Bitmap::Set(uint64_t index)

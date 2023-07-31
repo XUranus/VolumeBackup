@@ -12,7 +12,6 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "BlockingQueue.h" 
-#include "CheckpointManager.h"
 
 namespace volumeprotect {
 
@@ -60,7 +59,7 @@ struct VOLUMEPROTECT_API SessionCounter {
 class Bitmap {
 public:
     explicit Bitmap(uint64_t size);
-    Bitmap(std::unique_ptr<char[]> ptr, uint64_t capacity);
+    Bitmap(uint8_t* ptr, uint64_t capacity);
     bool Test(uint64_t index) const;
     void Set(uint64_t index);
     uint64_t FirstIndexUnset() const;
