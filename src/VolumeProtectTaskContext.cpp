@@ -70,13 +70,20 @@ void VolumeBlockAllocator::bfree(char* ptr)
 Bitmap::Bitmap(uint64_t size)
 {
     m_capacity = size / BITS_PER_UINT8 + 1;
-    uint8_t* ptr = new uint8_t[m_capacity];
-    m_table = std::unique_ptr<uint8_t[]>(ptr); // avoid using make_unique (requiring CXX14)
+    m_table = new uint8_t[m_capacity]; // avoid using make_unique (requiring CXX14)
 }
 
 Bitmap::Bitmap(uint8_t* ptr, uint64_t capacity)
     : m_capacity(capacity), m_table(ptr)
 {}
+
+Bitmap::~Bitmap()
+{
+    if (m_table != nullptr) {
+        delete[] m_table;
+        m_table = nullptr;
+    }
+}
 
 void Bitmap::Set(uint64_t index)
 {
@@ -116,7 +123,7 @@ uint64_t Bitmap::MaxIndex() const
 
 const uint8_t* Bitmap::Ptr() const
 {
-    return m_table.get();
+    return m_table;
 }
 
 // implement VolumeTaskSession

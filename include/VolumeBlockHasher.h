@@ -24,17 +24,17 @@ enum class VOLUMEPROTECT_API  HasherForwardMode {
  * @brief param struct to build a hasher
  */
 struct VOLUMEPROTECT_API VolumeBlockHasherParam {
-    std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
-    std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
-    uint32_t                    workerThreadNum;
-    HasherForwardMode           forwardMode;
-    std::string                 prevChecksumBinPath;
-    std::string                 lastestChecksumBinPath;
-    uint32_t                    singleChecksumSize;
-    std::shared_ptr<uint8_t[]>     prevChecksumTable;
-    uint64_t                    prevChecksumTableSize;
-    std::shared_ptr<uint8_t[]>     lastestChecksumTable;
-    uint64_t                    lastestChecksumTableSize;
+    std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig    { nullptr };
+    std::shared_ptr<VolumeTaskSharedContext>    sharedContext   { nullptr };
+    uint32_t                    workerThreadNum                 { DEFAULT_HASHER_NUM };
+    HasherForwardMode           forwardMode                     { HasherForwardMode::DIRECT };
+    std::string                 prevChecksumBinPath             {};
+    std::string                 lastestChecksumBinPath          {};
+    uint32_t                    singleChecksumSize              { 0 };
+    uint8_t*                    prevChecksumTable               { nullptr };
+    uint64_t                    prevChecksumTableSize           { 0 };
+    uint8_t*                    lastestChecksumTable            { nullptr };
+    uint64_t                    lastestChecksumTableSize        { 0 };
 };
 
 class VOLUMEPROTECT_API VolumeBlockHasher : public StatefulTask {
@@ -68,7 +68,7 @@ private:
     // immutable
     uint32_t                    m_singleChecksumSize    { 0 };
     HasherForwardMode           m_forwardMode           { HasherForwardMode::DIRECT };
-    std::shared_ptr<uint8_t[]>  m_prevChecksumTable     { nullptr };
+    uint8_t*                    m_prevChecksumTable     { nullptr };
     uint64_t                    m_prevChecksumTableSize { 0 };  // size in bytes
     std::string                 m_prevChecksumBinPath;          // path of the checksum bin from previous copy
     std::string                 m_lastestChecksumBinPath;       // path of the checksum bin to write latest copy
@@ -79,7 +79,7 @@ private:
     std::shared_ptr<VolumeTaskSharedConfig>     m_sharedConfig;
 
     // mutable
-    std::shared_ptr<uint8_t[]>                  m_lastestChecksumTable { nullptr }; // mutable, shared within worker
+    uint8_t*                                    m_lastestChecksumTable { nullptr }; // mutable, shared within worker
     uint64_t                                    m_lastestChecksumTableSize;         // bytes allocated
     std::shared_ptr<VolumeTaskSharedContext>    m_sharedContext;
 };

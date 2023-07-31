@@ -60,6 +60,7 @@ class Bitmap {
 public:
     explicit Bitmap(uint64_t size);
     Bitmap(uint8_t* ptr, uint64_t capacity);
+    ~Bitmap();
     bool Test(uint64_t index) const;
     void Set(uint64_t index);
     uint64_t FirstIndexUnset() const;
@@ -67,8 +68,8 @@ public:
     uint64_t MaxIndex() const;
     const uint8_t* Ptr() const;
 private:
-    std::unique_ptr<uint8_t[]>      m_table     { nullptr };
-    uint64_t                        m_capacity  { 0 };
+    uint8_t*    m_table     { nullptr };
+    uint64_t    m_capacity  { 0 };
 };
 
 /**
