@@ -109,7 +109,7 @@ bool util::SaveBitmap(const std::string& filepath, const Bitmap& bitmap)
             ERRLOG("failed to open file %s to save bitmap file %s", filepath.c_str());
             return false;
         }
-        file.write(bitmap.Ptr(), bitmap.Capacity());
+        file.write(reinterpret_cast<const char*>(bitmap.Ptr()), bitmap.Capacity());
         if (file.fail()) {
             file.close();
             ERRLOG("failed to write bitmap file %s, size %llu, errno: %d", filepath.c_str(), bitmap.Capacity(), errno);
@@ -127,19 +127,19 @@ bool util::SaveBitmap(const std::string& filepath, const Bitmap& bitmap)
 
 std::shared_ptr<Bitmap> util::ReadBitmap(const std::string& filepath)
 {
-    uint64_t size = native::GetFileSize(path);
+    uint64_t size = native::GetFileSize(filepath);
     if (size == 0) {
         return nullptr;
     }
     try {
-        auto buffer = std::make_unique<char[]>(size);
+        auto buffer = std::unique_ptr<char[]>(new char[size]);
         memset(buffer.get(), 0, size);
         std::ifstream file(filepath, std::ios::binary);
         if (!file.is_open()) {
             ERRLOG("failed to open %s, errno = %d", filepath.c_str(), errno);
             return nullptr;
         }
-        file.write(buffer.get(), size);
+        file.rdbuf().write(buffer.get(), size);
         if (file.fail()) {
             ERRLOG("failed to read bitmap %s, errno: %d", filepath.c_str(), errno);
             file.close();

@@ -1,6 +1,7 @@
 #include <cstring>
 #include <exception>
 #include <thread>
+#include <memory>
 
 #include "Logger.h"
 #include "VolumeUtils.h"
@@ -69,11 +70,12 @@ void VolumeBlockAllocator::bfree(char* ptr)
 Bitmap::Bitmap(uint64_t size)
 {
     m_capacity = size / BITS_PER_UINT8 + 1;
-    m_table = std::make_unique<uint32_t[]>(m_capacity);
+    uint8_t* ptr = new uint8_t[m_capacity];
+    m_table = std::unique_ptr<uint8_t[]>(ptr); // avoid using make_unique (requiring CXX14)
 }
 
-Bitmap::Bitmap(std::unique_ptr<char[]> ptr, uint64_t capacity)
-    : m_capacity(capacity), m_table(ptr)
+Bitmap::Bitmap(std::unique_ptr<uint8_t[]> ptr, uint64_t capacity)
+    : m_capacity(capacity), m_table(ptr.release())
 {}
 
 void Bitmap::Set(uint64_t index)
@@ -99,7 +101,7 @@ uint64_t Bitmap::FirstIndexUnset() const
             return index;
         }
     }
-    return m_size;
+    return MaxIndex();
 }
 
 uint64_t Bitmap::Capacity() const

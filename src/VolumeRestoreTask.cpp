@@ -81,7 +81,7 @@ bool VolumeRestoreTask::Prepare()
         uint64_t sessionSize = slice.second;
         INFOLOG("Size = %llu sessionOffset %d sessionSize %d", volumeSize, sessionOffset, sessionSize);
         std::string copyFilePath = util::GetCopyFilePath(
-            m_restoreConfig->copyDataDirPath, copyType, sessionOffset, sessionSize);
+            m_restoreConfig->copyDataDirPath, sessionOffset, sessionSize);
 
         VolumeTaskSession session {};
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();

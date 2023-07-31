@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <string>
 #include <iostream>
 #include <thread>
@@ -12,14 +11,19 @@
 #include <algorithm>
 
 #include "Logger.h"
-#include "VolumeBlockReader.h"
 #include "VolumeUtils.h"
 #include "NativeIOInterface.h"
+#include "VolumeBlockReader.h"
 
 using namespace volumeprotect;
 
 namespace {
     constexpr auto READER_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
+}
+
+inline uint64_t Min(uint64_t a, uint64_t b)
+{
+    return a > b ? b : a;
 }
 
 // build a reader reading from volume (block device)
@@ -168,7 +172,7 @@ void VolumeBlockReader::MainThread()
             std::this_thread::sleep_for(READER_CHECK_SLEEP_INTERVAL);
             continue;
         }
-        nBytesToRead = static_cast<uint32_t>(min(bytesRemain, static_cast<uint64_t>(m_sharedConfig->blockSize)));
+        nBytesToRead = static_cast<uint32_t>(Min(bytesRemain, static_cast<uint64_t>(m_sharedConfig->blockSize)));
         if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
             ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
             m_status = TaskStatus::FAILED;

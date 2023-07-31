@@ -89,7 +89,7 @@ bool VolumeBackupTask::Prepare()
         std::string lastestChecksumBinPath = util::GetChecksumBinPath(
             m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
         std::string copyFilePath = util::GetCopyFilePath(
-            m_backupConfig->outputCopyDataDirPath, m_backupConfig->copyType, sessionOffset, sessionSize);
+            m_backupConfig->outputCopyDataDirPath, sessionOffset, sessionSize);
         // for increment backup
         std::string prevChecksumBinPath = "";
         if (IsIncrementBackup()) {
@@ -236,7 +236,7 @@ void VolumeBackupTask::ThreadFunc()
     return;
 }
 
-void volumebackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> session)
+void VolumeBackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> session) const
 {
     // checkpoint file path
     std::string filepath = util::GetWriterBitmapFilePath(
@@ -248,7 +248,7 @@ void volumebackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> sessi
         session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
         return;
     }
-    std::shared_ptr<Bitmap> checkpointBitmap util::ReadBitmap(filepath);
+    std::shared_ptr<Bitmap> checkpointBitmap = util::ReadBitmap(filepath);
     if (checkpointBitmap == nullptr) {
         WARNLOG("failed to read checkpoint writer bitmap from %s, fallback to reinit", filepath.c_str());
         session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
@@ -268,7 +268,7 @@ void VolumeBackupTask::SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession
         session->sharedConfig->sessionOffset,
         session->sharedConfig->sessionSize
     );
-    if (!util::SaveBitmap(filepath, *(session->sharedContext->writerBitmap)) {
+    if (!util::SaveBitmap(filepath, *(session->sharedContext->writerBitmap))) {
         ERRLOG("failed to save bitmap file");
     }
     return;
