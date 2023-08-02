@@ -115,7 +115,7 @@ void Bitmap::Set(uint64_t index)
     if (index >= m_capacity * BITS_PER_UINT8) { // illegal argument 
         return;
     }
-    m_table[index >> BITMAP_RSHIFT] |= ((uint8_t)1) << (index % BITS_PER_UINT8);
+    m_table[index >> BITMAP_RSHIFT] |= (((uint8_t)1) << (index % BITS_PER_UINT8));
 }
 
 bool Bitmap::Test(uint64_t index) const
@@ -123,7 +123,7 @@ bool Bitmap::Test(uint64_t index) const
     if (index >= m_capacity * BITS_PER_UINT8) { //illegal argument
         return false;
     }
-    return m_table[index >> BITMAP_RSHIFT] & (((uint8_t)1) << (index % BITS_PER_UINT8)) != 0;
+    return (m_table[index >> BITMAP_RSHIFT] & (((uint8_t)1) << (index % BITS_PER_UINT8))) != 0;
 }
 
 uint64_t Bitmap::FirstIndexUnset() const
