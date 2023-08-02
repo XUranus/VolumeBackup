@@ -103,62 +103,15 @@ bool util::ReadVolumeCopyMeta(
 
 bool util::SaveBitmap(const std::string& filepath, const Bitmap& bitmap)
 {
-    try {
-        std::ofstream file(filepath, std::ios::binary | std::ios::trunc);
-        if (!file.is_open()) {
-            ERRLOG("failed to open file %s to save bitmap file %s", filepath.c_str());
-            return false;
-        }
-        file.write(reinterpret_cast<const char*>(bitmap.Ptr()), bitmap.Capacity());
-        if (file.fail()) {
-            file.close();
-            ERRLOG("failed to write bitmap file %s, size %llu, errno: %d", filepath.c_str(), bitmap.Capacity(), errno);
-        }
-        file.close();
-    } catch (const std::exception& e) {
-        ERRLOG("failed to save bitmap file %s, exception: %s", filepath.c_str(), e.what());
-        return false;
-    } catch (...) {
-        ERRLOG("failed to save bitmap file %s, exception caught", filepath.c_str());
-        return false;
-    }
-    return true;
+    return native::WriteBinaryBuffer(filepath, bitmap.Ptr(), bitmap.Capacity());
 }
 
 std::shared_ptr<Bitmap> util::ReadBitmap(const std::string& filepath)
 {
+    if (!native::IsFileExists(filepath)) {
+        ERRLOG("bitmap file %s not exists", filepath.c_str());
+    }
     uint64_t size = native::GetFileSize(filepath);
-    if (size == 0) {
-        return nullptr;
-    }
-    try {
-        auto buffer = new (std::nothrow) char[size];
-        if (buffer == nullptr) {
-            ERRLOG("failed to malloc for bitmap, size = %llu", size);
-            return nullptr;
-        }
-        memset(buffer, 0, size);
-        std::ifstream file(filepath, std::ios::binary);
-        if (!file.is_open()) {
-            ERRLOG("failed to open %s, errno = %d", filepath.c_str(), errno);
-            delete[] buffer;
-            return nullptr;
-        }
-        file.read(buffer, size);
-        if (file.fail()) {
-            ERRLOG("failed to read bitmap %s, errno: %d", filepath.c_str(), errno);
-            file.close();
-            delete[] buffer;
-            return nullptr;
-        }
-        file.close();
-        return std::make_shared<Bitmap>(reinterpret_cast<uint8_t*>(buffer), size);
-    } catch (const std::exception& e) {
-        ERRLOG("failed to read bitmap file %s, exception: %s", filepath.c_str(), e.what());
-        return nullptr;
-    } catch (...) {
-        ERRLOG("failed to read bitmap file %s, exception caught", filepath.c_str());
-        return nullptr;
-    }
-    return nullptr;
+    uint8_t* buffer = native::ReadBinaryBuffer(filepath, size);
+    return (buffer != nullptr) ? std::make_shared<Bitmap>(buffer, size) : nullptr;
 }

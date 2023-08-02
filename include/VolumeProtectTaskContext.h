@@ -52,6 +52,17 @@ struct VOLUMEPROTECT_API SessionCounter {
     std::atomic<uint64_t>   bytesWritten    { 0 };
 };
 
+// store the checksum table of previous/latest hashing checksum
+struct VOLUMEPROTECT_API BlockHashingContext {
+    uint8_t*    lastestTable    { nullptr };
+    uint8_t*    previousTable   { nullptr };
+    uint64_t    lastestSize     { 0 }; // size in bytes
+    uint64_t    previousSize    { 0 };
+
+    BlockHashingContext(uint64_t pSize, uint64_t lSize);
+    ~BlockHashingContext();
+};
+
 /**
  * @brief A dynamic version of std::bitset, used to record index of block written.
  * for 1TB session, max blocks cnt 262144, max bitmap size = 32768 bytes
@@ -97,6 +108,7 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
     // immutable fields (for backup)
     std::string     lastestChecksumBinPath;
     std::string     prevChecksumBinPath;
+    std::string     writerBitmapFilePath;
 };
 
 struct VOLUMEPROTECT_API VolumeTaskSharedContext {
@@ -106,6 +118,7 @@ struct VOLUMEPROTECT_API VolumeTaskSharedContext {
     std::shared_ptr<VolumeBlockAllocator>               allocator               { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue            { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  writeQueue              { nullptr };
+    std::shared_ptr<BlockHashingContext>                hashingContext          { nullptr };
 };
 
 struct VOLUMEPROTECT_API VolumeTaskSession {
@@ -122,6 +135,35 @@ struct VOLUMEPROTECT_API VolumeTaskSession {
     void Abort() const;
 };
 
-}
+/**
+ * @brief TaskStatisticTrait provides the trait of calculate all stats of running/completed sessions
+ */
+class TaskStatisticTrait {
+protected:
+    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
+    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
+protected:
+    mutable std::mutex m_statisticMutex;
+    TaskStatistics  m_currentSessionStatistics;     // current running session statistics
+    TaskStatistics  m_completedSessionStatistics;   // statistic sum of all completed session
+};
 
+/**
+ * @brief VolumeTaskCheckpointTrait provides the trait of managing checkpoint
+ *  checkpoint feature will be enabled by set "enableCheckpoint" option in BackupConfig/RestoreConfig,
+ *  checkpoint file include checksum file and writerBitmap file,
+ *  which records checksum info computed and block data that have been written to disk.
+ *  Both two file will also be generated no matter "enableCheckpoint" is true or false,
+ *  "enableCheckpoint" will only decide if to restore the task if process is restarted.
+ */
+class VolumeTaskCheckpointTrait {
+protected:
+    void SaveSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const;
+    void SaveSessionHashingContext(std::shared_ptr<VolumeTaskSession> session) const;
+    void SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session) const;
+
+    bool IsSessionRestarted() const;
+    void RestoreCheckpoint() const;
+};
+}
 #endif

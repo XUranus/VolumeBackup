@@ -15,7 +15,8 @@
 
 namespace volumeprotect {
 
-class VOLUMEPROTECT_API VolumeBackupTask : public VolumeProtectTask {
+class VOLUMEPROTECT_API VolumeBackupTask
+    : public VolumeProtectTask, public TaskStatisticTrait, public VolumeTaskCheckpointTrait {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
 
@@ -30,9 +31,8 @@ private:
     bool StartBackupSession(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
     bool IsIncrementBackup() const;
-    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
-    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
     void SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session);
+    bool InitHashingContext(std::shared_ptr<VolumeTaskSession> session);
     void InitWriterBitmap(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
 
@@ -42,11 +42,6 @@ private:
 
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;
-
-    // statistics
-    mutable std::mutex m_statisticMutex;
-    TaskStatistics  m_currentSessionStatistics;     // current running session statistics
-    TaskStatistics  m_completedSessionStatistics;   // statistic sum of all completed session
 };
 
 }

@@ -18,8 +18,12 @@
 #include <winioctl.h>
 #endif
 
+#include <iostream>
+#include <fstream>
+#include "Logger.h"
 #include "NativeIOInterface.h"
 
+using namespace volumeprotect;
 using namespace volumeprotect::native;
 
 namespace {
@@ -222,15 +226,7 @@ SystemDataWriter::~SystemDataWriter()
     m_handle = SYSTEM_IO_INVALID_HANDLE;
 }
 
-
-
-
-
-
-
-
-
-bool volumeprotect::native::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode)
+bool native::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode)
 {
 #ifdef __linux__
     int fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
@@ -287,7 +283,7 @@ bool volumeprotect::native::TruncateCreateFile(const std::string& path, uint64_t
 #endif
 }
 
-bool volumeprotect::native::IsFileExists(const std::string& path)
+bool native::IsFileExists(const std::string& path)
 {
 #ifdef __linux__
     struct stat st;
@@ -300,7 +296,7 @@ bool volumeprotect::native::IsFileExists(const std::string& path)
 #endif
 }
 
-uint64_t volumeprotect::native::GetFileSize(const std::string& path)
+uint64_t native::GetFileSize(const std::string& path)
 {
 #ifdef __linux__
     struct stat st;
@@ -320,7 +316,7 @@ uint64_t volumeprotect::native::GetFileSize(const std::string& path)
 #endif
 }
 
-bool volumeprotect::native::IsDirectoryExists(const std::string& path)
+bool native::IsDirectoryExists(const std::string& path)
 {
 #ifdef _WIN32
     std::wstring wpath = Utf8ToUtf16(path);
@@ -337,6 +333,73 @@ bool volumeprotect::native::IsDirectoryExists(const std::string& path)
     }
     return ::mkdir(path.c_str(), DEFAULT_MKDIR_MASK) == 0;
 #endif
+}
+
+/**
+ * @brief read bytes from file
+ * @return uint8_t* ptr to data
+ */
+uint8_t* native::ReadBinaryBuffer(const std::string& filepath, uint64_t length)
+{
+    if (length == 0) {
+        WARNLOG("read empty binary file %s", filepath.c_str());
+        return nullptr;
+    }
+    try {
+        std::ifstream binFile(filepath, std::ios::binary);
+        if (!binFile.is_open()) {
+            ERRLOG("bin file %s open failed, errno: %d", filepath.c_str(), errno);
+            return nullptr;
+        }
+        uint8_t* buffer = new (std::nothrow) uint8_t[length];
+        if (buffer == nullptr) {
+            ERRLOG("failed to malloc buffer, size = %llu", length);
+            binFile.close();
+            return nullptr;
+        }
+        binFile.read(reinterpret_cast<char*>(buffer), length);
+        if (binFile.fail()) {
+            ERRLOG("failed to read %llu bytes from %s", length, filepath.c_str());
+            delete[] buffer;
+            binFile.close();
+            return nullptr;
+        }
+        binFile.close();
+        return buffer;
+    } catch (const std::exception& e) {
+        ERRLOG("failed to read checksum bin %s, exception %s", filepath.c_str(), e.what());
+        return nullptr;
+    }
+    return nullptr;
+}
+
+/**
+ * @brief write n bytes from file
+ * @return if success
+ */
+bool native::WriteBinaryBuffer(const std::string& filepath, const uint8_t* buffer, uint64_t length)
+{
+    try {
+        std::ofstream file(filepath, std::ios::binary | std::ios::trunc);
+        if (!file.is_open()) {
+            ERRLOG("failed to open binary file %s, errno: %d", filepath.c_str(), errno);
+            return false;
+        }
+        file.write(reinterpret_cast<const char*>(buffer), length);
+        if (file.fail()) {
+            file.close();
+            ERRLOG("failed to write binary file %s, size %llu, errno: %d", filepath.c_str(), length, errno);
+            return false;
+        }
+        file.close();
+    } catch (const std::exception& e) {
+        ERRLOG("failed to save binary file %s, exception: %s", filepath.c_str(), e.what());
+        return false;
+    } catch (...) {
+        ERRLOG("failed to save binary file %s, exception caught", filepath.c_str());
+        return false;
+    }
+    return true;
 }
 
 #ifdef _WIN32
@@ -398,7 +461,7 @@ static uint64_t GetVolumeSizeLinux(const std::string& devicePath)
 }
 #endif
 
-uint64_t volumeprotect::native::ReadVolumeSize(const std::string& volumePath)
+uint64_t native::ReadVolumeSize(const std::string& volumePath)
 {
     uint64_t size = 0;
     try {
@@ -415,7 +478,7 @@ uint64_t volumeprotect::native::ReadVolumeSize(const std::string& volumePath)
     return size;
 }
 
-bool volumeprotect::native::IsVolumeExists(const std::string& volumePath)
+bool native::IsVolumeExists(const std::string& volumePath)
 {
     try {
         ReadVolumeSize(volumePath);
@@ -425,7 +488,7 @@ bool volumeprotect::native::IsVolumeExists(const std::string& volumePath)
     return true;
 }
 
-uint32_t volumeprotect::native::ProcessorsNum()
+uint32_t native::ProcessorsNum()
 {
 #ifdef __linux
     auto processorCount = sysconf(_SC_NPROCESSORS_ONLN);

@@ -62,6 +62,7 @@ VOLUMEPROTECT_API bool SaveBitmap(const std::string& path, const Bitmap& bitmap)
 
 VOLUMEPROTECT_API std::shared_ptr<Bitmap> ReadBitmap(const std::string& path);
 
+VOLUMEPROTECT_API uint8_t* util::ReadChecksumBinaryBuffer(const std::string& filepath, uint64_t size);
 }
 }
 

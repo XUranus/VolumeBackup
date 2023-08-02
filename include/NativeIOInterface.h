@@ -108,6 +108,10 @@ VOLUMEPROTECT_API uint64_t GetFileSize(const std::string& path);
 
 VOLUMEPROTECT_API bool IsDirectoryExists(const std::string& path);
 
+VOLUMEPROTECT_API uint8_t* ReadBinaryBuffer(const std::string& filepath, uint64_t length);
+
+VOLUMEPROTECT_API bool WriteBinaryBuffer(const std::string& filepath, const uint8_t* buffer, uint64_t length);
+
 VOLUMEPROTECT_API bool IsVolumeExists(const std::string& volumePath);
 
 VOLUMEPROTECT_API uint64_t ReadVolumeSize(const std::string& volumePath);

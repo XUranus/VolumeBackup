@@ -191,41 +191,15 @@ void VolumeRestoreTask::ThreadFunc()
             if (session->IsTerminated())  {
                 break;
             }
-            DBGLOG("updateStatistics: bytesToReaded: %llu, bytesRead: %llu, bytesToWrite: %llu, bytesWritten: %llu",
-                session->sharedContext->counter->bytesToRead.load(),
-                session->sharedContext->counter->bytesRead.load(),
-                session->sharedContext->counter->bytesToWrite.load(),
-                session->sharedContext->counter->bytesWritten.load());
             UpdateRunningSessionStatistics(session);
+            SaveSessionCheckpoint(session);
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
+        SaveSessionWriterBitmap(session);
         UpdateCompletedSessionStatistics(session);
     }
 
     m_status = TaskStatus::SUCCEED;
     return;
-}
-
-void VolumeRestoreTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
-{
-    std::lock_guard<std::mutex> lock(m_statisticMutex);
-    m_currentSessionStatistics.bytesToRead = session->sharedContext->counter->bytesToRead;
-    m_currentSessionStatistics.bytesRead = session->sharedContext->counter->bytesRead;
-    m_currentSessionStatistics.blocksToHash = session->sharedContext->counter->blocksToHash;
-    m_currentSessionStatistics.blocksHashed = session->sharedContext->counter->blocksHashed;
-    m_currentSessionStatistics.bytesToWrite = session->sharedContext->counter->bytesToWrite;
-    m_currentSessionStatistics.bytesWritten = session->sharedContext->counter->bytesWritten;
-}
-
-void VolumeRestoreTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
-{
-    std::lock_guard<std::mutex> lock(m_statisticMutex);
-    m_completedSessionStatistics.bytesToRead += session->sharedContext->counter->bytesToRead;
-    m_completedSessionStatistics.bytesRead += session->sharedContext->counter->bytesRead;
-    m_completedSessionStatistics.blocksToHash += session->sharedContext->counter->blocksToHash;
-    m_completedSessionStatistics.blocksHashed += session->sharedContext->counter->blocksHashed;
-    m_completedSessionStatistics.bytesToWrite += session->sharedContext->counter->bytesToWrite;
-    m_completedSessionStatistics.bytesWritten += session->sharedContext->counter->bytesWritten;
-    memset(&m_currentSessionStatistics, 0, sizeof(TaskStatistics));
 }

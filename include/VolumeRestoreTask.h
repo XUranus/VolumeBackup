@@ -15,7 +15,8 @@
 
 namespace volumeprotect {
 
-class VOLUMEPROTECT_API VolumeRestoreTask : public VolumeProtectTask {
+class VOLUMEPROTECT_API VolumeRestoreTask
+    : public VolumeProtectTask, public TaskStatisticTrait, public VolumeTaskCheckpointTrait {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
 
@@ -30,19 +31,12 @@ private:
     bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
-    void UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
-    void UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session);
 private:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeRestoreConfig>    m_restoreConfig;
 
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;
-
-    // statistics
-    mutable std::mutex m_statisticMutex;
-    TaskStatistics  m_currentSessionStatistics;     // current running session statistics
-    TaskStatistics  m_completedSessionStatistics;   // statistic sum of all completed session
 };
 
 }

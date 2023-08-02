@@ -18,6 +18,8 @@ namespace {
     constexpr uint32_t BITMAP_RSHIFT = 3; // 2^3 = 8
 }
 
+// implement VolumeBlockAllocator...
+
 VolumeBlockAllocator::VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum)
     : m_blockSize(blockSize), m_blockNum(blockNum)
 {
@@ -65,7 +67,30 @@ void VolumeBlockAllocator::bfree(char* ptr)
     throw std::runtime_error("bfree error: bad address");
 }
 
-// implement bitmap
+// implement BlockHashingContext...
+
+BlockHashingContext::BlockHashingContext(uint64_t pSize, uint64_t lSize)
+    : previousSize(pSize), lastestSize(lSize)
+{
+    lastestTable = new uint8_t[lSize];
+    previousTable = new uint8_t[pSize];
+    memset(lastestTable, 0, sizeof(uint8_t) * lSize);
+    memset(previousTable, 0, sizeof(uint8_t) * pSize);
+}
+
+BlockHashingContext::~BlockHashingContext()
+{
+    if (lastestTable != nullptr) {
+        delete[] lastestTable;
+        lastestTable = nullptr;
+    }
+    if (previousTable == nullptr) {
+        delete[] previousTable;
+        previousTable = nullptr;
+    }
+}
+
+// implement Bitmap...
 
 Bitmap::Bitmap(uint64_t size)
 {
@@ -126,7 +151,7 @@ const uint8_t* Bitmap::Ptr() const
     return m_table;
 }
 
-// implement VolumeTaskSession
+// implement VolumeTaskSession...
 
 bool VolumeTaskSession::IsTerminated() const
 {
@@ -167,4 +192,81 @@ void VolumeTaskSession::Abort() const
     if (writerTask != nullptr) {
         writerTask->Abort();
     }
+}
+
+// implement TaskStatisticTrait ...
+
+void TaskStatisticTrait::UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
+{
+    std::lock_guard<std::mutex> lock(m_statisticMutex);
+    auto counter = session->sharedContext->counter;
+    DBGLOG("UpdateRunningSessionStatistics: bytesToReaded: %llu, bytesRead: %llu, "
+        "blocksToHash: %llu, blocksHashed: %llu, "
+        "bytesToWrite: %llu, bytesWritten: %llu",
+        counter->bytesToRead.load(), counter->bytesRead.load(),
+        counter->blocksToHash.load(), counter->blocksHashed.load(),
+        counter->bytesToWrite.load(), counter->bytesWritten.load());
+    m_currentSessionStatistics.bytesToRead = counter->bytesToRead;
+    m_currentSessionStatistics.bytesRead = counter->bytesRead;
+    m_currentSessionStatistics.blocksToHash = counter->blocksToHash;
+    m_currentSessionStatistics.blocksHashed = counter->blocksHashed;
+    m_currentSessionStatistics.bytesToWrite = counter->bytesToWrite;
+    m_currentSessionStatistics.bytesWritten = counter->bytesWritten;
+}
+
+void TaskStatisticTrait::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
+{
+    std::lock_guard<std::mutex> lock(m_statisticMutex);
+    auto counter = session->sharedContext->counter;
+    DBGLOG("UpdateCompletedSessionStatistics: bytesToReaded: %llu, bytesRead: %llu, "
+        "blocksToHash: %llu, blocksHashed: %llu, "
+        "bytesToWrite: %llu, bytesWritten: %llu",
+        counter->bytesToRead.load(), counter->bytesRead.load(),
+        counter->blocksToHash.load(), counter->blocksHashed.load(),
+        counter->bytesToWrite.load(), counter->bytesWritten.load());
+    m_completedSessionStatistics.bytesToRead += counter->bytesToRead;
+    m_completedSessionStatistics.bytesRead += counter->bytesRead;
+    m_completedSessionStatistics.blocksToHash += counter->blocksToHash;
+    m_completedSessionStatistics.blocksHashed += counter->blocksHashed;
+    m_completedSessionStatistics.bytesToWrite += counter->bytesToWrite;
+    m_completedSessionStatistics.bytesWritten += counter->bytesWritten;
+    memset(&m_currentSessionStatistics, 0, sizeof(TaskStatistics));
+}
+
+// implement VolumeTaskCheckpointTrait
+
+void VolumeTaskCheckpointTrait::SaveSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const
+{
+    if (!session->sharedConfig->checkpointEnabled) {
+        return;
+    }
+    // only should work during backup with hasher enabled,
+    // hashing checksum must be saved before writer bitmap
+    if (session->sharedConfig->hasherEnabled) {
+        SaveSessionHashingContext(session);
+    }
+    // could both work during backup/restore
+    SaveSessionWriterBitmap(session);
+}
+
+void VolumeTaskCheckpointTrait::SaveSessionHashingContext(std::shared_ptr<VolumeTaskSession> session) const
+{
+    uint8_t* latestChecksumTable = session->sharedContext->hashingContext->lastestTable;
+    uint64_t latestChecksumTableSize = session->sharedContext->hashingContext->lastestSize;
+    if (session->sharedConfig->hasherEnabled && latestChecksumTable != nullptr) {
+        std::string filepath = session->sharedConfig->lastestChecksumBinPath;
+        DBGLOG("save latest hash checksum table to %s, size = %llu", filepath.c_str(), latestChecksumTableSize);
+        if (!native::WriteBinaryBuffer(filepath, latestChecksumTable, latestChecksumTableSize)) {
+            ERRLOG("failed to save session hashing context");
+        }
+    }
+}
+
+void VolumeTaskCheckpointTrait::SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session) const
+{
+    std::string filepath = session->sharedConfig->writerBitmapFilePath;
+    if (!util::SaveBitmap(filepath, *(session->sharedContext->writerBitmap))) {
+        ERRLOG("failed to save bitmap file");
+    }
+    return;
 }

@@ -24,10 +24,12 @@ namespace {
     constexpr auto DEFAULT_ALLOCATOR_BLOCK_NUM = 32;
     constexpr auto DEFAULT_QUEUE_SIZE = 32;
     constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
+    const uint64_t DEFAULT_CHECKSUM_TABLE_CAPACITY = 1024 * 1024 * 8; // 8MB
+    const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 }
 
 VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
-  : m_volumeSize(volumeSize),
+    : m_volumeSize(volumeSize),
     m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig)) 
 {}
 
@@ -90,6 +92,8 @@ bool VolumeBackupTask::Prepare()
             m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
         std::string copyFilePath = util::GetCopyFilePath(
             m_backupConfig->outputCopyDataDirPath, sessionOffset, sessionSize);
+        std::string writerBitmapPath = util::GetWriterBitmapFilePath(
+            m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
         // for increment backup
         std::string prevChecksumBinPath = "";
         if (IsIncrementBackup()) {
@@ -107,6 +111,7 @@ bool VolumeBackupTask::Prepare()
         session.sharedConfig->lastestChecksumBinPath = lastestChecksumBinPath;
         session.sharedConfig->prevChecksumBinPath = prevChecksumBinPath;
         session.sharedConfig->copyFilePath = copyFilePath;
+        session.sharedConfig->writerBitmapFilePath = writerBitmapPath;
 
         volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
@@ -129,24 +134,24 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
     session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    if (!InitHashingContext(session)) {
+        ERRLOG("failed to init hashing context");
+        return false;
+    }
     InitWriterBitmap(session);
+    // TODO:: check checkpoint and reset context
+
 
     // 2. check and init reader
-    session->readerTask = VolumeBlockReader::BuildVolumeReader(
-        session->sharedConfig,
-        session->sharedContext
-    );
+    session->readerTask = VolumeBlockReader::BuildVolumeReader(session->sharedConfig, session->sharedContext);
     if (session->readerTask == nullptr) {
         ERRLOG("backup session failed to init reader");
         return false;
     }
 
     // 3. check and init hasher
-    if (IsIncrementBackup()) {
-        session->hasherTask  = VolumeBlockHasher::BuildDiffHasher(session->sharedConfig, session->sharedContext);
-    } else {
-        session->hasherTask  = VolumeBlockHasher::BuildDirectHasher(session->sharedConfig, session->sharedContext);
-    }
+    auto hasherMode = IsIncrementBackup() ? HasherForwardMode::DIFF : HasherForwardMode::DIRECT;
+    session->hasherTask  = VolumeBlockHasher::BuildHasher(session->sharedConfig, session->sharedContext, hasherMode);
     if (session->hasherTask  == nullptr) {
         ERRLOG("backup session failed to init hasher");
         return false;
@@ -206,6 +211,7 @@ void VolumeBackupTask::ThreadFunc()
         }
 
         // block the thread
+        auto counter = session->sharedContext->counter;
         while (true) {
             if (m_abort) {
                 session->Abort();
@@ -220,15 +226,13 @@ void VolumeBackupTask::ThreadFunc()
             if (session->IsTerminated())  {
                 break;
             }
-            DBGLOG("updateStatistics: bytesToReaded: %llu, bytesRead: %llu, blocksToHash: %llu, blocksHashed: %llu, bytesToWrite: %llu, bytesWritten: %llu",
-                session->sharedContext->counter->bytesToRead.load(), session->sharedContext->counter->bytesRead.load(),
-                session->sharedContext->counter->blocksToHash.load(), session->sharedContext->counter->blocksHashed.load(),
-                session->sharedContext->counter->bytesToWrite.load(), session->sharedContext->counter->bytesWritten.load());
             UpdateRunningSessionStatistics(session);
-            SaveSessionWriterBitmap(session);
+            SaveSessionCheckpoint(session);
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
+        SaveSessionHashingContext(session);
+        SaveSessionWriterBitmap(session);
         UpdateCompletedSessionStatistics(session);
     }
 
@@ -239,11 +243,7 @@ void VolumeBackupTask::ThreadFunc()
 void VolumeBackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> session) const
 {
     // checkpoint file path
-    std::string filepath = util::GetWriterBitmapFilePath(
-        m_backupConfig->outputCopyMetaDirPath,
-        session->sharedConfig->sessionOffset,
-        session->sharedConfig->sessionSize
-    );
+    std::string filepath = session->sharedConfig->writerBitmapPath;
     if (!m_backupConfig->enableCheckpoint || !native::IsFileExists(filepath)) {
         session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
         return;
@@ -258,43 +258,24 @@ void VolumeBackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> sessi
     session->sharedContext->writerBitmap = checkpointBitmap;
 }
 
-void VolumeBackupTask::SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session)
+bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> session)
 {
-    if (!m_backupConfig->enableCheckpoint) {
-        return;
+    // 1. allocate checksum table
+    auto sharedConfig = session->sharedConfig;
+    auto sharedContext = session->sharedContext;
+    uint32_t blockCount = static_cast<uint32_t>(sharedConfig->sessionSize / sharedConfig->blockSize);
+    uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
+    uint64_t prevChecksumTableSize = lastestChecksumTableSize;
+    try {
+        sharedContext->hashingContext = std::make_shared<BlockHashingContext>(
+            prevChecksumTableSize, lastestChecksumTableSize);
+    } catch (const std::exception& e) {
+        ERRLOG("failed to malloc BlockHashingContext, length: %llu, message: %s", prevChecksumTableSize, e.what());
+        return false;
     }
-    std::string filepath = util::GetWriterBitmapFilePath(
-        m_backupConfig->outputCopyMetaDirPath,
-        session->sharedConfig->sessionOffset,
-        session->sharedConfig->sessionSize
-    );
-    if (!util::SaveBitmap(filepath, *(session->sharedContext->writerBitmap))) {
-        ERRLOG("failed to save bitmap file");
-    }
-    return;
-}
 
-void VolumeBackupTask::UpdateRunningSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
-{
-    std::lock_guard<std::mutex> lock(m_statisticMutex);
-    m_currentSessionStatistics.bytesToRead = session->sharedContext->counter->bytesToRead;
-    m_currentSessionStatistics.bytesRead = session->sharedContext->counter->bytesRead;
-    m_currentSessionStatistics.blocksToHash = session->sharedContext->counter->blocksToHash;
-    m_currentSessionStatistics.blocksHashed = session->sharedContext->counter->blocksHashed;
-    m_currentSessionStatistics.bytesToWrite = session->sharedContext->counter->bytesToWrite;
-    m_currentSessionStatistics.bytesWritten = session->sharedContext->counter->bytesWritten;
-}
-
-void VolumeBackupTask::UpdateCompletedSessionStatistics(std::shared_ptr<VolumeTaskSession> session)
-{
-    std::lock_guard<std::mutex> lock(m_statisticMutex);
-    m_completedSessionStatistics.bytesToRead += session->sharedContext->counter->bytesToRead;
-    m_completedSessionStatistics.bytesRead += session->sharedContext->counter->bytesRead;
-    m_completedSessionStatistics.blocksToHash += session->sharedContext->counter->blocksToHash;
-    m_completedSessionStatistics.blocksHashed += session->sharedContext->counter->blocksHashed;
-    m_completedSessionStatistics.bytesToWrite += session->sharedContext->counter->bytesToWrite;
-    m_completedSessionStatistics.bytesWritten += session->sharedContext->counter->bytesWritten;
-    memset(&m_currentSessionStatistics, 0, sizeof(TaskStatistics));
+    // TODO:: foward no need to malloc
+    return true;
 }
 
 bool VolumeBackupTask::SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta)
