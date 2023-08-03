@@ -60,6 +60,7 @@ struct VOLUMEPROTECT_API BlockHashingContext {
     uint64_t    previousSize    { 0 };
 
     BlockHashingContext(uint64_t pSize, uint64_t lSize);
+    BlockHashingContext(uint64_t lSize);
     ~BlockHashingContext();
 };
 
@@ -108,12 +109,33 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
     // immutable fields (for backup)
     std::string     lastestChecksumBinPath;
     std::string     prevChecksumBinPath;
-    std::string     writerBitmapFilePath;
+    std::string     checkpointFilePath;
+};
+
+
+/**
+ * @brief snapshot of bitmap of a task
+ */
+struct VOLUMEPROTECT_API CheckpointSnapshot {
+    uint64_t    bitmapBufferBytesLength;     // mark single buffer length in bytes, all bitmap buffer share same length
+    // buffer that only needed during backup (all padding to zero during restore)
+    uint8_t*    hashedBitmapBuffer;     // mark blocks hashed, corresponding checksum save in checksum binary file
+    uint8_t*    toWriteBitmapBuffer;    // mark blocks need to be written
+    // buffer that both needed during backup & restore
+    uint8_t*    writtenBitmapBuffer;    // mark blocks written to disk/copyfile
+
+    CheckpointSnapshot(uint64_t length);
+    ~CheckpointSnapshot();
+    static std::shared_ptr<CheckpointSnapshot> LoadFrom(const std::string& filepath);
+    bool SaveTo(const std::string& filepath) const;
 };
 
 struct VOLUMEPROTECT_API VolumeTaskSharedContext {
-    // shared container context
-    std::shared_ptr<Bitmap>                             writerBitmap            { nullptr };
+    // bitmap to implement checkpoint
+    std::shared_ptr<Bitmap>                             hashedBitmap            { nullptr };
+    std::shared_ptr<Bitmap>                             ToWriteBitmap           { nullptr };
+    std::shared_ptr<Bitmap>                             writtenBitmap           { nullptr };
+
     std::shared_ptr<SessionCounter>                     counter                 { nullptr };
     std::shared_ptr<VolumeBlockAllocator>               allocator               { nullptr };
     std::shared_ptr<BlockingQueue<VolumeConsumeBlock>>  hashingQueue            { nullptr };
@@ -130,9 +152,11 @@ struct VOLUMEPROTECT_API VolumeTaskSession {
     std::shared_ptr<VolumeTaskSharedContext>    sharedContext { nullptr };
     std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig  { nullptr };
 
-    bool IsTerminated() const;
-    bool IsFailed() const;
-    void Abort() const;
+    uint64_t    TotalBlocks() const;
+    uint64_t    MaxIndex() const;
+    bool        IsTerminated() const;
+    bool        IsFailed() const;
+    void        Abort() const;
 };
 
 /**
@@ -157,13 +181,21 @@ protected:
  *  "enableCheckpoint" will only decide if to restore the task if process is restarted.
  */
 class VolumeTaskCheckpointTrait {
+    using SessionPtr = std::shared_ptr<VolumeTaskSession>;
 protected:
-    void SaveSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const;
-    void SaveSessionHashingContext(std::shared_ptr<VolumeTaskSession> session) const;
-    void SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session) const;
-
-    bool IsSessionRestarted() const;
-    void RestoreCheckpoint() const;
+    // refresh and save checkpoint
+    void RefreshSessionCheckpoint(SessionPtr session) const;
+    bool FlushSessionLatestHashingTable(SessionPtr session) const;
+    bool FlushSessionWriter(SessionPtr session) const;
+    // common utils
+    bool IsSessionRestarted(SessionPtr session) const;
+    bool IsCheckpointEnabled(SessionPtr session) const;
+    std::shared_ptr<CheckpointSnapshot> TakeSessionCheckpointSnapshot(SessionPtr session) const;
+    // read and restore checkpoints
+    void VolumeTaskCheckpointTrait::RestoreSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const;
+    bool VolumeTaskCheckpointTrait::RestoreSessionLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
+    bool VolumeTaskCheckpointTrait::RestoreSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const;
+    void VolumeTaskCheckpointTrait::RestoreSessionCounter(std::shared_ptr<VolumeTaskSession> session) const;
 };
 }
 #endif

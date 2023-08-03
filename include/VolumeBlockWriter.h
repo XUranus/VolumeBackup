@@ -49,6 +49,8 @@ public:
 
     VolumeBlockWriter(const VolumeBlockWriterParam& param);
 
+    bool Flush();
+
 private:
     void MainThread();
 

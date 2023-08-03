@@ -96,6 +96,11 @@ bool VolumeBlockWriter::Start()
     return true;
 }
 
+bool VolumeBlockWriter::Flush()
+{
+    m_dataWriter->Flush();
+}
+
 VolumeBlockWriter::~VolumeBlockWriter()
 {
     if (m_writerThread.joinable()) {

@@ -192,7 +192,7 @@ void VolumeRestoreTask::ThreadFunc()
                 break;
             }
             UpdateRunningSessionStatistics(session);
-            SaveSessionCheckpoint(session);
+            RefreshSessionCheckpoint(session);
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");

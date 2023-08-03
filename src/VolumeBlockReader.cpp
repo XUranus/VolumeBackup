@@ -149,7 +149,7 @@ void VolumeBlockReader::MainThread()
     native::ErrCodeType errorCode = 0;
 
     // read from currentOffset
-    m_sharedContext->counter->bytesToRead += bytesRemain;
+    m_sharedContext->counter->bytesToRead = bytesRemain;
     DBGLOG("reader start, index: %llu, src offset: %llu , length: %llu", index, m_sourceOffset, m_sourceLength);
 
     while (true) {

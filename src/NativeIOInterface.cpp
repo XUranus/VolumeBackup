@@ -215,6 +215,23 @@ bool SystemDataWriter::Ok()
     return IsIOHandleValid(m_handle);
 }
 
+bool SystemDataWriter::Flush()
+{
+#ifdef __linux__
+    if (!Ok()) {
+        return false;
+    }
+    ::fsync(m_handle);
+    return true;
+#endif
+#ifdef _WIN32
+    if (!Ok()) {
+        return false;
+    }
+    return ::FlushFileBuffers(m_handle);
+#endif
+}
+
 ErrCodeType SystemDataWriter::Error()
 {
     return LastErrorCode();
@@ -352,6 +369,7 @@ uint8_t* native::ReadBinaryBuffer(const std::string& filepath, uint64_t length)
             return nullptr;
         }
         uint8_t* buffer = new (std::nothrow) uint8_t[length];
+        memset(buffer, 0, sizeof(uint8_t) * length)
         if (buffer == nullptr) {
             ERRLOG("failed to malloc buffer, size = %llu", length);
             binFile.close();

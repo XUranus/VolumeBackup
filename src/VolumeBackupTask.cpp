@@ -111,7 +111,7 @@ bool VolumeBackupTask::Prepare()
         session.sharedConfig->lastestChecksumBinPath = lastestChecksumBinPath;
         session.sharedConfig->prevChecksumBinPath = prevChecksumBinPath;
         session.sharedConfig->copyFilePath = copyFilePath;
-        session.sharedConfig->writerBitmapFilePath = writerBitmapPath;
+        session.sharedConfig->checkpointFilePath = writerBitmapPath;
 
         volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
@@ -227,11 +227,11 @@ void VolumeBackupTask::ThreadFunc()
                 break;
             }
             UpdateRunningSessionStatistics(session);
-            SaveSessionCheckpoint(session);
+            RefreshSessionCheckpoint(session);
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
-        SaveSessionHashingContext(session);
+        FlushSessionLatestHashingTable(session);
         SaveSessionWriterBitmap(session);
         UpdateCompletedSessionStatistics(session);
     }
@@ -258,7 +258,7 @@ void VolumeBackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> sessi
     session->sharedContext->writerBitmap = checkpointBitmap;
 }
 
-bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> session)
+bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> session) const
 {
     // 1. allocate checksum table
     auto sharedConfig = session->sharedConfig;
@@ -267,14 +267,26 @@ bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> ses
     uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
     uint64_t prevChecksumTableSize = lastestChecksumTableSize;
     try {
-        sharedContext->hashingContext = std::make_shared<BlockHashingContext>(
-            prevChecksumTableSize, lastestChecksumTableSize);
+        sharedContext->hashingContext = IsIncrementBackup() ?
+            std::make_shared<BlockHashingContext>(prevChecksumTableSize, lastestChecksumTableSize)
+            : std::make_shared<BlockHashingContext>(lastestChecksumTableSize);
     } catch (const std::exception& e) {
-        ERRLOG("failed to malloc BlockHashingContext, length: %llu, message: %s", prevChecksumTableSize, e.what());
+        ERRLOG("failed to malloc BlockHashingContext, length: %llu, message: %s", lastestChecksumTableSize, e.what());
         return false;
     }
+    // 2. load previous checksum table from file if increment backup
+    if (IsIncrementBackup()) {
+        uint8_t* buffer = native::ReadBinaryBuffer(session->sharedConfig->prevChecksumBinPath, prevChecksumTableSize);
+        if (buffer == nullptr) {
+            ERRLOG("failed to read previous checksum from %s", session->sharedConfig->prevChecksumBinPath.c_str());
+            return false;
+        }
+        memcpy(session->sharedContext->hashingContext->previousTable, buffer, sizeof(uint8_t) * prevChecksumTableSize);
+        delete[] buffer;
+        buffer = nullptr;
+    }
+    // 3. check latest checksum file and try to load it
 
-    // TODO:: foward no need to malloc
     return true;
 }
 

@@ -63,6 +63,7 @@ class VOLUMEPROTECT_API DataWriter {
 public:
     virtual bool Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) = 0;
     virtual bool Ok() = 0;
+    virtual bool Flush() = 0;
     virtual ErrCodeType Error() = 0;
     virtual ~DataWriter() = default;
 };
@@ -89,6 +90,7 @@ public:
     ~SystemDataWriter();
     bool Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
+    bool Flush() override;
     ErrCodeType Error() override;
 
 private:
