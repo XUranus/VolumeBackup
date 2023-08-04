@@ -78,6 +78,7 @@ public:
     uint64_t FirstIndexUnset() const;
     uint64_t Capacity() const;      // capacity in bytes
     uint64_t MaxIndex() const;
+    uint64_t TotalSetCount() const;
     const uint8_t* Ptr() const;
 private:
     uint8_t*    m_table     { nullptr };
@@ -120,7 +121,7 @@ struct VOLUMEPROTECT_API CheckpointSnapshot {
     uint64_t    bitmapBufferBytesLength;     // mark single buffer length in bytes, all bitmap buffer share same length
     // buffer that only needed during backup (all padding to zero during restore)
     uint8_t*    hashedBitmapBuffer;     // mark blocks hashed, corresponding checksum save in checksum binary file
-    uint8_t*    toWriteBitmapBuffer;    // mark blocks need to be written
+    uint8_t*    processedBitmapBuffer;    // mark blocks need to be written
     // buffer that both needed during backup & restore
     uint8_t*    writtenBitmapBuffer;    // mark blocks written to disk/copyfile
 
@@ -133,7 +134,7 @@ struct VOLUMEPROTECT_API CheckpointSnapshot {
 struct VOLUMEPROTECT_API VolumeTaskSharedContext {
     // bitmap to implement checkpoint
     std::shared_ptr<Bitmap>                             hashedBitmap            { nullptr };
-    std::shared_ptr<Bitmap>                             ToWriteBitmap           { nullptr };
+    std::shared_ptr<Bitmap>                             processedBitmap         { nullptr };
     std::shared_ptr<Bitmap>                             writtenBitmap           { nullptr };
 
     std::shared_ptr<SessionCounter>                     counter                 { nullptr };
@@ -187,9 +188,11 @@ protected:
     void RefreshSessionCheckpoint(SessionPtr session) const;
     bool FlushSessionLatestHashingTable(SessionPtr session) const;
     bool FlushSessionWriter(SessionPtr session) const;
+    bool FlushSessionBitmap(SessionPtr session) const;
     // common utils
     bool IsSessionRestarted(SessionPtr session) const;
     bool IsCheckpointEnabled(SessionPtr session) const;
+    void InitSessionBitmap(SessionPtr session) const;
     std::shared_ptr<CheckpointSnapshot> TakeSessionCheckpointSnapshot(SessionPtr session) const;
     // read and restore checkpoints
     void VolumeTaskCheckpointTrait::RestoreSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const;

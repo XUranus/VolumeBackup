@@ -154,6 +154,15 @@ uint64_t Bitmap::MaxIndex() const
     return m_capacity * BITS_PER_UINT8 - 1;
 }
 
+uint64_t Bitmap::TotalSetCount() const
+{
+    uint64_t totalSetCount = 0;
+    for (uint64_t index = 0; index < m_capacity * BITS_PER_UINT8; ++index) {
+        totalSetCount += Test(index) ? 1 : 0;
+    }
+    return totalSetCount;
+}
+
 const uint8_t* Bitmap::Ptr() const
 {
     return m_table;
@@ -261,10 +270,10 @@ CheckpointSnapshot::CheckpointSnapshot(uint64_t length)
     : bitmapBufferBytesLength(length)
 {
     hashedBitmapBuffer = new uint8_t[length];
-    toWriteBitmapBuffer = new uint8_t[length];
+    processedBitmapBuffer = new uint8_t[length];
     writtenBitmapBuffer = new uint8_t[length];
     memset(hashedBitmapBuffer, 0, sizeof(uint8_t) * length);
-    memset(toWriteBitmapBuffer, 0, sizeof(uint8_t) * length);
+    memset(processedBitmapBuffer, 0, sizeof(uint8_t) * length);
     memset(writtenBitmapBuffer, 0, sizeof(uint8_t) * length);
 }
 
@@ -274,9 +283,9 @@ CheckpointSnapshot::~CheckpointSnapshot()
         delete[] hashedBitmapBuffer;
         hashedBitmapBuffer = nullptr;
     }
-    if (toWriteBitmapBuffer != nullptr) {
-        delete[] toWriteBitmapBuffer;
-        toWriteBitmapBuffer = nullptr;
+    if (processedBitmapBuffer != nullptr) {
+        delete[] processedBitmapBuffer;
+        processedBitmapBuffer = nullptr;
     }
     if (writtenBitmapBuffer != nullptr) {
         delete[] writtenBitmapBuffer;
@@ -301,7 +310,7 @@ std::shared_ptr<CheckpointSnapshot> CheckpointSnapshot::LoadFrom(const std::stri
     uint64_t offset = 0;
     memcpy(checkpointSnapshot->hashedBitmapBuffer, buffer + offset, sizeof(uint8_t) * bitmapBytes);
     offset += bitmapBytes;
-    memcpy(checkpointSnapshot->toWriteBitmapBuffer, buffer + offset, sizeof(uint8_t) * bitmapBytes);
+    memcpy(checkpointSnapshot->processedBitmapBuffer, buffer + offset, sizeof(uint8_t) * bitmapBytes);
     offset += bitmapBytes;
     memcpy(checkpointSnapshot->writtenBitmapBuffer, buffer + offset , sizeof(uint8_t) * bitmapBytes);
     delete[] buffer;
@@ -315,7 +324,7 @@ bool CheckpointSnapshot::SaveTo(const std::string& filepath) const
     uint64_t offset = 0;
     memcpy(buffer + offset, hashedBitmapBuffer, bitmapBufferBytesLength);
     offset += bitmapBufferBytesLength;
-    memcpy(buffer + offset, toWriteBitmapBuffer, bitmapBufferBytesLength);
+    memcpy(buffer + offset, processedBitmapBuffer, bitmapBufferBytesLength);
     offset += bitmapBufferBytesLength;
     memcpy(buffer + offset, writtenBitmapBuffer, bitmapBufferBytesLength);
     bool ret = native::WriteBinaryBuffer(filepath, buffer, totalSize);
@@ -338,16 +347,34 @@ bool VolumeTaskCheckpointTrait::IsCheckpointEnabled(std::shared_ptr<VolumeTaskSe
     return session->sharedConfig->checkpointEnabled;
 }
 
+void VolumeTaskCheckpointTrait::InitSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const
+{
+    // // checkpoint file path
+    // std::string filepath = session->sharedConfig->writerBitmapPath;
+    // if (!m_backupConfig->enableCheckpoint || !native::IsFileExists(filepath)) {
+    //     session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+    //     return;
+    // }
+    // std::shared_ptr<Bitmap> checkpointBitmap = util::ReadBitmap(filepath);
+    // if (checkpointBitmap == nullptr) {
+    //     WARNLOG("failed to read checkpoint writer bitmap from %s, fallback to reinit", filepath.c_str());
+    //     session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+    //     return;
+    // }
+    // WARNLOG("checkpoint writer bitmap found: %s , max index = %llu", filepath.c_str(), checkpointBitmap->MaxIndex());
+    // session->sharedContext->writerBitmap = checkpointBitmap;
+}
+
 std::shared_ptr<CheckpointSnapshot> VolumeTaskCheckpointTrait::TakeSessionCheckpointSnapshot(
     std::shared_ptr<VolumeTaskSession> session) const
 {
     auto sharedContext = session->sharedContext;
-    assert(sharedContext->hashedBitmap->Capacity() == sharedContext->ToWriteBitmap->Capacity());
+    assert(sharedContext->hashedBitmap->Capacity() == sharedContext->processed->Capacity());
     assert(sharedContext->hashedBitmap->Capacity() == sharedContext->writtenBitmap->Capacity());
     uint64_t length = sharedContext->writtenBitmap->Capacity();
     auto checkpointSnapshot = std::make_shared<CheckpointSnapshot>(length);
     memcpy(checkpointSnapshot->hashedBitmapBuffer, sharedContext->hashedBitmap->Ptr(), length);
-    memcpy(checkpointSnapshot->toWriteBitmapBuffer, sharedContext->ToWriteBitmap->Ptr(), length);
+    memcpy(checkpointSnapshot->processedBitmapBuffer, sharedContext->processed->Ptr(), length);
     memcpy(checkpointSnapshot->writtenBitmapBuffer, sharedContext->writtenBitmap->Ptr(), length);
     return checkpointSnapshot;
 }
@@ -369,12 +396,16 @@ void VolumeTaskCheckpointTrait::RefreshSessionCheckpoint(std::shared_ptr<VolumeT
         ERRLOG("failed to flush writer, cannot refresh checkpoint");
         return;
     }
+    if (!FlushSessionBitmap(session)) {
+        ERRLOG("failed to flush sessionn bitmap");
+        return;
+    }
     std::string checkpointFilePath = session->sharedConfig->checkpointFilePath;
     if (!checkpointSnapshot->SaveTo(checkpointFilePath)) {
         ERRLOG("failed to save checkpoint snapshot file to %s", checkpointFilePath.c_str());
         return;
     }
-    DBGLOG("checkpoint snapshot saved to %s", checkpointFilePath.c_str());
+    DBGLOG("checkpoint snapshot saved to %s success", checkpointFilePath.c_str());
 }
 
 bool VolumeTaskCheckpointTrait::FlushSessionLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const
@@ -395,6 +426,17 @@ bool VolumeTaskCheckpointTrait::FlushSessionLatestHashingTable(std::shared_ptr<V
 bool VolumeTaskCheckpointTrait::FlushSessionWriter(std::shared_ptr<VolumeTaskSession> session) const
 {
     return session->writerTask->Flush();
+}
+
+bool VolumeTaskCheckpointTrait::FlushSessionBitmap(SessionPtr session) const
+{
+    auto checkpointSnapshot = TakeSessionCheckpointSnapshot(session);
+    std::string checkpointFilePath = session->sharedConfig->checkpointFilePath;
+    if (!checkpointSnapshot->SaveTo(checkpointFilePath)) {
+        ERRLOG("failed to save bitmap file to %s", checkpointFilePath.c_str());
+        return false;
+    }
+    return true;
 }
 
 // Restore section ...
@@ -455,14 +497,14 @@ bool VolumeTaskCheckpointTrait::RestoreSessionBitmap(std::shared_ptr<VolumeTaskS
         checkpointSnapshot.reset();
         return false;
     }
-    session->sharedContext->ToWriteBitmap = std::make_shared<Bitmap>(
-        checkpointSnapshot->toWriteBitmapBuffer , checkpointSnapshot->bitmapBufferBytesLength);
+    session->sharedContext->processedBitmap = std::make_shared<Bitmap>(
+        checkpointSnapshot->processedBitmapBuffer , checkpointSnapshot->bitmapBufferBytesLength);
     session->sharedContext->hashedBitmap = std::make_shared<Bitmap>(
         checkpointSnapshot->hashedBitmapBuffer , checkpointSnapshot->bitmapBufferBytesLength);
     session->sharedContext->writtenBitmap = std::make_shared<Bitmap>(
         checkpointSnapshot->writtenBitmapBuffer , checkpointSnapshot->bitmapBufferBytesLength);
     checkpointSnapshot->writtenBitmapBuffer = nullptr;
-    checkpointSnapshot->toWriteBitmapBuffer = nullptr;
+    checkpointSnapshot->processedBitmapBuffer = nullptr;
     checkpointSnapshot->hashedBitmapBuffer = nullptr;
     DBGLOG("restore session bitmap from %s success", checkpointFilePath.c_str());
     return true;
@@ -471,30 +513,34 @@ bool VolumeTaskCheckpointTrait::RestoreSessionBitmap(std::shared_ptr<VolumeTaskS
 // restore session counter from writer bitmap
 void VolumeTaskCheckpointTrait::RestoreSessionCounter(std::shared_ptr<VolumeTaskSession> session) const
 {
-    static_assert(false);
-    // auto counter = session->sharedContext->counter;
-    // uint64_t firstIndexUnset = session->sharedContext->writerBitmap->FirstIndexUnset();
-    // uint64_t sessionSize = session->sharedConfig->sessionSize;
-    
-    // if (firstIndexUnset > session->MaxIndex()) {
-    //     // session has completed, all data written
-    //     counter->bytesToRead = sessionSize;
-    //     counter->bytesRead = sessionSize;
-    //     counter->bytesToWrite = sessionSize;
-    //     counter->bytesWritten = sessionSize;
-    //     counter->blocksToHash = session->TotalBlocks();
-    //     counter->blocksHashed = session->TotalBlocks();
-    //     // TODO::session should return ahead
-    //     return;
-    // }
-    // // session partial completed
-    // uint64_t bytesCompleted = firstIndexUnset * session->sharedConfig->blockSize;
-    // uint64_t blocksCompleted = firstIndexUnset;
-    // counter->bytesToRead = sessionSize; // TODO:: should be init out of reader
-    // counter->bytesRead = bytesCompleted;
+    auto counter = session->sharedContext->counter;
+    //uint64_t firstIndexUnset = session->sharedContext->writtenBitmap->FirstIndexUnset();
+    uint64_t sessionSize = session->sharedConfig->sessionSize;
+    uint64_t blockSize = session->sharedConfig->blockSize;
+    uint64_t sessionBlocksCount = session->TotalBlocks();
 
-    // counter->bytesToWrite = bytesCompleted;
-    // counter->bytesWritten = bytesCompleted;
-    // counter->blocksToHash = blocksCompleted;
-    // counter->blocksHashed = blocksCompleted;
+    // restore counter for session partial completed
+    counter->bytesToRead = sessionSize;
+
+    uint64_t processedBitmapTotalSetCount = session->sharedContext->processedBitmap->TotalSetCount();
+    counter->bytesRead =
+        (processedBitmapTotalSetCount == sessionBlocksCount) ? sessionSize : (processedBitmapTotalSetCount * blockSize);
+
+    counter->bytesToWrite =
+        (processedBitmapTotalSetCount == sessionBlocksCount) ? sessionSize : (processedBitmapTotalSetCount * blockSize);
+    counter->bytesWritten = session->sharedContext->writtenBitmap->TotalSetCount();
+
+    uint64_t writtenBitmapTotalSetCount = session->sharedContext->writtenBitmap->TotalSetCount();
+    counter->bytesWritten =
+        (writtenBitmapTotalSetCount == sessionBlocksCount) ? sessionSize : (writtenBitmapTotalSetCount * blockSize);
+
+    counter->blocksToHash = session->sharedConfig->hasherEnabled ? session->TotalBlocks() : 0;
+    counter->blocksHashed = session->sharedContext->hashedBitmap->TotalSetCount();
+
+    DBGLOG("restore session counter : bytesToReaded: %llu, bytesRead: %llu, "
+        "blocksToHash: %llu, blocksHashed: %llu, "
+        "bytesToWrite: %llu, bytesWritten: %llu",
+        counter->bytesToRead.load(), counter->bytesRead.load(),
+        counter->blocksToHash.load(), counter->blocksHashed.load(),
+        counter->bytesToWrite.load(), counter->bytesWritten.load());
 }

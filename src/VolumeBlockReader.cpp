@@ -122,9 +122,9 @@ uint64_t VolumeBlockReader::InitCurrentOffset() const
 {
     uint64_t currentOffset = m_sourceOffset;
     if (m_sharedConfig->checkpointEnabled) {
-        uint64_t index = m_sharedContext->writerBitmap->FirstIndexUnset();
+        uint64_t index = m_sharedContext->processedBitmap->FirstIndexUnset();
         currentOffset += index * m_sharedConfig->blockSize;
-        INFOLOG("init current offset to %llu from bitmap for continuation", currentOffset);
+        INFOLOG("init current offset to %llu from ProcessedBitmap for continuation", currentOffset);
     }
     return currentOffset;
 }
@@ -133,8 +133,8 @@ uint64_t VolumeBlockReader::InitIndex() const
 {
     uint64_t index = 0;
     if (m_sharedConfig->checkpointEnabled) {
-        index = m_sharedContext->writerBitmap->FirstIndexUnset();
-        INFOLOG("init index to %llu from bitmap for continuation", index);
+        index = m_sharedContext->processedBitmap->FirstIndexUnset();
+        INFOLOG("init index to %llu from ProcessedBitmap for continuation", index);
     }
     return index;
 }

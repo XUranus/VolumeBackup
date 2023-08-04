@@ -171,7 +171,12 @@ void VolumeRestoreTask::ThreadFunc()
         std::shared_ptr<VolumeTaskSession> session = std::make_shared<VolumeTaskSession>(m_sessionQueue.front());
         m_sessionQueue.pop();
 
-        if (!InitRestoreSessionContext(session) || !StartRestoreSession(session)) {
+        if (!InitRestoreSessionContext(session)) {
+            m_status = TaskStatus::FAILED;
+            return;
+        }
+        RestoreSessionCheckpoint(session);
+        if (!StartRestoreSession(session)) {
             m_status = TaskStatus::FAILED;
             return;
         }
@@ -196,7 +201,9 @@ void VolumeRestoreTask::ThreadFunc()
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
-        SaveSessionWriterBitmap(session);
+        FlushSessionLatestHashingTable(session);
+        FlushSessionWriter(session);
+        FlushSessionBitmap(session);
         UpdateCompletedSessionStatistics(session);
     }
 

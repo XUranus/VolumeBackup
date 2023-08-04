@@ -138,18 +138,19 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
         ERRLOG("failed to init hashing context");
         return false;
     }
-    InitWriterBitmap(session);
-    // TODO:: check checkpoint and reset context
+    InitSessionBitmap(session);
 
+    // 2. restore checkpoint if restarted
+    RestoreSessionCheckpoint(session);
 
-    // 2. check and init reader
+    // 3. check and init reader
     session->readerTask = VolumeBlockReader::BuildVolumeReader(session->sharedConfig, session->sharedContext);
     if (session->readerTask == nullptr) {
         ERRLOG("backup session failed to init reader");
         return false;
     }
 
-    // 3. check and init hasher
+    // 4. check and init hasher
     auto hasherMode = IsIncrementBackup() ? HasherForwardMode::DIFF : HasherForwardMode::DIRECT;
     session->hasherTask  = VolumeBlockHasher::BuildHasher(session->sharedConfig, session->sharedContext, hasherMode);
     if (session->hasherTask  == nullptr) {
@@ -157,7 +158,7 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
         return false;
     }
 
-    // 4. check and init writer
+    // 5. check and init writer
     session->writerTask  = VolumeBlockWriter::BuildCopyWriter(session->sharedConfig, session->sharedContext);
     if (session->writerTask  == nullptr) {
         ERRLOG("backup session failed to init writer");
@@ -200,16 +201,19 @@ void VolumeBackupTask::ThreadFunc()
             m_status = TaskStatus::ABORTED;
             return;
         }
-
         // pop a session from session queue to init a new session
         std::shared_ptr<VolumeTaskSession> session = std::make_shared<VolumeTaskSession>(m_sessionQueue.front());
         m_sessionQueue.pop();
 
-        if (!InitBackupSessionContext(session) || !StartBackupSession(session)) {
+        if (!InitBackupSessionContext(session)) {
             m_status = TaskStatus::FAILED;
             return;
         }
-
+        RestoreSessionCheckpoint(session);
+        if (!StartBackupSession(session)) {
+            m_status = TaskStatus::FAILED;
+            return;
+        }
         // block the thread
         auto counter = session->sharedContext->counter;
         while (true) {
@@ -232,30 +236,12 @@ void VolumeBackupTask::ThreadFunc()
         }
         DBGLOG("session complete successfully");
         FlushSessionLatestHashingTable(session);
-        SaveSessionWriterBitmap(session);
+        FlushSessionWriter(session);
+        FlushSessionBitmap(session);
         UpdateCompletedSessionStatistics(session);
     }
-
     m_status = TaskStatus::SUCCEED;
     return;
-}
-
-void VolumeBackupTask::InitWriterBitmap(std::shared_ptr<VolumeTaskSession> session) const
-{
-    // checkpoint file path
-    std::string filepath = session->sharedConfig->writerBitmapPath;
-    if (!m_backupConfig->enableCheckpoint || !native::IsFileExists(filepath)) {
-        session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
-        return;
-    }
-    std::shared_ptr<Bitmap> checkpointBitmap = util::ReadBitmap(filepath);
-    if (checkpointBitmap == nullptr) {
-        WARNLOG("failed to read checkpoint writer bitmap from %s, fallback to reinit", filepath.c_str());
-        session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
-        return;
-    }
-    WARNLOG("checkpoint writer bitmap found: %s , max index = %llu", filepath.c_str(), checkpointBitmap->MaxIndex());
-    session->sharedContext->writerBitmap = checkpointBitmap;
 }
 
 bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> session) const

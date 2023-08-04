@@ -100,18 +100,3 @@ bool util::ReadVolumeCopyMeta(
     }
     return true;
 }
-
-// bool util::SaveBitmap(const std::string& filepath, const Bitmap& bitmap)
-// {
-//     return native::WriteBinaryBuffer(filepath, bitmap.Ptr(), bitmap.Capacity());
-// }
-
-// std::shared_ptr<Bitmap> util::ReadBitmap(const std::string& filepath)
-// {
-//     if (!native::IsFileExists(filepath)) {
-//         ERRLOG("bitmap file %s not exists", filepath.c_str());
-//     }
-//     uint64_t size = native::GetFileSize(filepath);
-//     uint8_t* buffer = native::ReadBinaryBuffer(filepath, size);
-//     return (buffer != nullptr) ? std::make_shared<Bitmap>(buffer, size) : nullptr;
-// }

@@ -369,7 +369,7 @@ uint8_t* native::ReadBinaryBuffer(const std::string& filepath, uint64_t length)
             return nullptr;
         }
         uint8_t* buffer = new (std::nothrow) uint8_t[length];
-        memset(buffer, 0, sizeof(uint8_t) * length)
+        memset(buffer, 0, sizeof(uint8_t) * length);
         if (buffer == nullptr) {
             ERRLOG("failed to malloc buffer, size = %llu", length);
             binFile.close();
