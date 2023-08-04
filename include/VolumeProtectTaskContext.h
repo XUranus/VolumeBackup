@@ -195,10 +195,10 @@ protected:
     void InitSessionBitmap(SessionPtr session) const;
     std::shared_ptr<CheckpointSnapshot> TakeSessionCheckpointSnapshot(SessionPtr session) const;
     // read and restore checkpoints
-    void VolumeTaskCheckpointTrait::RestoreSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const;
-    bool VolumeTaskCheckpointTrait::RestoreSessionLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
-    bool VolumeTaskCheckpointTrait::RestoreSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const;
-    void VolumeTaskCheckpointTrait::RestoreSessionCounter(std::shared_ptr<VolumeTaskSession> session) const;
+    void RestoreSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const;
+    bool RestoreSessionLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
+    bool RestoreSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const;
+    void RestoreSessionCounter(std::shared_ptr<VolumeTaskSession> session) const;
 };
 }
 #endif

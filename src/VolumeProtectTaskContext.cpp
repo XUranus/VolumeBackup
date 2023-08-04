@@ -349,32 +349,21 @@ bool VolumeTaskCheckpointTrait::IsCheckpointEnabled(std::shared_ptr<VolumeTaskSe
 
 void VolumeTaskCheckpointTrait::InitSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const
 {
-    // // checkpoint file path
-    // std::string filepath = session->sharedConfig->writerBitmapPath;
-    // if (!m_backupConfig->enableCheckpoint || !native::IsFileExists(filepath)) {
-    //     session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
-    //     return;
-    // }
-    // std::shared_ptr<Bitmap> checkpointBitmap = util::ReadBitmap(filepath);
-    // if (checkpointBitmap == nullptr) {
-    //     WARNLOG("failed to read checkpoint writer bitmap from %s, fallback to reinit", filepath.c_str());
-    //     session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
-    //     return;
-    // }
-    // WARNLOG("checkpoint writer bitmap found: %s , max index = %llu", filepath.c_str(), checkpointBitmap->MaxIndex());
-    // session->sharedContext->writerBitmap = checkpointBitmap;
+    session->sharedContext->hashedBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+    session->sharedContext->processedBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+    session->sharedContext->writtenBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
 }
 
 std::shared_ptr<CheckpointSnapshot> VolumeTaskCheckpointTrait::TakeSessionCheckpointSnapshot(
     std::shared_ptr<VolumeTaskSession> session) const
 {
     auto sharedContext = session->sharedContext;
-    assert(sharedContext->hashedBitmap->Capacity() == sharedContext->processed->Capacity());
+    assert(sharedContext->hashedBitmap->Capacity() == sharedContext->processedBitmap->Capacity());
     assert(sharedContext->hashedBitmap->Capacity() == sharedContext->writtenBitmap->Capacity());
     uint64_t length = sharedContext->writtenBitmap->Capacity();
     auto checkpointSnapshot = std::make_shared<CheckpointSnapshot>(length);
     memcpy(checkpointSnapshot->hashedBitmapBuffer, sharedContext->hashedBitmap->Ptr(), length);
-    memcpy(checkpointSnapshot->processedBitmapBuffer, sharedContext->processed->Ptr(), length);
+    memcpy(checkpointSnapshot->processedBitmapBuffer, sharedContext->processedBitmap->Ptr(), length);
     memcpy(checkpointSnapshot->writtenBitmapBuffer, sharedContext->writtenBitmap->Ptr(), length);
     return checkpointSnapshot;
 }

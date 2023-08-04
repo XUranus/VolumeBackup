@@ -91,7 +91,7 @@ bool VolumeBlockReader::Start()
         m_status = TaskStatus::FAILED;
         return false;
     }
-    m_sharedContext->counter->bytesToRead = m_sourceLength;
+    m_sharedContext->counter->bytesToRead = m_sharedConfig->sessionSize;
     m_readerThread = std::thread(&VolumeBlockReader::MainThread, this);
     return true;
 }
@@ -133,33 +133,16 @@ uint64_t VolumeBlockReader::InitIndex() const
     return index;
 }
 
-uint64_t VolumeBlockReader::GetCurrentOffset() const
-{
-    uint64_t offset = m_currentIndex * m_sharedConfig->blockSize;
-    return m_sourceOffset + offset;
-}
-
-uint64_t VolumeBlockReader::GetBytesRemain() const
-{
-    return m_sourceOffset + m_sourceLength
-}
 void VolumeBlockReader::MainThread()
 {
     // Open the device file for reading
-    uint64_t index = InitIndex(); // used to locate position of a block within a session
-    uint64_t numBlocks = m_sharedConfig->sessionSize / m_sharedConfig->blockSize;
+    m_currentIndex = InitIndex(); // used to locate position of a block within a session
 
     // read from currentOffset
-    DBGLOG("reader start, index: %llu, src offset: %llu , length: %llu", index, m_sourceOffset, m_sourceLength);
+    DBGLOG("reader start from index: %llu/%llu, src offset: %llu , length: %llu", m_currentIndex, m_maxIndex, m_sourceOffset, m_sharedConfig->sessionSize);
 
     while (true) {
-        uint64_t currentOffset = IndexToOffset(index);
-        uint64_t bytesRemain = m_sourceLength;
-        uint32_t nBytesToRead = 0;
-        
-
-        bytesRemain =  m_sourceOffset + m_sourceLength - currentOffset;
-        DBGLOG("thread check, current offset %llu, remain: %llu", currentOffset, bytesRemain);
+        DBGLOG("reader thread check, index %llu/%llu", m_currentIndex, m_maxIndex);
         if (IsReadCompleted()) { // read completed
             m_status = TaskStatus::SUCCEED;
             INFOLOG("reader read completed successfully");
@@ -181,16 +164,15 @@ void VolumeBlockReader::MainThread()
             m_status = TaskStatus::FAILED;
             break;
         }
-        nBytesToRead = static_cast<uint32_t>(Min(bytesRemain, static_cast<uint64_t>(m_sharedConfig->blockSize)));
-        if (!ReadBlock()) {
+        uint32_t nBytesReaded = 0;
+        if (!ReadBlock(buffer, nBytesReaded)) {
             m_status = TaskStatus::FAILED;
             break;
         }
         // push readed block to queue (convert to reader offset to sessionOffset)
-        uint64_t consumeBlockOffset = currentOffset - m_sourceOffset + m_sharedConfig->sessionOffset;
-        BlockingPushForward(VolumeConsumeBlock { buffer, index++, consumeBlockOffset, nBytesToRead });
-        currentOffset += static_cast<uint64_t>(nBytesToRead);
-        m_sharedContext->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
+        uint64_t consumeBlockOffset = m_currentIndex * m_sharedConfig->blockSize + m_sharedConfig->sessionOffset;
+        BlockingPushForward(VolumeConsumeBlock { buffer, m_currentIndex, consumeBlockOffset, nBytesReaded });
+        RevertNextBlock();
     }
     // handle terminiation (success/fail/aborted)
     m_sharedConfig->hasherEnabled ? m_sharedContext->hashingQueue->Finish() : m_sharedContext->writeQueue->Finish();
@@ -249,13 +231,17 @@ char* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
     return nullptr;
 }
 
-bool VolumeBlockReader::ReadBlock()
+bool VolumeBlockReader::ReadBlock(char* buffer, uint32_t& nBytesToRead)
 {
     native::ErrCodeType errorCode = 0;
-    nBytesToRead = static_cast<uint32_t>(Min(bytesRemain, static_cast<uint64_t>(m_sharedConfig->blockSize)));
+    uint32_t blockSize = m_sharedConfig->blockSize;
+    uint64_t currentOffset = m_sourceOffset + m_currentIndex * m_sharedConfig->blockSize;
+    uint64_t bytesRemain = m_sharedConfig->sessionSize - m_currentIndex * blockSize;
+    nBytesToRead = static_cast<uint32_t>(Min(bytesRemain, static_cast<uint64_t>(blockSize)));
     if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
         ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
         return false;
     }
+    m_sharedContext->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
     return true;
 }

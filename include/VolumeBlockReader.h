@@ -25,7 +25,6 @@ struct VOLUMEPROTECT_API VolumeBlockReaderParam {
     SourceType  sourceType;
     std::string sourcePath;
     uint64_t    sourceOffset;
-    uint64_t    sourceLength;
     std::shared_ptr<native::DataReader>         dataReader;
     std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
     std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
@@ -54,7 +53,6 @@ public:
 
 private:
     void MainThread();
-    uint64_t InitCurrentOffset() const;
     uint64_t InitIndex() const;
 
     void BlockingPushForward(const VolumeConsumeBlock& consumeBlock) const;
@@ -62,7 +60,7 @@ private:
     bool IsReadCompleted() const;
     void RevertNextBlock();
     char* FetchBlockBuffer(std::chrono::seconds timeout) const;
-    bool ReadBlock();
+    bool ReadBlock(char* buffer, uint32_t& nBytesReaded);
 
 private:
     // immutable fields
@@ -80,7 +78,6 @@ private:
     uint64_t    m_currentIndex  { 0 };
 
 };
-
 }
 
 #endif

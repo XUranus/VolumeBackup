@@ -100,7 +100,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
         if (!m_sharedContext->hashingQueue->BlockingPop(consumeBlock)) {
             break; // queue has been finished
         }
-        uint64_t index = (consumeBlock.volumeOffset - m_sharedConfig->sessionOffset) / m_sharedConfig->blockSize;
+        uint64_t index = consumeBlock.index;
         // compute latest hash
         ComputeSHA256(
             consumeBlock.ptr,
@@ -109,6 +109,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             m_singleChecksumSize);
 
         ++m_sharedContext->counter->blocksHashed;
+        m_sharedContext->hashedBitmap->Set(index);
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash
@@ -117,6 +118,7 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
             if (prevHash == lastestHash) {
                 // drop the block and free
                 m_sharedContext->allocator->bfree(consumeBlock.ptr);
+                m_sharedContext->processedBitmap->Set(index);
                 continue;
             }
         }

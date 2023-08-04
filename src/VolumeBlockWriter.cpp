@@ -153,7 +153,9 @@ void VolumeBlockWriter::MainThread()
             m_sharedContext->allocator->bfree(buffer);
             // writer not return (avoid queue to block reader)
         }
-        m_sharedContext->writerBitmap->Set(index);
+        
+        m_sharedContext->writtenBitmap->Set(index);
+        m_sharedContext->processedBitmap->Set(index);
         m_sharedContext->allocator->bfree(buffer);
         m_sharedContext->counter->bytesWritten += len;
     }

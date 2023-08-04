@@ -108,9 +108,12 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
         session->sharedConfig->blockSize,
         DEFAULT_ALLOCATOR_BLOCK_NUM);
     session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    session->sharedContext->writerBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+    InitSessionBitmap(session);
 
-    // 2. check and init reader
+    // 2. restore checkpoint if restarted
+    RestoreSessionCheckpoint(session);
+
+    // 3. check and init reader
     session->readerTask = VolumeBlockReader::BuildCopyReader(
         session->sharedConfig,
         session->sharedContext
@@ -120,7 +123,7 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
         return false;
     }
 
-    // // 3. check and init writer
+    // 4. check and init writer
     session->writerTask = VolumeBlockWriter::BuildVolumeWriter(
         session->sharedConfig,
         session->sharedContext
