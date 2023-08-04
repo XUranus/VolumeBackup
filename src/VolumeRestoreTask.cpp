@@ -180,7 +180,6 @@ void VolumeRestoreTask::ThreadFunc()
             m_status = TaskStatus::FAILED;
             return;
         }
-
         // block the thread
         while (true) {
             if (m_abort) {
@@ -206,7 +205,6 @@ void VolumeRestoreTask::ThreadFunc()
         FlushSessionBitmap(session);
         UpdateCompletedSessionStatistics(session);
     }
-
     m_status = TaskStatus::SUCCEED;
     return;
 }

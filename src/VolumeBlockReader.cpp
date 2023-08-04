@@ -18,7 +18,7 @@
 using namespace volumeprotect;
 
 namespace {
-    constexpr auto READER_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
+    constexpr auto FETCH_BLOCK_BUFFER_SLEEP_INTERVAL = std::chrono::milliseconds(100);
 }
 
 inline uint64_t Min(uint64_t a, uint64_t b)
@@ -43,7 +43,6 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
         SourceType::VOLUME,
         volumePath,
         offset,
-        length,
         dataReader,
         sharedConfig,
         sharedContext
@@ -68,7 +67,6 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
         SourceType::COPYFILE,
         copyFilePath,
         offset,
-        length,
         dataReader,
         sharedConfig,
         sharedContext
@@ -93,6 +91,7 @@ bool VolumeBlockReader::Start()
         m_status = TaskStatus::FAILED;
         return false;
     }
+    m_sharedContext->counter->bytesToRead = m_sourceLength;
     m_readerThread = std::thread(&VolumeBlockReader::MainThread, this);
     return true;
 }
@@ -109,26 +108,21 @@ VolumeBlockReader::VolumeBlockReader(const VolumeBlockReaderParam& param)
  : m_sourceType(param.sourceType),
     m_sourcePath(param.sourcePath),
     m_sourceOffset(param.sourceOffset),
-    m_sourceLength(param.sourceLength),
     m_sharedConfig(param.sharedConfig),
     m_sharedContext(param.sharedContext),
     m_dataReader(param.dataReader)
-{}
-
-/**
- * @brief redirect current offset/index from checkpoint bitmap
- */
-uint64_t VolumeBlockReader::InitCurrentOffset() const
 {
-    uint64_t currentOffset = m_sourceOffset;
-    if (m_sharedConfig->checkpointEnabled) {
-        uint64_t index = m_sharedContext->processedBitmap->FirstIndexUnset();
-        currentOffset += index * m_sharedConfig->blockSize;
-        INFOLOG("init current offset to %llu from ProcessedBitmap for continuation", currentOffset);
+    uint64_t numBlocks = m_sharedConfig->sessionSize / m_sharedConfig->blockSize;
+    if (m_sharedConfig->sessionSize % m_sharedConfig->blockSize != 0) {
+        numBlocks++;
     }
-    return currentOffset;
+    m_currentIndex = 0;
+    m_maxIndex = (numBlocks == 0) ? 0 : numBlocks - 1;
 }
 
+/**
+ * @brief redirect current index from checkpoint bitmap
+ */
 uint64_t VolumeBlockReader::InitIndex() const
 {
     uint64_t index = 0;
@@ -139,23 +133,34 @@ uint64_t VolumeBlockReader::InitIndex() const
     return index;
 }
 
+uint64_t VolumeBlockReader::GetCurrentOffset() const
+{
+    uint64_t offset = m_currentIndex * m_sharedConfig->blockSize;
+    return m_sourceOffset + offset;
+}
+
+uint64_t VolumeBlockReader::GetBytesRemain() const
+{
+    return m_sourceOffset + m_sourceLength
+}
 void VolumeBlockReader::MainThread()
 {
     // Open the device file for reading
     uint64_t index = InitIndex(); // used to locate position of a block within a session
-    uint64_t currentOffset = InitCurrentOffset();
-    uint64_t bytesRemain = m_sourceLength;
-    uint32_t nBytesToRead = 0;
-    native::ErrCodeType errorCode = 0;
+    uint64_t numBlocks = m_sharedConfig->sessionSize / m_sharedConfig->blockSize;
 
     // read from currentOffset
-    m_sharedContext->counter->bytesToRead = bytesRemain;
     DBGLOG("reader start, index: %llu, src offset: %llu , length: %llu", index, m_sourceOffset, m_sourceLength);
 
     while (true) {
+        uint64_t currentOffset = IndexToOffset(index);
+        uint64_t bytesRemain = m_sourceLength;
+        uint32_t nBytesToRead = 0;
+        
+
         bytesRemain =  m_sourceOffset + m_sourceLength - currentOffset;
         DBGLOG("thread check, current offset %llu, remain: %llu", currentOffset, bytesRemain);
-        if (bytesRemain <= currentOffset) { // read completed
+        if (IsReadCompleted()) { // read completed
             m_status = TaskStatus::SUCCEED;
             INFOLOG("reader read completed successfully");
             break;
@@ -166,28 +171,24 @@ void VolumeBlockReader::MainThread()
             break;
         }
 
-        char* buffer = m_sharedContext->allocator->bmalloc();
-        if (buffer == nullptr) {
-            DBGLOG("failed to malloc, retry in 100ms");
-            std::this_thread::sleep_for(READER_CHECK_SLEEP_INTERVAL);
+        if (SkipReadingBlock()) {
+            RevertNextBlock();
             continue;
         }
+
+        char* buffer = FetchBlockBuffer(std::chrono::seconds(1));
+        if (buffer == nullptr) {
+            m_status = TaskStatus::FAILED;
+            break;
+        }
         nBytesToRead = static_cast<uint32_t>(Min(bytesRemain, static_cast<uint64_t>(m_sharedConfig->blockSize)));
-        if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
-            ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
+        if (!ReadBlock()) {
             m_status = TaskStatus::FAILED;
             break;
         }
         // push readed block to queue (convert to reader offset to sessionOffset)
         uint64_t consumeBlockOffset = currentOffset - m_sourceOffset + m_sharedConfig->sessionOffset;
-        VolumeConsumeBlock consumeBlock { buffer, index++, consumeBlockOffset, nBytesToRead };
-        DBGLOG("push block (%llu, %llu, %u)", consumeBlock.index, consumeBlock.volumeOffset, consumeBlock.length);
-        if (m_sharedConfig->hasherEnabled) {
-            ++m_sharedContext->counter->blocksToHash;
-            m_sharedContext->hashingQueue->BlockingPush(consumeBlock);
-        } else {
-            m_sharedContext->writeQueue->BlockingPush(consumeBlock);
-        }
+        BlockingPushForward(VolumeConsumeBlock { buffer, index++, consumeBlockOffset, nBytesToRead });
         currentOffset += static_cast<uint64_t>(nBytesToRead);
         m_sharedContext->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
     }
@@ -195,4 +196,66 @@ void VolumeBlockReader::MainThread()
     m_sharedConfig->hasherEnabled ? m_sharedContext->hashingQueue->Finish() : m_sharedContext->writeQueue->Finish();
     INFOLOG("reader thread terminated");
     return;
+}
+
+void VolumeBlockReader::BlockingPushForward(const VolumeConsumeBlock& consumeBlock) const
+{
+    DBGLOG("reader push consume block (%llu, %llu, %u)",
+        consumeBlock.index, consumeBlock.volumeOffset, consumeBlock.length);
+    if (m_sharedConfig->hasherEnabled) {
+        m_sharedContext->hashingQueue->BlockingPush(consumeBlock);
+    } else {
+        m_sharedContext->writeQueue->BlockingPush(consumeBlock);
+    }
+    return;
+}
+
+bool VolumeBlockReader::SkipReadingBlock() const
+{
+    if (m_sharedConfig->checkpointEnabled &&
+        m_sharedContext->processedBitmap->Test(m_currentIndex)) {
+        return true;
+    }
+    DBGLOG("checkpoint enabled, reader skip reading current index: %llu", m_currentIndex);
+    return false;
+}
+
+bool VolumeBlockReader::IsReadCompleted() const
+{
+    return m_currentIndex > m_maxIndex;
+}
+
+void VolumeBlockReader::RevertNextBlock()
+{
+    ++m_currentIndex;
+}
+
+char* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
+{
+    auto start = std::chrono::steady_clock::now();
+    while (true) {
+        char* buffer = m_sharedContext->allocator->bmalloc();
+        if (buffer != nullptr) {
+            return buffer;
+        }
+        auto now = std::chrono::steady_clock::now();
+        if ((now - start).count() >= timeout.count()) {
+            ERRLOG("malloc block buffer timeout!");
+            return nullptr;
+        }
+        DBGLOG("failed to malloc, retry in 100ms");
+        std::this_thread::sleep_for(FETCH_BLOCK_BUFFER_SLEEP_INTERVAL);
+    }
+    return nullptr;
+}
+
+bool VolumeBlockReader::ReadBlock()
+{
+    native::ErrCodeType errorCode = 0;
+    nBytesToRead = static_cast<uint32_t>(Min(bytesRemain, static_cast<uint64_t>(m_sharedConfig->blockSize)));
+    if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
+        ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
+        return false;
+    }
+    return true;
 }
