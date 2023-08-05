@@ -12,11 +12,6 @@
 #include <winioctl.h>
 #endif
 
-#include <string>
-#include <cstdint>
-#include <exception>
-#include <stdexcept>
-
 #include "VolumeProtectMacros.h"
 
 /**

@@ -79,6 +79,7 @@ public:
     TaskStatus  GetStatus() const;
     bool        IsFailed() const;
     bool        IsTerminated() const;
+    std::string GetStatusString() const;
 
 protected:
     TaskStatus  m_status { TaskStatus::INIT };

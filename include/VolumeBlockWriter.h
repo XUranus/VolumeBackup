@@ -1,11 +1,5 @@
-
 #ifndef VOLUMEBACKUP_BLOCK_WRITER_HEADER
 #define VOLUMEBACKUP_BLOCK_WRITER_HEADER
-
-#include <iostream>
-#include <memory>
-#include <thread>
-#include <fstream>
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
@@ -58,12 +52,12 @@ private:
     // immutable fields
     TargetType      m_targetType;
     std::string     m_targetPath;
-    std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
+    std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig  { nullptr };
 
     // mutable fields
-    std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
+    std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext { nullptr };
     std::thread                                         m_writerThread;
-    std::shared_ptr<volumeprotect::native::DataWriter>  m_dataWriter;
+    std::shared_ptr<volumeprotect::native::DataWriter>  m_dataWriter    { nullptr };
 };
 
 }

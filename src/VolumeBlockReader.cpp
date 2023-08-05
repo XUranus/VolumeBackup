@@ -1,15 +1,3 @@
-#include <string>
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <cstring>
-#include <cstdint>
-#include <stdexcept>
-#include <fstream>
-#include <memory>
-#include <cassert>
-#include <algorithm>
-
 #include "Logger.h"
 #include "VolumeUtils.h"
 #include "NativeIOInterface.h"
@@ -19,11 +7,6 @@ using namespace volumeprotect;
 
 namespace {
     constexpr auto FETCH_BLOCK_BUFFER_SLEEP_INTERVAL = std::chrono::milliseconds(100);
-}
-
-inline uint64_t Min(uint64_t a, uint64_t b)
-{
-    return a > b ? b : a;
 }
 
 // build a reader reading from volume (block device)
@@ -37,7 +20,8 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::VolumeDataReader>(volumePath));
     if (!dataReader->Ok()) {
-        ERRLOG("failed to init VolumeDataReader, path = %s, error = %u", volumePath.c_str(), dataReader->Error());
+        ERRLOG("failed to init VolumeDataReader, path = %s, error = %u",
+            volumePath.c_str(), dataReader->Error());
     }
     VolumeBlockReaderParam param {
         SourceType::VOLUME,
@@ -61,7 +45,8 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::FileDataReader>(copyFilePath));
     if (!dataReader->Ok()) {
-        ERRLOG("failed to init FileDataReader, path = %s, error = %u", copyFilePath.c_str(), dataReader->Error());
+        ERRLOG("failed to init FileDataReader, path = %s, error = %u",
+            copyFilePath.c_str(), dataReader->Error());
     }
     VolumeBlockReaderParam param {
         SourceType::COPYFILE,
@@ -98,6 +83,7 @@ bool VolumeBlockReader::Start()
 
 VolumeBlockReader::~VolumeBlockReader()
 {
+    DBGLOG("destroy VolumeBlockReader");
     if (m_readerThread.joinable()) {
         m_readerThread.join();
     }
@@ -107,7 +93,7 @@ VolumeBlockReader::~VolumeBlockReader()
 VolumeBlockReader::VolumeBlockReader(const VolumeBlockReaderParam& param)
  : m_sourceType(param.sourceType),
     m_sourcePath(param.sourcePath),
-    m_sourceOffset(param.sourceOffset),
+    m_baseOffset(param.sourceOffset),
     m_sharedConfig(param.sharedConfig),
     m_sharedContext(param.sharedContext),
     m_dataReader(param.dataReader)
@@ -123,7 +109,7 @@ VolumeBlockReader::VolumeBlockReader(const VolumeBlockReaderParam& param)
 /**
  * @brief redirect current index from checkpoint bitmap
  */
-uint64_t VolumeBlockReader::InitIndex() const
+uint64_t VolumeBlockReader::InitCurrentIndex() const
 {
     uint64_t index = 0;
     if (m_sharedConfig->checkpointEnabled) {
@@ -136,16 +122,15 @@ uint64_t VolumeBlockReader::InitIndex() const
 void VolumeBlockReader::MainThread()
 {
     // Open the device file for reading
-    m_currentIndex = InitIndex(); // used to locate position of a block within a session
-
+    m_currentIndex = InitCurrentIndex(); // used to locate position of a block within a session
     // read from currentOffset
-    DBGLOG("reader start from index: %llu/%llu, src offset: %llu , length: %llu", m_currentIndex, m_maxIndex, m_sourceOffset, m_sharedConfig->sessionSize);
+    DBGLOG("reader start from index: %llu/%llu, to read %llu bytes from base offset: %llu",
+        m_currentIndex, m_maxIndex, m_sharedConfig->sessionSize, m_baseOffset);
 
     while (true) {
-        DBGLOG("reader thread check, index %llu/%llu", m_currentIndex, m_maxIndex);
+        DBGLOG("reader thread check, processing index %llu/%llu", m_currentIndex, m_maxIndex);
         if (IsReadCompleted()) { // read completed
             m_status = TaskStatus::SUCCEED;
-            INFOLOG("reader read completed successfully");
             break;
         }
 
@@ -176,7 +161,7 @@ void VolumeBlockReader::MainThread()
     }
     // handle terminiation (success/fail/aborted)
     m_sharedConfig->hasherEnabled ? m_sharedContext->hashingQueue->Finish() : m_sharedContext->writeQueue->Finish();
-    INFOLOG("reader thread terminated");
+    INFOLOG("reader thread terminated with status %s", GetStatusString().c_str());
     return;
 }
 
@@ -186,8 +171,10 @@ void VolumeBlockReader::BlockingPushForward(const VolumeConsumeBlock& consumeBlo
         consumeBlock.index, consumeBlock.volumeOffset, consumeBlock.length);
     if (m_sharedConfig->hasherEnabled) {
         m_sharedContext->hashingQueue->BlockingPush(consumeBlock);
+        ++m_sharedContext->counter->blocksToHash;
     } else {
         m_sharedContext->writeQueue->BlockingPush(consumeBlock);
+        m_sharedContext->counter->bytesToWrite += static_cast<uint64_t>(consumeBlock.length);
     }
     return;
 }
@@ -235,9 +222,14 @@ bool VolumeBlockReader::ReadBlock(char* buffer, uint32_t& nBytesToRead)
 {
     native::ErrCodeType errorCode = 0;
     uint32_t blockSize = m_sharedConfig->blockSize;
-    uint64_t currentOffset = m_sourceOffset + m_currentIndex * m_sharedConfig->blockSize;
+    uint64_t currentOffset = m_baseOffset + m_currentIndex * m_sharedConfig->blockSize;
     uint64_t bytesRemain = m_sharedConfig->sessionSize - m_currentIndex * blockSize;
-    nBytesToRead = static_cast<uint32_t>(Min(bytesRemain, static_cast<uint64_t>(blockSize)));
+    if (bytesRemain < static_cast<uint64_t>(blockSize)) {
+        nBytesToRead = static_cast<uint64_t>(bytesRemain);
+    } else {
+        nBytesToRead = blockSize;
+    }
+    
     if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
         ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
         return false;

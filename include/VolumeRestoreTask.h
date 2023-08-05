@@ -1,7 +1,5 @@
 #ifndef VOLUMEBACKUP_RESTORE_TASK_HEADER
 #define VOLUMEBACKUP_RESTORE_TASK_HEADER
-
-#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>

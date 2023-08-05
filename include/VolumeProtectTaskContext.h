@@ -1,13 +1,5 @@
-
-
 #ifndef VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 #define VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
-
-#include <atomic>
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <cstdio>
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
@@ -21,7 +13,7 @@ class VolumeBlockHasher;
 
 // commpound struct used for hash/writer consuming
 struct VOLUMEPROTECT_API VolumeConsumeBlock {
-    char*           ptr;
+    uint8_t*        ptr;
     uint64_t        index;
     uint64_t        volumeOffset;
     uint32_t        length;
@@ -32,11 +24,11 @@ class VOLUMEPROTECT_API VolumeBlockAllocator {
 public:
     VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum);
     ~VolumeBlockAllocator();
-    char*       bmalloc();
-    void        bfree(char* ptr);
+    uint8_t*    bmalloc();
+    void        bfree(uint8_t* ptr);
 
 private:
-    char*       m_pool;
+    uint8_t*    m_pool;
     bool*       m_allocTable;
     uint32_t    m_blockSize;
     uint32_t    m_blockNum;
@@ -44,12 +36,13 @@ private:
 };
 
 struct VOLUMEPROTECT_API SessionCounter {
-    std::atomic<uint64_t>   bytesToRead     { 0 };
-    std::atomic<uint64_t>   bytesRead       { 0 };
-    std::atomic<uint64_t>   blocksToHash    { 0 };
-    std::atomic<uint64_t>   blocksHashed    { 0 };
-    std::atomic<uint64_t>   bytesToWrite    { 0 };
-    std::atomic<uint64_t>   bytesWritten    { 0 };
+    std::atomic<uint64_t>   bytesToRead             { 0 };
+    std::atomic<uint64_t>   bytesRead               { 0 };
+    std::atomic<uint64_t>   blocksToHash            { 0 };
+    std::atomic<uint64_t>   blocksHashed            { 0 };
+    std::atomic<uint64_t>   bytesToWrite            { 0 };
+    std::atomic<uint64_t>   bytesWritten            { 0 };
+    std::atomic<uint64_t>   blockesWriteFailed      { 0 };
 };
 
 // store the checksum table of previous/latest hashing checksum

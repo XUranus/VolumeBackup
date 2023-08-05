@@ -107,6 +107,19 @@ bool StatefulTask::IsTerminated() const
     );
 }
 
+std::string StatefulTask::GetStatusString() const
+{
+    std::unordered_map<TaskStatus, std::string> table {
+        { TaskStatus::INIT, "INIT" },
+        { TaskStatus::RUNNING, "RUNNING" },
+        { TaskStatus::SUCCEED, "SUCCEED" },
+        { TaskStatus::ABORTING, "ABORTING" },
+        { TaskStatus::ABORTED, "ABORTED" },
+        { TaskStatus::FAILED, "FAILED" },
+    };
+    return table[m_status];
+}
+
 TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) const
 {
     TaskStatistics res;

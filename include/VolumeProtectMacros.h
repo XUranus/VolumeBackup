@@ -1,7 +1,23 @@
 #ifndef VOLUMEBACKUP_PROTECT_MACROS_HEADER
 #define VOLUMEBACKUP_PROTECT_MACROS_HEADER
 
+// function as stdafx.h, include common used STL headers here
+#include <string>
 #include <cassert>
+#include <cstdint>
+#include <cstring>
+#include <thread>
+#include <fstream>
+#include <vector>
+#include <atomic>
+#include <cstdio>
+#include <exception>
+#include <stdexcept>
+#include <iostream>
+#include <algorithm>
+#include <cerrno>
+#include <chrono>
+#include <memory>
 
  /*
  * @brief

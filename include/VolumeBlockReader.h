@@ -1,11 +1,6 @@
 #ifndef VOLUMEBACKUP_BLOCK_READER_HEADER
 #define VOLUMEBACKUP_BLOCK_READER_HEADER
 
-#include <cstdint>
-#include <string>
-#include <memory>
-#include <thread>
-
 #include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
 #include "NativeIOInterface.h"
@@ -31,7 +26,7 @@ struct VOLUMEPROTECT_API VolumeBlockReaderParam {
 
 };
 
-// read m_sourceLength bytes from block device/copy from m_sourceOffset
+// read m_sourceLength bytes from block device/copy from m_baseOffset
 class VOLUMEPROTECT_API VolumeBlockReader : public StatefulTask {
 public:
     // build a reader reading from volume (block device)
@@ -53,7 +48,7 @@ public:
 
 private:
     void MainThread();
-    uint64_t InitIndex() const;
+    uint64_t InitCurrentIndex() const;
 
     void BlockingPushForward(const VolumeConsumeBlock& consumeBlock) const;
     bool SkipReadingBlock() const;
@@ -66,7 +61,7 @@ private:
     // immutable fields
     SourceType  m_sourceType;
     std::string m_sourcePath;
-    uint64_t    m_sourceOffset;     // base offset
+    uint64_t    m_baseOffset;     // base offset
     std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
 
     // mutable fields

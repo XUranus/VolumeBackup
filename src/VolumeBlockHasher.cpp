@@ -1,9 +1,3 @@
-#include <cstdint>
-#include <cstring>
-#include <thread>
-#include <cassert>
-#include <fstream>
-
 #ifdef __linux__
 #include <openssl/evp.h>
 #endif
@@ -22,7 +16,7 @@ using namespace volumeprotect;
 
 VolumeBlockHasher::~VolumeBlockHasher()
 {
-    INFOLOG("finalize VolumeBlockHasher");
+    DBGLOG("destroy VolumeBlockHasher");
     for (std::shared_ptr<std::thread>& worker: m_workers) {
         if (worker->joinable()) {
             worker->join();
@@ -78,34 +72,35 @@ bool VolumeBlockHasher::Start()
         return false;
     }
     m_status = TaskStatus::RUNNING;
-    m_workersRunning = m_workerThreadNum;
     for (int i = 0; i < m_workerThreadNum; i++) {
         m_workers.emplace_back(std::make_shared<std::thread>(&VolumeBlockHasher::WorkerThread, this, i));
     }
     return true;
 }
 
-void VolumeBlockHasher::WorkerThread(int workerIndex)
+void VolumeBlockHasher::WorkerThread(uint32_t workerID)
 {
     VolumeConsumeBlock consumeBlock {};
+    m_workersRunning++;
+    DBGLOG("hasher worker[%lu] started, total worker running: %lu", workerID, m_workersRunning.load());
     while (true) {
-        DBGLOG("hasher worker[%d] thread check", workerIndex);
+        DBGLOG("hasher worker[%d] thread check", workerID);
         if (m_abort) {
-            INFOLOG("hasher worker %d aborted", workerIndex);
-            m_workersRunning--;
-            HandleWorkerTerminate();
-            return;
+            m_status = TaskStatus::ABORTED;
+            break;
         }
 
         if (!m_sharedContext->hashingQueue->BlockingPop(consumeBlock)) {
+            m_status = TaskStatus::SUCCEED;
             break; // queue has been finished
         }
         uint64_t index = consumeBlock.index;
+        DBGLOG("hasher worker[%d] computing block[%llu]", workerID, index);
         // compute latest hash
         ComputeSHA256(
             consumeBlock.ptr,
             consumeBlock.length,
-            reinterpret_cast<char*>(m_lastestChecksumTable) + index * m_singleChecksumSize,
+            m_lastestChecksumTable + index * m_singleChecksumSize,
             m_singleChecksumSize);
 
         ++m_sharedContext->counter->blocksHashed;
@@ -113,27 +108,27 @@ void VolumeBlockHasher::WorkerThread(int workerIndex)
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash
-            uint32_t prevHash = reinterpret_cast<uint32_t*>(m_prevChecksumTable)[index];
+            uint32_t previousHash = reinterpret_cast<uint32_t*>(m_prevChecksumTable)[index];
             uint32_t lastestHash = reinterpret_cast<uint32_t*>(m_lastestChecksumTable)[index];
-            if (prevHash == lastestHash) {
+            if (previousHash == lastestHash) {
                 // drop the block and free
+                DBGLOG("block[%llu] checksum remain unchanged, block dropped", index);
                 m_sharedContext->allocator->bfree(consumeBlock.ptr);
                 m_sharedContext->processedBitmap->Set(index);
                 continue;
             }
         }
-
+        DBGLOG("block[%llu] checksum changed, push to writer", index);
         m_sharedContext->counter->bytesToWrite += consumeBlock.length;
         m_sharedContext->writeQueue->BlockingPush(consumeBlock);
     }
-    INFOLOG("hasher worker %d read completed successfully", workerIndex);
-    m_workersRunning--;
+    INFOLOG("hasher worker[%lu] terminated with status %s", GetStatusString().c_str());
     HandleWorkerTerminate();
     return;
 }
 
 #ifdef __linux__
-void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
+void VolumeBlockHasher::ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* output, uint32_t outputLen)
 {
     EVP_MD_CTX *mdctx = nullptr;
     const EVP_MD *md = nullptr;
@@ -161,7 +156,7 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
 #endif
 
 #ifdef _WIN32
-void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen)
+void VolumeBlockHasher::ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* output, uint32_t outputLen)
 {
     // TODO
 }
@@ -169,12 +164,12 @@ void VolumeBlockHasher::ComputeSHA256(char* data, uint32_t len, char* output, ui
 
 void VolumeBlockHasher::HandleWorkerTerminate()
 {
+    m_workersRunning--;
     if (m_workersRunning != 0) {
-        INFOLOG("left workers %d", m_workersRunning);
+        INFOLOG("one hasher worker exit, left workers: %d", m_workersRunning.load());
         return;
     }
-    INFOLOG("workers all completed");
+    INFOLOG("hasher workers all terminated");
     m_sharedContext->writeQueue->Finish();
-    m_status = TaskStatus::SUCCEED;
     return;
 }

@@ -1,25 +1,3 @@
-#ifdef __linux__
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
-#ifdef _WIN32
-#endif
-
-#include <algorithm>
-#include <cerrno>
-#include <string>
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <cstring>
-#include <cstdint>
-#include <stdexcept>
-#include <fstream>
-#include <memory>
-#include <cassert>
-#include <algorithm>
-
 #include "Logger.h"
 #include "VolumeProtector.h"
 #include "VolumeBlockWriter.h"
@@ -34,14 +12,15 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
-    if (native::IsFileExists(copyFilePath) && native::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
+    if (native::IsFileExists(copyFilePath) &&
+        native::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
         // should be full copy file, this task should be increment backup
         DBGLOG("copy file already exists, using %s", copyFilePath.c_str());
         return nullptr;
     }
     // truncate copy file to session size
-    DBGLOG("truncate target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
-    native::ErrCodeType errorCode = 0;
+    DBGLOG("truncate target copy file %s to size %llu",copyFilePath.c_str(), sharedConfig->sessionSize);
+    native::ErrCodeType errorCode = 0; 
     if (!native::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
         ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
             copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
@@ -54,7 +33,13 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
         ERRLOG("failed to init FileDataWriter, path = %s, error = %u", copyFilePath.c_str(), dataWriter->Error());
         return nullptr;
     }
-    VolumeBlockWriterParam param { TargetType::COPYFILE, copyFilePath, sharedConfig, sharedContext, dataWriter };
+    VolumeBlockWriterParam param {
+        TargetType::COPYFILE,
+        copyFilePath,
+        sharedConfig,
+        sharedContext,
+        dataWriter
+    };
     return std::make_shared<VolumeBlockWriter>(param);
 }
 
@@ -71,7 +56,13 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
         ERRLOG("failed to init VolumeDataWriter, path = %s, error = %u", volumePath.c_str(), dataWriter->Error());
         return nullptr;
     }
-    VolumeBlockWriterParam param { TargetType::VOLUME, volumePath, sharedConfig, sharedContext, dataWriter };
+    VolumeBlockWriterParam param {
+        TargetType::VOLUME,
+        volumePath,
+        sharedConfig,
+        sharedContext,
+        dataWriter
+    };
     return std::make_shared<VolumeBlockWriter>(param);
 }
 
@@ -103,6 +94,7 @@ bool VolumeBlockWriter::Flush()
 
 VolumeBlockWriter::~VolumeBlockWriter()
 {
+    DBGLOG("destroy VolumeBlockWriter");
     if (m_writerThread.joinable()) {
         m_writerThread.join();
     }
@@ -124,20 +116,21 @@ void VolumeBlockWriter::MainThread()
     DBGLOG("writer thread start");
 
     while (true) {
+        DBGLOG("writer thread check");
         if (m_abort) {
-            INFOLOG("VolumeBlockWriter aborted");
             m_status = TaskStatus::ABORTED;
-            return;
+            break;
         }
-        DBGLOG("check writer thread");
 
         if (!m_sharedContext->writeQueue->BlockingPop(consumeBlock)) {
-            break; // queue has been finished
+            // queue has been finished
+            m_status = TaskStatus::SUCCEED;
+            break;
         }
 
-        char* buffer = consumeBlock.ptr;
+        uint8_t* buffer = consumeBlock.ptr;
         uint64_t writerOffset = consumeBlock.volumeOffset;
-        uint32_t len = consumeBlock.length;
+        uint32_t length = consumeBlock.length;
         uint64_t index = consumeBlock.index;
 
         // 1. volume => file   (file writer),   writerOffset = volumeOffset - sessionOffset
@@ -145,21 +138,23 @@ void VolumeBlockWriter::MainThread()
         if (m_targetType == TargetType::COPYFILE) {
             writerOffset = consumeBlock.volumeOffset - m_sharedConfig->sessionOffset;
         }
-        DBGLOG("writer pop consume block (%p, %llu, %u) writerOffset = %llu",
-            consumeBlock.ptr, consumeBlock.volumeOffset, consumeBlock.length, writerOffset);
-        if (!m_dataWriter->Write(writerOffset, buffer, len, errorCode)) {
+        DBGLOG("write block[%llu] (%p, %llu, %u) writerOffset = %llu",
+            index, buffer, consumeBlock.volumeOffset, length, writerOffset);
+        if (!m_dataWriter->Write(writerOffset, reinterpret_cast<char*>(buffer), length, errorCode)) {
             ERRLOG("write %llu bytes failed, error code = %u", writerOffset, errorCode);
-            m_status = TaskStatus::FAILED;
             m_sharedContext->allocator->bfree(buffer);
-            // writer not return (avoid queue to block reader)
+            ++m_sharedContext->counter->blockesWriteFailed;
+            // writer should not return (otherwise writer queue may block reader)
         }
-        
+
         m_sharedContext->writtenBitmap->Set(index);
         m_sharedContext->processedBitmap->Set(index);
         m_sharedContext->allocator->bfree(buffer);
-        m_sharedContext->counter->bytesWritten += len;
+        m_sharedContext->counter->bytesWritten += length;
     }
-    INFOLOG("writer read completed successfully");
-    m_status = TaskStatus::SUCCEED;
+    if (m_status == TaskStatus::SUCCEED && m_sharedContext->counter->blockesWriteFailed != 0) {
+        ERRLOG("%llu blockes failed to write, set writer status to fail");
+    }
+    INFOLOG("writer read terminated with status %s", GetStatusString().c_str());
     return;
 }

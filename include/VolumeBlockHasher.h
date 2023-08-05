@@ -1,12 +1,5 @@
-
 #ifndef VOLUMEBACKUP_BLOCK_HASHER_HEADER
 #define VOLUMEBACKUP_BLOCK_HASHER_HEADER
-
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <thread>
-#include <vector>
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
@@ -46,9 +39,9 @@ public:
     VolumeBlockHasher(const VolumeBlockHasherParam& param);
 
 private:
-    void WorkerThread(int workerIndex);
+    void WorkerThread(uint32_t workerID);
 
-    void ComputeSHA256(char* data, uint32_t len, char* output, uint32_t outputLen);
+    void ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* output, uint32_t outputLen);
 
     void HandleWorkerTerminate();
 
@@ -56,7 +49,7 @@ private:
     uint32_t                    m_singleChecksumSize    { 0 };
     HasherForwardMode           m_forwardMode           { HasherForwardMode::DIRECT };
     uint32_t                    m_workerThreadNum       { DEFAULT_HASHER_NUM };
-    uint32_t                    m_workersRunning        { 0 };
+    std::atomic<uint32_t>       m_workersRunning        { 0 };
     std::vector<std::shared_ptr<std::thread>>   m_workers;
     std::shared_ptr<VolumeTaskSharedConfig>     m_sharedConfig;
 

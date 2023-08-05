@@ -1,8 +1,3 @@
-#include <cstring>
-#include <exception>
-#include <thread>
-#include <memory>
-
 #include "Logger.h"
 #include "VolumeUtils.h"
 #include "VolumeProtectTaskContext.h"
@@ -24,7 +19,7 @@ namespace {
 VolumeBlockAllocator::VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum)
     : m_blockSize(blockSize), m_blockNum(blockNum)
 {
-    m_pool = new char[blockSize * blockNum];
+    m_pool = new uint8_t[blockSize * blockNum];
     m_allocTable = new bool[blockNum];
     memset(m_allocTable, 0, blockNum * sizeof(bool));
 }
@@ -41,13 +36,13 @@ VolumeBlockAllocator::~VolumeBlockAllocator()
     }
 }
 
-char* VolumeBlockAllocator::bmalloc()
+uint8_t* VolumeBlockAllocator::bmalloc()
 {
     std::lock_guard<std::mutex> lk(m_mutex);
     for (int i = 0; i < static_cast<int>(m_blockNum); i++) {
         if (!m_allocTable[i]) {
             m_allocTable[i] = true;
-            char* ptr = m_pool + (m_blockSize * i);
+            uint8_t* ptr = m_pool + (m_blockSize * i);
             DBGLOG("bmalloc index = %d, address = %p", i, ptr);
             return ptr;
         }
@@ -55,7 +50,7 @@ char* VolumeBlockAllocator::bmalloc()
     return nullptr;
 }
 
-void VolumeBlockAllocator::bfree(char* ptr)
+void VolumeBlockAllocator::bfree(uint8_t* ptr)
 {
     std::lock_guard<std::mutex> lk(m_mutex);
     uint64_t index = (ptr - m_pool) / static_cast<uint64_t>(m_blockSize);
