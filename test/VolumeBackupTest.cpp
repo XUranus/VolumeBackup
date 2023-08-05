@@ -57,15 +57,16 @@ protected:
 
 class DataReaderMock : public native::DataReader {
 public:
-    MOCK_METHOD(bool, Read, (uint64_t offset, char* buffer, int length, native::ErrCodeType& errorCode), (override));
+    MOCK_METHOD(bool, Read, (uint64_t offset, uint8_t* buffer, int length, native::ErrCodeType& errorCode), (override));
     MOCK_METHOD(bool, Ok, (), (override));
     MOCK_METHOD(native::ErrCodeType, Error, (), (override));
 };
 
 class DataWriterMock : public native::DataWriter {
 public:
-    MOCK_METHOD(bool, Write, (uint64_t offset, char* buffer, int length, native::ErrCodeType& errorCode), (override));
+    MOCK_METHOD(bool, Write, (uint64_t offset, uint8_t* buffer, int length, native::ErrCodeType& errorCode), (override));
     MOCK_METHOD(bool, Ok, (), (override));
+    MOCK_METHOD(bool, Flush, (), (override));
     MOCK_METHOD(native::ErrCodeType, Error, (), (override));
 };
 
@@ -104,7 +105,6 @@ static void InitSessionBlockVolumeReader(
         SourceType::VOLUME,
         session->sharedConfig->volumePath,
         session->sharedConfig->sessionOffset,
-        session->sharedConfig->sessionSize,
         dataReader,
         session->sharedConfig,
         session->sharedContext
@@ -143,9 +143,7 @@ static void InitSessionBlockHasher(
 
     VolumeBlockHasherParam hasherParam {
         session->sharedConfig, session->sharedContext, DEFAULT_HASHER_NUM,
-        HasherForwardMode::DIFF, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
-        prevChecksumTable, prevChecksumTableSize,
-        lastestChecksumTable, lastestChecksumTableSize
+        HasherForwardMode::DIFF, singleChecksumSize
     };
     auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
     session->hasherTask = volumeBlockHasher;
@@ -504,7 +502,6 @@ static void InitSessionBlockCopyReader(
         SourceType::COPYFILE,
         session->sharedConfig->volumePath,
         session->sharedConfig->sessionOffset,
-        session->sharedConfig->sessionSize,
         dataReader,
         session->sharedConfig,
         session->sharedContext
@@ -657,7 +654,7 @@ TEST_F(VolumeBackupTest, BuildDirectHasher_Success)
     sharedConfig->sessionSize = 512 * ONE_MB;
     sharedConfig->blockSize = 4 * ONE_MB;
     sharedConfig->hasherWorkerNum = DEFAULT_HASHER_NUM;
-    EXPECT_TRUE(VolumeBlockHasher::BuildDirectHasher(sharedConfig, sharedContext) != nullptr);
+    EXPECT_TRUE(VolumeBlockHasher::BuildHasher(sharedConfig, sharedContext, HasherForwardMode::DIRECT) != nullptr);
 }
 
 TEST_F(VolumeBackupTest, BuildDiffHasher_Fail)
@@ -669,7 +666,7 @@ TEST_F(VolumeBackupTest, BuildDiffHasher_Fail)
     sharedConfig->sessionSize = 512 * ONE_MB;
     sharedConfig->blockSize = 4 * ONE_MB;
     sharedConfig->hasherWorkerNum = DEFAULT_HASHER_NUM;
-    EXPECT_TRUE(VolumeBlockHasher::BuildDiffHasher(sharedConfig, sharedContext) == nullptr);
+    EXPECT_TRUE(VolumeBlockHasher::BuildHasher(sharedConfig, sharedContext, HasherForwardMode::DIFF) == nullptr);
 }
 
 TEST_F(VolumeBackupTest, BuildCopyWriter_Fail)
@@ -711,9 +708,7 @@ TEST_F(VolumeBackupTest, Hasher_StartFail1)
 
     VolumeBlockHasherParam hasherParam {
         session->sharedConfig, session->sharedContext, hasherNum,
-        HasherForwardMode::DIFF, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
-        prevChecksumTable, prevChecksumTableSize,
-        lastestChecksumTable, lastestChecksumTableSize
+        HasherForwardMode::DIFF, singleChecksumSize
     };
     auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
     EXPECT_FALSE(volumeBlockHasher->Start());
@@ -737,10 +732,7 @@ TEST_F(VolumeBackupTest, Hasher_StartFail2)
 
     VolumeBlockHasherParam hasherParam {
         session->sharedConfig, session->sharedContext, DEFAULT_HASHER_NUM,
-        HasherForwardMode::DIFF, previousChecksumBinPath, lastestChecksumBinPath, singleChecksumSize,
-        prevChecksumTable, prevChecksumTableSize,
-        lastestChecksumTable, lastestChecksumTableSize
-    };
+        HasherForwardMode::DIFF, singleChecksumSize };
     auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
     EXPECT_FALSE(volumeBlockHasher->Start());
 }
