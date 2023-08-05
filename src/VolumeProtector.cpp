@@ -5,6 +5,15 @@
 
 using namespace volumeprotect;
 
+static std::unordered_map<int, std::string> g_statusStringTable {
+    { static_cast<int>(TaskStatus::INIT), "INIT" },
+    { static_cast<int>(TaskStatus::RUNNING), "RUNNING" },
+    { static_cast<int>(TaskStatus::SUCCEED), "SUCCEED" },
+    { static_cast<int>(TaskStatus::ABORTING), "ABORTING" },
+    { static_cast<int>(TaskStatus::ABORTED), "ABORTED" },
+    { static_cast<int>(TaskStatus::FAILED), "FAILED" },
+};
+
 /*
  * backup copy folder herichical
  * Example of session size 1024 bytes, volume size 3072 bytes
@@ -109,15 +118,12 @@ bool StatefulTask::IsTerminated() const
 
 std::string StatefulTask::GetStatusString() const
 {
-    std::unordered_map<int, std::string> table {
-        { static_cast<int>(TaskStatus::INIT), "INIT" },
-        { static_cast<int>(TaskStatus::RUNNING), "RUNNING" },
-        { static_cast<int>(TaskStatus::SUCCEED), "SUCCEED" },
-        { static_cast<int>(TaskStatus::ABORTING), "ABORTING" },
-        { static_cast<int>(TaskStatus::ABORTED), "ABORTED" },
-        { static_cast<int>(TaskStatus::FAILED), "FAILED" },
-    };
-    return table[static_cast<int>(m_status)];
+    return g_statusStringTable[static_cast<int>(m_status)];
+}
+
+void StatefulTask::AssertTaskNotStarted()
+{
+    (m_status != TaskStatus::INIT) ? throw std::runtime_error("task already started") : void();
 }
 
 TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) const

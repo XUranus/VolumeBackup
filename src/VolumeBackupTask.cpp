@@ -34,9 +34,7 @@ VolumeBackupTask::~VolumeBackupTask()
 
 bool VolumeBackupTask::Start()
 {
-    if (m_status != TaskStatus::INIT) {
-        return false;
-    }
+    AssertTaskNotStarted();
     if (!Prepare()) {
         ERRLOG("prepare task failed");
         m_status = TaskStatus::FAILED;
@@ -116,25 +114,8 @@ bool VolumeBackupTask::Prepare()
     return true;
 }
 
-bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const
+bool VolumeBackupTask::InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const
 {
-    DBGLOG("init backup session context");
-    // 1. init basic backup container
-    session->sharedContext = std::make_shared<VolumeTaskSharedContext>();
-    session->sharedContext->counter = std::make_shared<SessionCounter>();
-    session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
-    session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    if (!InitHashingContext(session)) {
-        ERRLOG("failed to init hashing context");
-        return false;
-    }
-    InitSessionBitmap(session);
-
-    // 2. restore checkpoint if restarted
-    RestoreSessionCheckpoint(session);
-
-    // 3. check and init reader
     session->readerTask = VolumeBlockReader::BuildVolumeReader(session->sharedConfig, session->sharedContext);
     if (session->readerTask == nullptr) {
         ERRLOG("backup session failed to init reader");
@@ -156,6 +137,27 @@ bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSessio
         return false;
     }
     return true;
+}
+
+bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const
+{
+    DBGLOG("init backup session context");
+    // 1. init basic backup container
+    session->sharedContext = std::make_shared<VolumeTaskSharedContext>();
+    session->sharedContext->counter = std::make_shared<SessionCounter>();
+    session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(
+        session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
+    session->sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    if (!InitHashingContext(session)) {
+        ERRLOG("failed to init hashing context");
+        return false;
+    }
+    InitSessionBitmap(session);
+    // 2. restore checkpoint if restarted
+    RestoreSessionCheckpoint(session);
+    // 3. check and init task executor
+    return InitBackupSessionTaskExecutor(session);
 }
 
 bool VolumeBackupTask::StartBackupSession(std::shared_ptr<VolumeTaskSession> session) const
@@ -214,7 +216,7 @@ void VolumeBackupTask::ThreadFunc()
                 return;
             }
             if (session->IsFailed()) {
-                ERRLOG("session failed");
+                ERRLOG("backup session failed");
                 m_status = TaskStatus::FAILED;
                 return;
             }
@@ -252,18 +254,26 @@ bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> ses
         return false;
     }
     // 2. load previous checksum table from file if increment backup
-    if (IsIncrementBackup()) {
-        uint8_t* buffer = native::ReadBinaryBuffer(session->sharedConfig->prevChecksumBinPath, prevChecksumTableSize);
-        if (buffer == nullptr) {
-            ERRLOG("failed to read previous checksum from %s", session->sharedConfig->prevChecksumBinPath.c_str());
-            return false;
-        }
-        memcpy(session->sharedContext->hashingContext->previousTable, buffer, sizeof(uint8_t) * prevChecksumTableSize);
-        delete[] buffer;
-        buffer = nullptr;
+    if (IsIncrementBackup() && !LoadSessionPreviousCopyChecksum(session)) {
+        return false;
     }
-    // 3. check latest checksum file and try to load it
+    return true;
+}
 
+bool VolumeBackupTask::LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTaskSession> session) const
+{
+    auto sharedConfig = session->sharedConfig;
+    uint32_t blockCount = static_cast<uint32_t>(sharedConfig->sessionSize / sharedConfig->blockSize);
+    uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
+    uint64_t prevChecksumTableSize = lastestChecksumTableSize;
+    uint8_t* buffer = native::ReadBinaryBuffer(session->sharedConfig->prevChecksumBinPath, prevChecksumTableSize);
+    if (buffer == nullptr) {
+        ERRLOG("failed to read previous checksum from %s", session->sharedConfig->prevChecksumBinPath.c_str());
+        return false;
+    }
+    memcpy(session->sharedContext->hashingContext->previousTable, buffer, sizeof(uint8_t) * prevChecksumTableSize);
+    delete[] buffer;
+    buffer = nullptr;
     return true;
 }
 

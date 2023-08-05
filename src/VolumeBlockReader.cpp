@@ -61,18 +61,11 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
 
 bool VolumeBlockReader::Start()
 {
-    if (m_status != TaskStatus::INIT) {
-        return false;
-    }
+    AssertTaskNotStarted();
     m_status = TaskStatus::RUNNING;
     // check data reader
-    if (!m_dataReader) {
-        ERRLOG("dataReader is nullptr, path = %s", m_sourcePath.c_str());
-        m_status = TaskStatus::FAILED;
-        return false;
-    }
-    if (!m_dataReader->Ok()) {
-        ERRLOG("invalid dataReader, path = %s", m_sourcePath.c_str());
+    if (!m_dataReader || !m_dataReader->Ok()) {
+        ERRLOG("invalid dataReader %p, path = %s", m_dataReader.get(), m_sourcePath.c_str());
         m_status = TaskStatus::FAILED;
         return false;
     }
@@ -144,7 +137,7 @@ void VolumeBlockReader::MainThread()
             continue;
         }
 
-        uint8_t* buffer = FetchBlockBuffer(std::chrono::seconds(1));
+        uint8_t* buffer = FetchBlockBuffer(std::chrono::seconds(60));
         if (buffer == nullptr) {
             m_status = TaskStatus::FAILED;
             break;
@@ -208,8 +201,9 @@ uint8_t* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
             return buffer;
         }
         auto now = std::chrono::steady_clock::now();
-        if ((now - start).count() >= timeout.count()) {
-            ERRLOG("malloc block buffer timeout!");
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - start);
+        if (duration.count() >= timeout.count()) {
+            ERRLOG("malloc block buffer timeout! %llu %llu", duration.count(), timeout.count());
             return nullptr;
         }
         DBGLOG("failed to malloc, retry in 100ms");

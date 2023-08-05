@@ -31,9 +31,7 @@ VolumeRestoreTask::~VolumeRestoreTask()
 
 bool VolumeRestoreTask::Start()
 {
-    if (m_status != TaskStatus::INIT) {
-        return false;
-    }
+    AssertTaskNotStarted();
     if (!Prepare()) {
         ERRLOG("prepare task failed");
         m_status = TaskStatus::FAILED;
@@ -89,22 +87,8 @@ bool VolumeRestoreTask::Prepare()
     return true;
 }
 
-bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const
+bool VolumeRestoreTask::InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const
 {
-    DBGLOG("init restore session context");
-    // 1. init basic restore container
-    session->sharedContext = std::make_shared<VolumeTaskSharedContext>();
-    session->sharedContext->counter = std::make_shared<SessionCounter>();
-    session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(
-        session->sharedConfig->blockSize,
-        DEFAULT_ALLOCATOR_BLOCK_NUM);
-    session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    InitSessionBitmap(session);
-
-    // 2. restore checkpoint if restarted
-    RestoreSessionCheckpoint(session);
-
-    // 3. check and init reader
     session->readerTask = VolumeBlockReader::BuildCopyReader(
         session->sharedConfig,
         session->sharedContext
@@ -124,6 +108,23 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
         return false;
     }
     return true;
+}
+
+bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const
+{
+    DBGLOG("init restore session context");
+    // 1. init basic restore container
+    session->sharedContext = std::make_shared<VolumeTaskSharedContext>();
+    session->sharedContext->counter = std::make_shared<SessionCounter>();
+    session->sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(
+        session->sharedConfig->blockSize,
+        DEFAULT_ALLOCATOR_BLOCK_NUM);
+    session->sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    InitSessionBitmap(session);
+    // 2. restore checkpoint if restarted
+    RestoreSessionCheckpoint(session);
+    // 3. check and init task executor
+    return InitRestoreSessionTaskExecutor(session);
 }
 
 bool VolumeRestoreTask::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
@@ -194,7 +195,6 @@ void VolumeRestoreTask::ThreadFunc()
             std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
         }
         DBGLOG("session complete successfully");
-        FlushSessionLatestHashingTable(session);
         FlushSessionWriter(session);
         FlushSessionBitmap(session);
         UpdateCompletedSessionStatistics(session);

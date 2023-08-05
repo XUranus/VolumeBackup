@@ -68,18 +68,11 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
 
 bool VolumeBlockWriter::Start()
 {
-    if (m_status != TaskStatus::INIT) {
-        return false;
-    }
+    AssertTaskNotStarted();
     m_status = TaskStatus::RUNNING;
     // check data writer
-    if (!m_dataWriter) {
-        ERRLOG("dataWriter is nullptr, path = %s", m_targetPath.c_str());
-        m_status = TaskStatus::FAILED;
-        return false;
-    }
-    if (!m_dataWriter->Ok()) {
-        ERRLOG("invalid dataWriter, path = %s", m_targetPath.c_str());
+    if (!m_dataWriter || !m_dataWriter->Ok()) {
+        ERRLOG("invalid dataWriter %p, path = %s", m_dataWriter.get(), m_targetPath.c_str());
         m_status = TaskStatus::FAILED;
         return false;
     }

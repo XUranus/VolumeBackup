@@ -56,9 +56,7 @@ VolumeBlockHasher::VolumeBlockHasher(const VolumeBlockHasherParam& param)
 
 bool VolumeBlockHasher::Start()
 {
-    if (m_status != TaskStatus::INIT) {
-        return false;
-    }
+    AssertTaskNotStarted();
     if (m_workerThreadNum == 0 || m_workerThreadNum > MAX_HASHER_WORKER_NUM) { // invalid parameter
         m_status = TaskStatus::FAILED;
         return false;

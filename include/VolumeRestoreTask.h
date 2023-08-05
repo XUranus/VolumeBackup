@@ -23,6 +23,7 @@ private:
     void ThreadFunc();
     bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
+    virtual bool InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 private:
     uint64_t                                m_volumeSize;

@@ -80,6 +80,7 @@ public:
     bool        IsFailed() const;
     bool        IsTerminated() const;
     std::string GetStatusString() const;
+    void        AssertTaskNotStarted();
 
 protected:
     TaskStatus  m_status { TaskStatus::INIT };
