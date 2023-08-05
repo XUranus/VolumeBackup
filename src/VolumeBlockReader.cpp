@@ -144,7 +144,7 @@ void VolumeBlockReader::MainThread()
             continue;
         }
 
-        char* buffer = FetchBlockBuffer(std::chrono::seconds(1));
+        uint8_t* buffer = FetchBlockBuffer(std::chrono::seconds(1));
         if (buffer == nullptr) {
             m_status = TaskStatus::FAILED;
             break;
@@ -199,11 +199,11 @@ void VolumeBlockReader::RevertNextBlock()
     ++m_currentIndex;
 }
 
-char* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
+uint8_t* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
 {
     auto start = std::chrono::steady_clock::now();
     while (true) {
-        char* buffer = m_sharedContext->allocator->bmalloc();
+        uint8_t* buffer = m_sharedContext->allocator->bmalloc();
         if (buffer != nullptr) {
             return buffer;
         }
@@ -218,7 +218,7 @@ char* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
     return nullptr;
 }
 
-bool VolumeBlockReader::ReadBlock(char* buffer, uint32_t& nBytesToRead)
+bool VolumeBlockReader::ReadBlock(uint8_t* buffer, uint32_t& nBytesToRead)
 {
     native::ErrCodeType errorCode = 0;
     uint32_t blockSize = m_sharedConfig->blockSize;
@@ -229,7 +229,7 @@ bool VolumeBlockReader::ReadBlock(char* buffer, uint32_t& nBytesToRead)
     } else {
         nBytesToRead = blockSize;
     }
-    
+
     if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
         ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
         return false;

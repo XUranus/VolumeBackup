@@ -104,7 +104,6 @@ void VolumeBlockHasher::WorkerThread(uint32_t workerID)
             m_singleChecksumSize);
 
         ++m_sharedContext->counter->blocksHashed;
-        m_sharedContext->hashedBitmap->Set(index);
 
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash

@@ -3,7 +3,7 @@
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
-#include "BlockingQueue.h" 
+#include "BlockingQueue.h"
 
 namespace volumeprotect {
 
@@ -112,11 +112,9 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
  */
 struct VOLUMEPROTECT_API CheckpointSnapshot {
     uint64_t    bitmapBufferBytesLength;     // mark single buffer length in bytes, all bitmap buffer share same length
-    // buffer that only needed during backup (all padding to zero during restore)
-    uint8_t*    hashedBitmapBuffer;     // mark blocks hashed, corresponding checksum save in checksum binary file
-    uint8_t*    processedBitmapBuffer;    // mark blocks need to be written
-    // buffer that both needed during backup & restore
-    uint8_t*    writtenBitmapBuffer;    // mark blocks written to disk/copyfile
+    // buffer that only needed during backup/restore (all padding to zero during restore)
+    uint8_t*    processedBitmapBuffer;      // mark blocks need to be written
+    uint8_t*    writtenBitmapBuffer;        // mark blocks written to disk/copyfile
 
     CheckpointSnapshot(uint64_t length);
     ~CheckpointSnapshot();
@@ -126,7 +124,6 @@ struct VOLUMEPROTECT_API CheckpointSnapshot {
 
 struct VOLUMEPROTECT_API VolumeTaskSharedContext {
     // bitmap to implement checkpoint
-    std::shared_ptr<Bitmap>                             hashedBitmap            { nullptr };
     std::shared_ptr<Bitmap>                             processedBitmap         { nullptr };
     std::shared_ptr<Bitmap>                             writtenBitmap           { nullptr };
 

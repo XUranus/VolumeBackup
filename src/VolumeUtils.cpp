@@ -45,7 +45,7 @@ std::string util::GetWriterBitmapFilePath(
     uint64_t                    sessionSize)
 {
     std::string filename = ConcatSessionFileName(sessionOffset, sessionSize, WRITER_BITMAP_FILENAME_SUFFIX);
-    return copyMetaDirPath + SEPARATOR + filename; 
+    return copyMetaDirPath + SEPARATOR + filename;
 }
 
 bool util::WriteVolumeCopyMeta(

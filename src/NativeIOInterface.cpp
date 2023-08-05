@@ -129,7 +129,7 @@ SystemDataReader::SystemDataReader(const std::string& path)
 #endif
 }
 
-bool SystemDataReader::Read(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode)
+bool SystemDataReader::Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
 {
 #ifdef __linux__
     ::lseek(m_handle, offset, SEEK_SET);
@@ -187,7 +187,7 @@ SystemDataWriter::SystemDataWriter(const std::string& path)
 #endif
 }
 
-bool SystemDataWriter::Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode)
+bool SystemDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
 {
 #ifdef __linux__
     ::lseek(m_handle, offset, SEEK_SET);

@@ -54,8 +54,8 @@ private:
     bool SkipReadingBlock() const;
     bool IsReadCompleted() const;
     void RevertNextBlock();
-    char* FetchBlockBuffer(std::chrono::seconds timeout) const;
-    bool ReadBlock(char* buffer, uint32_t& nBytesReaded);
+    uint8_t* FetchBlockBuffer(std::chrono::seconds timeout) const;
+    bool ReadBlock(uint8_t* buffer, uint32_t& nBytesReaded);
 
 private:
     // immutable fields

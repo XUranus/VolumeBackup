@@ -1,12 +1,3 @@
-#include <chrono>
-#include <exception>
-#include <memory>
-#include <queue>
-#include <string>
-#include <sys/types.h>
-#include <thread>
-#include <vector>
-
 #include "Logger.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
@@ -30,7 +21,7 @@ namespace {
 
 VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
     : m_volumeSize(volumeSize),
-    m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig)) 
+    m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig))
 {}
 
 VolumeBackupTask::~VolumeBackupTask()

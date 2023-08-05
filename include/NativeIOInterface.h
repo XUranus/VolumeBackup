@@ -48,7 +48,7 @@ private:
  */
 class VOLUMEPROTECT_API DataReader {
 public:
-    virtual bool Read(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) = 0;
+    virtual bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) = 0;
     virtual bool Ok() = 0;
     virtual ErrCodeType Error() = 0;
     virtual ~DataReader() = default;
@@ -56,7 +56,7 @@ public:
 
 class VOLUMEPROTECT_API DataWriter {
 public:
-    virtual bool Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) = 0;
+    virtual bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) = 0;
     virtual bool Ok() = 0;
     virtual bool Flush() = 0;
     virtual ErrCodeType Error() = 0;
@@ -71,7 +71,7 @@ class VOLUMEPROTECT_API SystemDataReader : public DataReader {
 public:
     SystemDataReader(const std::string& path);
     ~SystemDataReader();
-    bool Read(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) override;
+    bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
     ErrCodeType Error() override;
 
@@ -83,7 +83,7 @@ class VOLUMEPROTECT_API SystemDataWriter : public DataWriter {
 public:
     SystemDataWriter(const std::string& path);
     ~SystemDataWriter();
-    bool Write(uint64_t offset, char* buffer, int length, ErrCodeType& errorCode) override;
+    bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
     bool Flush() override;
     ErrCodeType Error() override;

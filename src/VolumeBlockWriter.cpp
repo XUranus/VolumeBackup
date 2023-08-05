@@ -20,7 +20,7 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
     }
     // truncate copy file to session size
     DBGLOG("truncate target copy file %s to size %llu",copyFilePath.c_str(), sharedConfig->sessionSize);
-    native::ErrCodeType errorCode = 0; 
+    native::ErrCodeType errorCode = 0;
     if (!native::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
         ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
             copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
@@ -89,7 +89,7 @@ bool VolumeBlockWriter::Start()
 
 bool VolumeBlockWriter::Flush()
 {
-    m_dataWriter->Flush();
+    return m_dataWriter->Flush();
 }
 
 VolumeBlockWriter::~VolumeBlockWriter()
@@ -140,7 +140,7 @@ void VolumeBlockWriter::MainThread()
         }
         DBGLOG("write block[%llu] (%p, %llu, %u) writerOffset = %llu",
             index, buffer, consumeBlock.volumeOffset, length, writerOffset);
-        if (!m_dataWriter->Write(writerOffset, reinterpret_cast<char*>(buffer), length, errorCode)) {
+        if (!m_dataWriter->Write(writerOffset, buffer, length, errorCode)) {
             ERRLOG("write %llu bytes failed, error code = %u", writerOffset, errorCode);
             m_sharedContext->allocator->bfree(buffer);
             ++m_sharedContext->counter->blockesWriteFailed;

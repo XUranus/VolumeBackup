@@ -1,10 +1,5 @@
 #ifndef VOLUMEBACKUP_RESTORE_TASK_HEADER
 #define VOLUMEBACKUP_RESTORE_TASK_HEADER
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <exception>
-#include <vector>
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
