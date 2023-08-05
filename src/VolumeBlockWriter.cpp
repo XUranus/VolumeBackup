@@ -146,6 +146,7 @@ void VolumeBlockWriter::MainThread()
         m_sharedContext->counter->bytesWritten += length;
     }
     if (m_status == TaskStatus::SUCCEED && m_sharedContext->counter->blockesWriteFailed != 0) {
+        m_status = TaskStatus::FAILED;
         ERRLOG("%llu blockes failed to write, set writer status to fail");
     }
     INFOLOG("writer read terminated with status %s", GetStatusString().c_str());

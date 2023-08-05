@@ -242,8 +242,7 @@ bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> ses
     // 1. allocate checksum table
     auto sharedConfig = session->sharedConfig;
     auto sharedContext = session->sharedContext;
-    uint32_t blockCount = static_cast<uint32_t>(sharedConfig->sessionSize / sharedConfig->blockSize);
-    uint64_t lastestChecksumTableSize = blockCount * SHA256_CHECKSUM_SIZE;
+    uint64_t lastestChecksumTableSize = session->TotalBlocks() * SHA256_CHECKSUM_SIZE;
     uint64_t prevChecksumTableSize = lastestChecksumTableSize;
     try {
         sharedContext->hashingContext = IsIncrementBackup() ?

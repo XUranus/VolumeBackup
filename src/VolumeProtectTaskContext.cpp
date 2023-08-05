@@ -334,8 +334,9 @@ bool VolumeTaskCheckpointTrait::IsCheckpointEnabled(std::shared_ptr<VolumeTaskSe
 
 void VolumeTaskCheckpointTrait::InitSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const
 {
-    session->sharedContext->processedBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
-    session->sharedContext->writtenBitmap = std::make_shared<Bitmap>(session->sharedConfig->sessionSize);
+    uint64_t numBlocks = session->TotalBlocks();
+    session->sharedContext->processedBitmap = std::make_shared<Bitmap>(numBlocks);
+    session->sharedContext->writtenBitmap = std::make_shared<Bitmap>(numBlocks);
 }
 
 std::shared_ptr<CheckpointSnapshot> VolumeTaskCheckpointTrait::TakeSessionCheckpointSnapshot(

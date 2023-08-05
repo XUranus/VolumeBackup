@@ -42,7 +42,7 @@ protected:
         using namespace xuranus::minilogger;
         LoggerConfig conf {};
         conf.target = LoggerTarget::STDOUT;
-        Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
+        Logger::GetInstance()->SetLogLevel(LoggerLevel::ERROR);
         if (!Logger::GetInstance()->Init(conf)) {
             std::cerr << "Init logger failed" << std::endl;
         }
@@ -85,12 +85,23 @@ static void InitSessionSharedConfig(std::shared_ptr<VolumeTaskSession> session)
 
 static void InitSessionSharedContext(std::shared_ptr<VolumeTaskSession> session)
 {
+    const uint32_t SHA256_CHECKSUM_SIZE = 32;
     auto sharedContext = std::make_shared<VolumeTaskSharedContext>();
-    // init session 
+    // init basic container
     sharedContext->counter = std::make_shared<SessionCounter>();
-    sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
+    sharedContext->allocator = std::make_shared<VolumeBlockAllocator>(
+        session->sharedConfig->blockSize, DEFAULT_ALLOCATOR_BLOCK_NUM);
     sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    // init hasher context
     sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
+    uint64_t blockCount = session->sharedConfig->sessionSize / static_cast<uint64_t>(session->sharedConfig->blockSize); 
+    uint64_t numBlocks = session->TotalBlocks();
+    uint64_t lastestChecksumTableSize = numBlocks * SHA256_CHECKSUM_SIZE;
+    uint64_t prevChecksumTableSize = lastestChecksumTableSize;
+    sharedContext->hashingContext = std::make_shared<BlockHashingContext>(prevChecksumTableSize, lastestChecksumTableSize);
+    // init bitmap
+    sharedContext->processedBitmap = std::make_shared<Bitmap>(numBlocks);
+    sharedContext->writtenBitmap = std::make_shared<Bitmap>(numBlocks);
     session->sharedContext = sharedContext;
 }
 
@@ -205,7 +216,7 @@ TEST_F(VolumeBackupTest, VolumeBackupTask_InvalidDataReaderOrWriterBeforeStart)
 {
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
-    InitSessionSharedConfig(session);
+    InitSessionSharedConfig(session);    
     InitSessionSharedContext(session);
     InitSessionBlockVolumeReader(session, nullptr);
     InitSessionBlockCopyWriter(session, nullptr);
@@ -550,103 +561,60 @@ TEST_F(VolumeBackupTest, VolumeRestoreTask_RunRestoreThenAbort)
 }
 
 // // Test Basic Component From Here...
-// TEST_F(VolumeBackupTest, BuildRestoreTask_InvalidVolume)
-// {
-//     VolumeRestoreConfig restoreConfig;
-//     restoreConfig.copyDataDirPath = "/dummy/dummyData";
-//     restoreConfig.copyMetaDirPath = "/dummy/dummyMeta";
-//     restoreConfig.volumePath = "/dev/dummy/dummyVolume";
-//     EXPECT_TRUE(VolumeProtectTask::BuildRestoreTask(restoreConfig) == nullptr);
-// }
+TEST_F(VolumeBackupTest, BuildRestoreTask_FailForInvalidVolumePath)
+{
+    VolumeRestoreConfig restoreConfig;
+    restoreConfig.copyDataDirPath = "/dummy/dummyData";
+    restoreConfig.copyMetaDirPath = "/dummy/dummyMeta";
+    restoreConfig.volumePath = "/dev/dummy/dummyVolume";
+    EXPECT_TRUE(VolumeProtectTask::BuildRestoreTask(restoreConfig) == nullptr);
+}
 
-// TEST_F(VolumeBackupTest, BuildDirectHasher_Success)
-// {
-//     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
-//         std::make_shared<VolumeTaskSharedConfig>();
-//     std::shared_ptr<VolumeTaskSharedContext> sharedContext =
-//         std::make_shared<VolumeTaskSharedContext>();
-//     sharedConfig->sessionSize = 512 * ONE_MB;
-//     sharedConfig->blockSize = 4 * ONE_MB;
-//     sharedConfig->hasherWorkerNum = DEFAULT_HASHER_NUM;
-//     EXPECT_TRUE(VolumeBlockHasher::BuildHasher(sharedConfig, sharedContext, HasherForwardMode::DIRECT) != nullptr);
-// }
+TEST_F(VolumeBackupTest, BuildHasher_Success)
+{
+    auto session = std::make_shared<VolumeTaskSession>();
+    InitSessionSharedConfig(session);
+    InitSessionSharedContext(session);
+    EXPECT_TRUE(VolumeBlockHasher::BuildHasher(
+        session->sharedConfig,
+        session->sharedContext,
+        HasherForwardMode::DIRECT) != nullptr);
+}
 
-// TEST_F(VolumeBackupTest, BuildDiffHasher_Fail)
-// {
-//     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
-//         std::make_shared<VolumeTaskSharedConfig>();
-//     std::shared_ptr<VolumeTaskSharedContext> sharedContext =
-//         std::make_shared<VolumeTaskSharedContext>();
-//     sharedConfig->sessionSize = 512 * ONE_MB;
-//     sharedConfig->blockSize = 4 * ONE_MB;
-//     sharedConfig->hasherWorkerNum = DEFAULT_HASHER_NUM;
-//     EXPECT_TRUE(VolumeBlockHasher::BuildHasher(sharedConfig, sharedContext, HasherForwardMode::DIFF) == nullptr);
-// }
+TEST_F(VolumeBackupTest, BuildCopyWriter_FailForInvalidCopyPath)
+{
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
+        std::make_shared<VolumeTaskSharedConfig>();
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext =
+        std::make_shared<VolumeTaskSharedContext>();
+    sharedConfig->sessionSize = 512 * ONE_MB;
+    sharedConfig->copyFilePath = "/dummy/dummycopy";
+    EXPECT_TRUE(VolumeBlockWriter::BuildCopyWriter(sharedConfig, sharedContext) == nullptr);
+}
 
-// TEST_F(VolumeBackupTest, BuildCopyWriter_Fail)
-// {
-//     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
-//         std::make_shared<VolumeTaskSharedConfig>();
-//     std::shared_ptr<VolumeTaskSharedContext> sharedContext =
-//         std::make_shared<VolumeTaskSharedContext>();
-//     sharedConfig->sessionSize = 512 * ONE_MB;
-//     sharedConfig->copyFilePath = "/dummy/dummycopy";
-//     EXPECT_TRUE(VolumeBlockWriter::BuildCopyWriter(sharedConfig, sharedContext) == nullptr);
-// }
+TEST_F(VolumeBackupTest, BuildVolumeWriter_FailForInvalidVolumePath)
+{
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
+        std::make_shared<VolumeTaskSharedConfig>();
+    std::shared_ptr<VolumeTaskSharedContext> sharedContext =
+        std::make_shared<VolumeTaskSharedContext>();
+    sharedConfig->sessionSize = 512 * ONE_MB;
+    sharedConfig->volumePath = "/dummy/dummyvolumePath";
+    EXPECT_TRUE(VolumeBlockWriter::BuildVolumeWriter(sharedConfig, sharedContext) == nullptr);
+}
 
-// TEST_F(VolumeBackupTest, BuildVolumeWriter_Fail)
-// {
-//     std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
-//         std::make_shared<VolumeTaskSharedConfig>();
-//     std::shared_ptr<VolumeTaskSharedContext> sharedContext =
-//         std::make_shared<VolumeTaskSharedContext>();
-//     sharedConfig->sessionSize = 512 * ONE_MB;
-//     sharedConfig->volumePath = "/dummy/dummyvolume";
-//     EXPECT_TRUE(VolumeBlockWriter::BuildVolumeWriter(sharedConfig, sharedContext) == nullptr);
-// }
+TEST_F(VolumeBackupTest, VolumeBlockHasher_StartFailForHasherDisabled)
+{
+    uint32_t hasherNum = 0; // invalid hasher num
+    uint32_t singleChecksumSize = 32LU; // SHA-256
+    auto session = std::make_shared<VolumeTaskSession>();
+    InitSessionSharedConfig(session);
+    InitSessionSharedContext(session);
+    session->sharedConfig->hasherEnabled = false;
 
-// TEST_F(VolumeBackupTest, Hasher_StartFail1)
-// {
-//     uint32_t hasherNum = 0; // invalid hasher num
-//     uint32_t singleChecksumSize = 32LU; // SHA-256
-//     std::string previousChecksumBinPath = "/dummy/checksum1";
-//     std::string lastestChecksumBinPath = "/dummy/checksum2";
-//     auto session = std::make_shared<VolumeTaskSession>();
-//     InitSessionSharedConfig(session);
-
-//     // init hasher context
-//     uint64_t prevChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
-//     uint64_t lastestChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
-//     auto lastestChecksumTable = new char[prevChecksumTableSize];
-//     auto prevChecksumTable = new char[lastestChecksumTableSize];
-
-//     VolumeBlockHasherParam hasherParam {
-//         session->sharedConfig, session->sharedContext, hasherNum,
-//         HasherForwardMode::DIFF, singleChecksumSize
-//     };
-//     auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
-//     EXPECT_FALSE(volumeBlockHasher->Start());
-// }
-
-// TEST_F(VolumeBackupTest, Hasher_StartFail2)
-// {
-//     uint32_t singleChecksumSize = 32LU; // SHA-256
-//     std::string previousChecksumBinPath = "/dummy/checksum1";
-//     std::string lastestChecksumBinPath = "/dummy/checksum2";
-//     auto session = std::make_shared<VolumeTaskSession>();
-//     InitSessionSharedConfig(session);
-//     // disable hasher
-//     session->sharedConfig->hasherEnabled = false;
-
-//     // init hasher context
-//     uint64_t prevChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
-//     uint64_t lastestChecksumTableSize = singleChecksumSize * (session->sharedConfig->sessionSize / session->sharedConfig->blockSize);
-//     auto lastestChecksumTable = new char[prevChecksumTableSize];
-//     auto prevChecksumTable = new char[lastestChecksumTableSize];
-
-//     VolumeBlockHasherParam hasherParam {
-//         session->sharedConfig, session->sharedContext, DEFAULT_HASHER_NUM,
-//         HasherForwardMode::DIFF, singleChecksumSize };
-//     auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
-//     EXPECT_FALSE(volumeBlockHasher->Start());
-// }
+    VolumeBlockHasherParam hasherParam {
+        session->sharedConfig, session->sharedContext, hasherNum, HasherForwardMode::DIFF, singleChecksumSize
+    };
+    auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
+    EXPECT_FALSE(volumeBlockHasher->Start());
+}

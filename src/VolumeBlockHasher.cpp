@@ -61,9 +61,6 @@ bool VolumeBlockHasher::Start()
         m_status = TaskStatus::FAILED;
         return false;
     }
-    if (!m_workers.empty()) { // already started
-        return false;
-    }
     if (!m_sharedConfig->hasherEnabled) {
         m_status = TaskStatus::FAILED;
         WARNLOG("hasher not enabled, exit hasher directly");
@@ -119,7 +116,7 @@ void VolumeBlockHasher::WorkerThread(uint32_t workerID)
         m_sharedContext->counter->bytesToWrite += consumeBlock.length;
         m_sharedContext->writeQueue->BlockingPush(consumeBlock);
     }
-    INFOLOG("hasher worker[%lu] terminated with status %s", GetStatusString().c_str());
+    INFOLOG("hasher worker[%lu] terminated with status %s", workerID, GetStatusString().c_str());
     HandleWorkerTerminate();
     return;
 }
