@@ -101,6 +101,7 @@ bool VolumeBackupTask::Prepare()
         session.sharedConfig->prevChecksumBinPath = prevChecksumBinPath;
         session.sharedConfig->copyFilePath = copyFilePath;
         session.sharedConfig->checkpointFilePath = writerBitmapPath;
+        session.sharedConfig->checkpointEnabled = m_backupConfig->enableCheckpoint;
 
         volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);

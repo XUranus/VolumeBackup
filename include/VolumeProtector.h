@@ -33,14 +33,14 @@ enum class VOLUMEPROTECT_API CopyType {
 
 // immutable config, used to build volume full/increment backup task
 struct VOLUMEPROTECT_API VolumeBackupConfig {
-    CopyType        copyType;                               // type of target copy to be generated
+    CopyType        copyType        { CopyType::FULL };     // type of target copy to be generated
     std::string     volumePath;                             // path of the block device (volume)
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
     std::string	    outputCopyDataDirPath;
     std::string	    outputCopyMetaDirPath;
     uint32_t        blockSize       { DEFAULT_BLOCK_SIZE };  // [optional] default blocksize used for computing sha256
     uint64_t        sessionSize     { DEFAULT_SESSION_SIZE };// default sesson size used to split session
-    uint64_t        hasherNum       { DEFAULT_HASHER_NUM };  // hasher worker count, set to the num of processors
+    uint32_t        hasherNum       { DEFAULT_HASHER_NUM };  // hasher worker count, set to the num of processors
     bool            hasherEnabled   { true };                // if set to false, won't compute sha256
     bool            enableCheckpoint{ true };                // start from checkpoint if exists
 };
@@ -63,12 +63,12 @@ enum class VOLUMEPROTECT_API TaskStatus {
 };
 
 struct VOLUMEPROTECT_API TaskStatistics {
-    uint64_t bytesToRead;
-    uint64_t bytesRead;
-    uint64_t blocksToHash;
-    uint64_t blocksHashed;
-    uint64_t bytesToWrite;
-    uint64_t bytesWritten;
+    uint64_t bytesToRead    { 0 };
+    uint64_t bytesRead      { 0 };
+    uint64_t blocksToHash   { 0 };
+    uint64_t blocksHashed   { 0 };
+    uint64_t bytesToWrite   { 0 };
+    uint64_t bytesWritten   { 0 };
 
     TaskStatistics operator+ (const TaskStatistics& taskStatistics) const;
 };

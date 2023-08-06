@@ -57,17 +57,14 @@ VolumeBlockHasher::VolumeBlockHasher(const VolumeBlockHasherParam& param)
 bool VolumeBlockHasher::Start()
 {
     AssertTaskNotStarted();
-    if (m_workerThreadNum == 0 || m_workerThreadNum > MAX_HASHER_WORKER_NUM) { // invalid parameter
+    if (m_workerThreadNum == 0 || m_workerThreadNum > MAX_HASHER_WORKER_NUM || !m_sharedConfig->hasherEnabled) {
+        // invalid parameter
+        WARNLOG("hasher diasable or invalid worker number: %lu, exit hasher directly", m_workerThreadNum);
         m_status = TaskStatus::FAILED;
-        return false;
-    }
-    if (!m_sharedConfig->hasherEnabled) {
-        m_status = TaskStatus::FAILED;
-        WARNLOG("hasher not enabled, exit hasher directly");
         return false;
     }
     m_status = TaskStatus::RUNNING;
-    for (int i = 0; i < m_workerThreadNum; i++) {
+    for (uint32_t i = 0; i < m_workerThreadNum; i++) {
         m_workers.emplace_back(std::make_shared<std::thread>(&VolumeBlockHasher::WorkerThread, this, i));
     }
     return true;

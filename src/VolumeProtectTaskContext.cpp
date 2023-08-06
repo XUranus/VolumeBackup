@@ -441,14 +441,9 @@ bool VolumeTaskCheckpointTrait::RestoreSessionLatestHashingTable(std::shared_ptr
         return false;
     }
     std::string lastestChecksumBinPath = session->sharedConfig->lastestChecksumBinPath;
-    uint64_t lastestChecksumTableSize = session->sharedContext->hashingContext->lastestSize;
-    uint8_t* buffer = native::ReadBinaryBuffer(lastestChecksumBinPath, lastestChecksumTableSize);
-    if (buffer == nullptr) {
+    if (!ReadLatestHashingTable(session)) {
         return false;
     }
-    memcpy(session->sharedContext->hashingContext->lastestTable, buffer, sizeof(uint8_t) * lastestChecksumTableSize);
-    delete[] buffer;
-    buffer = nullptr;
     DBGLOG("restore lastest checksum table from %s success", lastestChecksumBinPath.c_str());
     return true;
 }
@@ -457,7 +452,7 @@ bool VolumeTaskCheckpointTrait::RestoreSessionLatestHashingTable(std::shared_ptr
 bool VolumeTaskCheckpointTrait::RestoreSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const
 {
     std::string checkpointFilePath = session->sharedConfig->checkpointFilePath;
-    std::shared_ptr<CheckpointSnapshot> checkpointSnapshot = CheckpointSnapshot::LoadFrom(checkpointFilePath);
+    std::shared_ptr<CheckpointSnapshot> checkpointSnapshot = ReadCheckpointSnapshot(session);
     if (checkpointSnapshot == nullptr) {
         ERRLOG("failed to read checkpoint snapshot from %s", checkpointFilePath.c_str());
         return false;
@@ -504,4 +499,25 @@ void VolumeTaskCheckpointTrait::RestoreSessionCounter(std::shared_ptr<VolumeTask
         counter->bytesToRead.load(), counter->bytesRead.load(),
         counter->blocksToHash.load(), counter->blocksHashed.load(),
         counter->bytesToWrite.load(), counter->bytesWritten.load());
+}
+
+bool VolumeTaskCheckpointTrait::ReadLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const
+{
+    std::string lastestChecksumBinPath = session->sharedConfig->lastestChecksumBinPath;
+    uint64_t lastestChecksumTableSize = session->sharedContext->hashingContext->lastestSize;
+    uint8_t* buffer =native::ReadBinaryBuffer(lastestChecksumBinPath, lastestChecksumTableSize);
+    if (buffer == nullptr) {
+        ERRLOG("failed to read latest hashing table from %s", lastestChecksumBinPath.c_str());
+        return false;
+    }
+    memcpy(session->sharedContext->hashingContext->lastestTable, buffer, sizeof(uint8_t) * lastestChecksumTableSize);
+    delete[] buffer;
+    buffer = nullptr;
+    return true;
+}
+
+std::shared_ptr<CheckpointSnapshot> VolumeTaskCheckpointTrait::ReadCheckpointSnapshot(
+    std::shared_ptr<VolumeTaskSession> session) const
+{
+    return CheckpointSnapshot::LoadFrom(session->sharedConfig->checkpointFilePath);
 }

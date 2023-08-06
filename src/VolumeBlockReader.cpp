@@ -16,12 +16,12 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
 {
     std::string volumePath = sharedConfig->volumePath;
     uint64_t offset = sharedConfig->sessionOffset;
-    uint32_t length = sharedConfig->sessionSize;
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::VolumeDataReader>(volumePath));
     if (!dataReader->Ok()) {
         ERRLOG("failed to init VolumeDataReader, path = %s, error = %u",
             volumePath.c_str(), dataReader->Error());
+        return nullptr;
     }
     VolumeBlockReaderParam param {
         SourceType::VOLUME,
@@ -41,12 +41,12 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
     uint64_t offset = 0; // read copy file from beginning
-    uint32_t length = sharedConfig->sessionSize;
     auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
         std::make_shared<native::FileDataReader>(copyFilePath));
     if (!dataReader->Ok()) {
         ERRLOG("failed to init FileDataReader, path = %s, error = %u",
             copyFilePath.c_str(), dataReader->Error());
+        return nullptr;
     }
     VolumeBlockReaderParam param {
         SourceType::COPYFILE,
@@ -219,7 +219,7 @@ bool VolumeBlockReader::ReadBlock(uint8_t* buffer, uint32_t& nBytesToRead)
     uint64_t currentOffset = m_baseOffset + m_currentIndex * m_sharedConfig->blockSize;
     uint64_t bytesRemain = m_sharedConfig->sessionSize - m_currentIndex * blockSize;
     if (bytesRemain < static_cast<uint64_t>(blockSize)) {
-        nBytesToRead = static_cast<uint64_t>(bytesRemain);
+        nBytesToRead = static_cast<uint32_t>(bytesRemain);
     } else {
         nBytesToRead = blockSize;
     }

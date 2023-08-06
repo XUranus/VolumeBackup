@@ -173,6 +173,7 @@ protected:
  */
 class VolumeTaskCheckpointTrait {
     using SessionPtr = std::shared_ptr<VolumeTaskSession>;
+    using CheckpointSnapshotPtr = std::shared_ptr<CheckpointSnapshot>;
 protected:
     // refresh and save checkpoint
     void RefreshSessionCheckpoint(SessionPtr session) const;
@@ -180,15 +181,19 @@ protected:
     bool FlushSessionWriter(SessionPtr session) const;
     bool FlushSessionBitmap(SessionPtr session) const;
     // common utils
-    bool IsSessionRestarted(SessionPtr session) const;
+    virtual bool IsSessionRestarted(SessionPtr session) const;
     bool IsCheckpointEnabled(SessionPtr session) const;
     void InitSessionBitmap(SessionPtr session) const;
-    std::shared_ptr<CheckpointSnapshot> TakeSessionCheckpointSnapshot(SessionPtr session) const;
+    CheckpointSnapshotPtr TakeSessionCheckpointSnapshot(SessionPtr session) const;
     // read and restore checkpoints
     void RestoreSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const;
     bool RestoreSessionLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
     bool RestoreSessionBitmap(std::shared_ptr<VolumeTaskSession> session) const;
     void RestoreSessionCounter(std::shared_ptr<VolumeTaskSession> session) const;
+
+    virtual std::shared_ptr<CheckpointSnapshot> ReadCheckpointSnapshot(
+        std::shared_ptr<VolumeTaskSession> session) const;
+    virtual bool ReadLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
 };
 }
 #endif

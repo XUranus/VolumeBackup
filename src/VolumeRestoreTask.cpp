@@ -80,6 +80,7 @@ bool VolumeRestoreTask::Prepare()
         session.sharedConfig->sessionOffset = sessionOffset;
         session.sharedConfig->sessionSize = sessionSize;
         session.sharedConfig->copyFilePath = copyFilePath;
+        session.sharedConfig->checkpointEnabled = m_restoreConfig->enableCheckpoint;
 
         m_sessionQueue.push(session);
     }
