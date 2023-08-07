@@ -123,7 +123,7 @@ void Bitmap::Set(uint64_t index)
 
 bool Bitmap::Test(uint64_t index) const
 {
-    if (index >= m_capacity * BITS_PER_UINT8) { //illegal argument
+    if (index >= m_capacity * BITS_PER_UINT8) { // illegal argument
         return false;
     }
     return (m_table[index >> BITMAP_RSHIFT] & (((uint8_t)1) << (index % BITS_PER_UINT8))) != 0;
@@ -505,7 +505,7 @@ bool VolumeTaskCheckpointTrait::ReadLatestHashingTable(std::shared_ptr<VolumeTas
 {
     std::string lastestChecksumBinPath = session->sharedConfig->lastestChecksumBinPath;
     uint64_t lastestChecksumTableSize = session->sharedContext->hashingContext->lastestSize;
-    uint8_t* buffer =native::ReadBinaryBuffer(lastestChecksumBinPath, lastestChecksumTableSize);
+    uint8_t* buffer = native::ReadBinaryBuffer(lastestChecksumBinPath, lastestChecksumTableSize);
     if (buffer == nullptr) {
         ERRLOG("failed to read latest hashing table from %s", lastestChecksumBinPath.c_str());
         return false;

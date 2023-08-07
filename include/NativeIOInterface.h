@@ -33,7 +33,7 @@ using IOHandle = int;
 class SystemApiException : public std::exception {
 public:
     // Constructor
-    SystemApiException(ErrCodeType errorCode);
+    explicit SystemApiException(ErrCodeType errorCode);
     SystemApiException(const char* message, ErrCodeType errorCode);
     const char* what() const noexcept override;
 private:
@@ -69,7 +69,7 @@ public:
  */
 class VOLUMEPROTECT_API SystemDataReader : public DataReader {
 public:
-    SystemDataReader(const std::string& path);
+    explicit SystemDataReader(const std::string& path);
     ~SystemDataReader();
     bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
@@ -81,7 +81,7 @@ private:
 
 class VOLUMEPROTECT_API SystemDataWriter : public DataWriter {
 public:
-    SystemDataWriter(const std::string& path);
+    explicit SystemDataWriter(const std::string& path);
     ~SystemDataWriter();
     bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;

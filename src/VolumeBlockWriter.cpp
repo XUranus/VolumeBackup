@@ -1,8 +1,8 @@
 #include "Logger.h"
 #include "VolumeProtector.h"
-#include "VolumeBlockWriter.h"
 #include "VolumeUtils.h"
 #include "NativeIOInterface.h"
+#include "VolumeBlockWriter.h"
 
 using namespace volumeprotect;
 
@@ -19,7 +19,7 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
         return nullptr;
     }
     // truncate copy file to session size
-    DBGLOG("truncate target copy file %s to size %llu",copyFilePath.c_str(), sharedConfig->sessionSize);
+    DBGLOG("truncate target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
     native::ErrCodeType errorCode = 0;
     if (!native::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
         ERRLOG("failed to truncate create file %s with size %llu, error code = %u",

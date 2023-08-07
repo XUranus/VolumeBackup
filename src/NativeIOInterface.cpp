@@ -248,7 +248,7 @@ bool native::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeT
 #ifdef __linux__
     int fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
     if (fd < 0) {
-    	return false;
+        return false;
     }
     ::close(fd);
     if (::truncate(path.c_str(), size) < 0) {
