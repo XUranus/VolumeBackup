@@ -4,7 +4,6 @@
 
 #include "Logger.h"
 #include "VolumeProtectTaskContext.h"
-#include "VolumeUtils.h"
 #include "VolumeBlockHasher.h"
 
 namespace {

@@ -1,6 +1,5 @@
 #include "Logger.h"
 #include "VolumeProtector.h"
-#include "VolumeUtils.h"
 #include "NativeIOInterface.h"
 #include "VolumeBlockWriter.h"
 

@@ -47,10 +47,10 @@ struct VOLUMEPROTECT_API SessionCounter {
 
 // store the checksum table of previous/latest hashing checksum
 struct VOLUMEPROTECT_API BlockHashingContext {
-    uint8_t*    lastestTable    { nullptr };
-    uint8_t*    previousTable   { nullptr };
     uint64_t    lastestSize     { 0 }; // size in bytes
     uint64_t    previousSize    { 0 };
+    uint8_t*    lastestTable    { nullptr };
+    uint8_t*    previousTable   { nullptr };
 
     BlockHashingContext(uint64_t pSize, uint64_t lSize);
     BlockHashingContext(uint64_t lSize);
@@ -74,8 +74,8 @@ public:
     uint64_t TotalSetCount() const;
     const uint8_t* Ptr() const;
 private:
-    uint8_t*    m_table     { nullptr };
     uint64_t    m_capacity  { 0 };
+    uint8_t*    m_table     { nullptr };
 };
 
 /**

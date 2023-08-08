@@ -3,11 +3,7 @@
 
 #include "VolumeProtectMacros.h"
 // external logger/json library
-#include "Logger.h"
 #include "Json.h"
-#include "VolumeProtector.h"
-#include "NativeIOInterface.h"
-#include "VolumeProtectTaskContext.h"
 
 namespace volumeprotect {
 

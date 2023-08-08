@@ -1,2 +1,3 @@
 #include "DeviceMapper.h"
-using namespace volumeprotect::dm;
+
+using namespace volumebackup::dm;

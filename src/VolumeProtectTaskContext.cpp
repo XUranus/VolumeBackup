@@ -1,5 +1,4 @@
 #include "Logger.h"
-#include "VolumeUtils.h"
 #include "VolumeProtectTaskContext.h"
 
 #include "VolumeBlockReader.h"
@@ -66,7 +65,7 @@ void VolumeBlockAllocator::bfree(uint8_t* ptr)
 // implement BlockHashingContext...
 
 BlockHashingContext::BlockHashingContext(uint64_t pSize, uint64_t lSize)
-    : previousSize(pSize), lastestSize(lSize)
+    : lastestSize(lSize), previousSize(pSize)
 {
     lastestTable = new uint8_t[lSize];
     previousTable = new uint8_t[pSize];

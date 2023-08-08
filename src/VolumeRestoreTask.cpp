@@ -3,7 +3,6 @@
 #include "VolumeProtectTaskContext.h"
 #include "VolumeUtils.h"
 #include "VolumeBlockReader.h"
-#include "VolumeBlockHasher.h"
 #include "VolumeBlockWriter.h"
 #include "BlockingQueue.h"
 #include "VolumeRestoreTask.h"

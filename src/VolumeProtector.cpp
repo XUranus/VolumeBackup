@@ -1,7 +1,7 @@
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
-#include "VolumeUtils.h"
+#include "NativeIOInterface.h"
 
 using namespace volumeprotect;
 

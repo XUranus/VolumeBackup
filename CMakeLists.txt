@@ -17,18 +17,21 @@ ELSE()
     ADD_COMPILE_OPTIONS(-Wno-format-security)
 ENDIF()
 
-FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_SOURCES "src/*.cpp")
-FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_HEADERS "src/*.h")
+FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_SOURCES "src/*.cpp" "src/dm/*.cpp")
+FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_HEADERS "include/*.h" "dm/include/*.h")
+
+MESSAGE("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
+MESSAGE("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
 
 INCLUDE_DIRECTORIES(
     "include"
+    "include/dm" 
     "module/minijson"
     "module/minilogger"
 )
 
 ADD_SUBDIRECTORY(module/minijson)
 ADD_SUBDIRECTORY(module/minilogger)
-
 
 
 # build a dynamic library
@@ -78,7 +81,7 @@ TARGET_LINK_LIBRARIES(
 # set -DCMAKE_BUILD_TYPE=Debug to enable LLT, set -DCOVERAGE=ON to enable code coverage
 IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
     # these config must be put at the level of source code in order to append compile flags
-    IF (${COVERAGE} STREQUAL "lcov" OR ${COVERAGE} STREQUAL "gcovr")
+    IF ("${COVERAGE}" STREQUAL "lcov" OR "${COVERAGE}" STREQUAL "gcovr")
         MESSAGE("code coverage is enabled, COVERAGE = ${COVERAGE}, append coverage compiler flags")
         INCLUDE(${SOURCE_DIR}/test/CodeCoverage.cmake)
         APPEND_COVERAGE_COMPILER_FLAGS()

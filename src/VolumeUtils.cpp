@@ -1,5 +1,4 @@
 #include "Logger.h"
-#include "VolumeProtector.h"
 #include "VolumeUtils.h"
 
 namespace {
