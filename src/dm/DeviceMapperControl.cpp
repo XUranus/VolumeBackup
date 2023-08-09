@@ -1,3 +1,3 @@
-#include "DeviceMapper.h"
+#include "DeviceMapperControl.h"
 
 using namespace volumebackup::dm;
