@@ -55,6 +55,13 @@ public:
     // Returns the string represntation of the table that is ready to be passed into the kernel
     // as part of the DM_TABLE_LOAD ioctl.
     std::string Serialize() const;
+
+    uint64_t TargetCount() const;
+    
+    void SetReadOnly();
+    
+    bool IsReadOnly() const;
+
 private:
     // list of targets defined in this table sorted by their start and end sectors.
     // Note: Overlapping targets MUST never be added in this list.
@@ -63,15 +70,18 @@ private:
     // Total size in terms of # of sectors, as calculated by looking at the last and the first
     // target in 'm_targets'.
     uint64_t    m_sectorsCount;
+
+    bool   m_readonly { false };
 };
 
 /*
  * reference url:
  * https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/dm.cpp
  */
-class DeviceMapper {
 
-};
+// create dm device and activate with specified dm table and name, return dm device path
+bool CreateDevice(const std::string& name, const DmTable& dmTable, std::string& path);
+
 
 }
 }
