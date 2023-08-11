@@ -15,6 +15,8 @@ namespace devicemapper {
  */
 class DmTarget {
 public:
+    DmTarget(uint64_t startSector, uint64_t sectorsCount);
+
     // Return the first logical sector represented by this target.
     uint64_t    StartSector() const;
     // Returns size in number of sectors when this target is part of a DmTable, return 0 otherwise.
@@ -38,6 +40,11 @@ private:
 
 class DmTargetLinear final : public DmTarget {
 public:
+    DmTargetLinear(
+        const std::string& blockDevicePath,
+        uint64_t startSector,
+        uint64_t sectorsCount,
+        uint64_t physicalSector);
     std::string     BlockDevicePath() const;
     uint64_t        PhysicalSector() const;
 

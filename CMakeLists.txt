@@ -35,7 +35,7 @@ ADD_SUBDIRECTORY(module/minilogger)
 
 
 # build a dynamic library
-MESSAGE("Build volumebackup dynamic library ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}")
+MESSAGE("Build libvolumebackup dynamic library ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}")
 SET(VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET ${Project})
 ADD_LIBRARY(
     ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
@@ -59,7 +59,7 @@ TARGET_LINK_LIBRARIES(
 )
 
 # build a static library
-MESSAGE("Build volumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
+MESSAGE("Build libvolumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
 SET(VOLUMEPROTECT_STATIC_LIBRARY_TARGET ${Project}_static)
 ADD_LIBRARY(
     ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
@@ -92,23 +92,34 @@ IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
 ENDIF()
 
 # build executable tools
-ADD_EXECUTABLE (vbkup
-    "vbkup.cpp"
+ADD_EXECUTABLE (vbackup
+    "vbackup.cpp"
     "GetOption.cpp"
 )
 
-ADD_EXECUTABLE (voltool
-    "voltool.cpp"
+ADD_EXECUTABLE (vtools
+    "vtools.cpp"
     "GetOption.cpp"
 )
 
-SET_PROPERTY(TARGET vbkup PROPERTY CXX_STANDARD 11)
-SET_PROPERTY(TARGET voltool PROPERTY CXX_STANDARD 11)
-
-# link vbkup executable
 IF(${CMAKE_HOST_WIN32})
+    ADD_EXECUTABLE (vcopymount
+        "vcopymount.cpp"
+        "GetOption.cpp"
+    )
+ENDIF()
+
+SET_PROPERTY(TARGET vbackup PROPERTY CXX_STANDARD 11)
+SET_PROPERTY(TARGET vtools PROPERTY CXX_STANDARD 11)
+
+IF(NOT ${CMAKE_HOST_WIN32})
+    SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)
+ENDIF()
+
+# link vbackup executable
+IF(NOT ${CMAKE_HOST_WIN32})
     TARGET_LINK_LIBRARIES(
-        vbkup
+        vbackup
         volumebackup_static
         # third part dependency provided by XUranus
         minijson_static
@@ -117,7 +128,7 @@ IF(${CMAKE_HOST_WIN32})
 ELSE()
     # require linux-utils
     TARGET_LINK_LIBRARIES(
-        vbkup
+        vbackup
         volumebackup
         # openssl
         crypto
@@ -128,7 +139,18 @@ ELSE()
     )
 ENDIF()
 
-# build voltool executable
+# build vtools executable
 TARGET_LINK_LIBRARIES(
-    voltool
+    vtools
 )
+
+# build vcopymount executable
+IF(NOT ${CMAKE_HOST_WIN32})
+    TARGET_LINK_LIBRARIES(
+        vcopymount
+        volumebackup_static
+        # third part dependency provided by XUranus
+        minijson_static
+        minilogger_static
+    )
+ENDIF()

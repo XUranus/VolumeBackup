@@ -25,6 +25,10 @@ static int DM_ALIGN(int x)
 }
 
 // implement DmTarget
+DmTarget::DmTarget(uint64_t startSector, uint64_t sectorsCount)
+    : m_startSector(startSector), m_sectorsCount(sectorsCount)
+{}
+
 uint64_t DmTarget::StartSector() const
 {
     return m_startSector;
@@ -44,6 +48,9 @@ std::string DmTarget::Serialize() const
     data.push_back('\0');
     // The kernel expects each target to be 8-byte aligned.
     size_t padding = DM_ALIGN(data.size()) - data.size();
+    for (int i = 0; i < padding; ++i) {
+        data.push_back('\0');
+    }
     // Finally fill in the dm_target_spec.
     struct dm_target_spec* spec = reinterpret_cast<struct dm_target_spec*>(&data[0]);
     spec->sector_start = StartSector();
@@ -54,6 +61,16 @@ std::string DmTarget::Serialize() const
 }
 
 // implement DmTargetLinear
+DmTargetLinear::DmTargetLinear(
+    const std::string& blockDevicePath,
+    uint64_t startSector,
+    uint64_t sectorsCount,
+    uint64_t physicalSector)
+    : DmTarget(startSector, sectorsCount),
+    m_blockDevicePath(blockDevicePath),
+    m_physicalSector(physicalSector)
+{}
+
 std::string DmTargetLinear::Name() const
 {
     return "linear";
@@ -155,7 +172,7 @@ static bool CreateDevice(const std::string& name, const std::string& uuid)
         return false;
     }
     // Check to make sure the newly created device doesn't already have targets added or opened by someone
-    if (io.target_count == 0 || io.open_count == 0) {
+    if (io.target_count != 0 || io.open_count != 0) {
         return false;
     }
     return true;

@@ -17,9 +17,19 @@ using namespace volumeprotect;
 using namespace xuranus::getopt;
 using namespace xuranus::minilogger;
 
-void PrintHelp()
+static void PrintHelp()
 {
     std::cout << "vbkup -v volume -d datadir -m metadir [-p prevmetadir]" << std::endl;
+}
+
+static void PrintTaskStatistics(const TaskStatistics& statistics)
+{
+    ::printf("checkStatistics: bytesToReaded: %llu, bytesRead: %llu, "
+        "blocksToHash: %llu, blocksHashed: %llu, "
+        "bytesToWrite: %llu, bytesWritten: %llu\n",
+        statistics.bytesToRead, statistics.bytesRead,
+        statistics.blocksToHash, statistics.blocksHashed,
+        statistics.bytesToWrite, statistics.bytesWritten);
 }
 
 int ExecVolumeRestore(
@@ -41,17 +51,13 @@ int ExecVolumeRestore(
     uint64_t prevWrittenBytes = 0;
     while (!task->IsTerminated()) {
         TaskStatistics statistics =  task->GetStatistics();
-        ::printf("checkStatistics: bytesToReaded: %llu, bytesRead: %llu, "
-            "blocksToHash: %llu, blocksHashed: %llu, "
-            "bytesToWrite: %llu, bytesWritten: %llu\n",
-            statistics.bytesToRead, statistics.bytesRead,
-            statistics.blocksToHash, statistics.blocksHashed,
-            statistics.bytesToWrite, statistics.bytesWritten);
+        PrintTaskStatistics(statistics);
         uint64_t speedMB = (statistics.bytesWritten - prevWrittenBytes) / 1024 / 1024;
         std::cout << "Speed: " << speedMB << " MB/s" << std::endl;
         prevWrittenBytes = statistics.bytesWritten;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+    PrintTaskStatistics(task->GetStatistics());
     std::cout << "volume restore task completed!" << std::endl;
     return 0;
 }
@@ -83,17 +89,13 @@ int ExecVolumeBackup(
     uint64_t prevWrittenBytes = 0;
     while (!task->IsTerminated()) {
         TaskStatistics statistics =  task->GetStatistics();
-        ::printf("checkStatistics: bytesToReaded: %llu, bytesRead: %llu, "
-            "blocksToHash: %llu, blocksHashed: %llu, "
-            "bytesToWrite: %llu, bytesWritten: %llu\n",
-            statistics.bytesToRead, statistics.bytesRead,
-            statistics.blocksToHash, statistics.blocksHashed,
-            statistics.bytesToWrite, statistics.bytesWritten);
+        PrintTaskStatistics(statistics);
         uint64_t speedMB = (statistics.bytesWritten - prevWrittenBytes) / 1024 / 1024;
         std::cout << "Speed: " << speedMB << " MB/s" << std::endl;
         prevWrittenBytes = statistics.bytesWritten;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+    PrintTaskStatistics(task->GetStatistics());
     std::cout << "volume backup task completed!" << std::endl;
     return 0;
 }
@@ -148,7 +150,7 @@ int main(int argc, const char** argv)
     LoggerConfig conf {};
     conf.target = LoggerTarget::FILE;
     conf.archiveFilesNumMax = 10;
-    conf.fileName = "demo.log";
+    conf.fileName = "vbackup.log";
 #ifdef __linux__
     conf.logDirPath = "/tmp/LoggerTest";
 #endif
