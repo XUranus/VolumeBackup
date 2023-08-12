@@ -1,3 +1,4 @@
+#include <cstdio>
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/ioctl.h>

@@ -351,11 +351,15 @@ std::shared_ptr<CheckpointSnapshot> VolumeTaskCheckpointTrait::TakeSessionCheckp
 }
 
 // Save sesion...
-void VolumeTaskCheckpointTrait::RefreshSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session) const
+void VolumeTaskCheckpointTrait::RefreshSessionCheckpoint(std::shared_ptr<VolumeTaskSession> session)
 {
-    if (!IsCheckpointEnabled(session)) {
+    if (!IsCheckpointEnabled(session) || !CheckLastUpdateTimer()) {
         return;
     }
+    session->readerTask->Pause();
+    std::shared_ptr<void> defer(nullptr, [&](...) {
+        session->readerTask->Resume();
+    });
     auto checkpointSnapshot = TakeSessionCheckpointSnapshot(session);
     // only should work during backup with hasher enabled,
     // hashing checksum must be saved before writer bitmap
@@ -519,4 +523,15 @@ std::shared_ptr<CheckpointSnapshot> VolumeTaskCheckpointTrait::ReadCheckpointSna
     std::shared_ptr<VolumeTaskSession> session) const
 {
     return CheckpointSnapshot::LoadFrom(session->sharedConfig->checkpointFilePath);
+}
+
+bool VolumeTaskCheckpointTrait::CheckLastUpdateTimer()
+{
+    auto now = std::chrono::steady_clock::now();
+    if (now - m_lastUpdate > std::chrono::minutes(1)) {
+        DBGLOG("should update checkpoint now");
+        m_lastUpdate = now;
+        return true;
+    }
+    return false;
 }

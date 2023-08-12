@@ -12,11 +12,7 @@ using namespace volumeprotect;
 using namespace volumeprotect::util;
 
 namespace {
-    constexpr auto DEFAULT_ALLOCATOR_BLOCK_NUM = 32;
-    constexpr auto DEFAULT_QUEUE_SIZE = 32;
     constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
-    const uint64_t DEFAULT_CHECKSUM_TABLE_CAPACITY = 1024 * 1024 * 8; // 8MB
-    const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 }
 
 VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
@@ -92,7 +88,7 @@ bool VolumeBackupTask::Prepare()
         VolumeTaskSession session {};
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
         session.sharedConfig->volumePath = m_backupConfig->volumePath;
-        session.sharedConfig->hasherEnabled = true;
+        session.sharedConfig->hasherEnabled = m_backupConfig->hasherEnabled;
         session.sharedConfig->hasherWorkerNum = m_backupConfig->hasherNum;
         session.sharedConfig->blockSize = m_backupConfig->blockSize;
         session.sharedConfig->sessionOffset = sessionOffset;
@@ -102,7 +98,6 @@ bool VolumeBackupTask::Prepare()
         session.sharedConfig->copyFilePath = copyFilePath;
         session.sharedConfig->checkpointFilePath = writerBitmapPath;
         session.sharedConfig->checkpointEnabled = m_backupConfig->enableCheckpoint;
-
         volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
         m_sessionQueue.push(session);
         sessionOffset += sessionSize;
@@ -174,7 +169,7 @@ bool VolumeBackupTask::StartBackupSession(std::shared_ptr<VolumeTaskSession> ses
         ERRLOG("backup session reader start failed");
         return false;
     }
-    DBGLOG("start backup session hasher");
+    DBGLOG("start backup session hasher, hasher enabled: %u", session->sharedConfig->hasherEnabled);
     if (!session->hasherTask->Start()) {
         ERRLOG("backup session hasher start failed");
         return false;
@@ -205,6 +200,7 @@ void VolumeBackupTask::ThreadFunc()
         }
         RestoreSessionCheckpoint(session);
         if (!StartBackupSession(session)) {
+            session->Abort();
             m_status = TaskStatus::FAILED;
             return;
         }

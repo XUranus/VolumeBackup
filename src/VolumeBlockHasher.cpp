@@ -1,3 +1,4 @@
+#include "VolumeProtector.h"
 #ifdef __linux__
 #include <openssl/evp.h>
 #endif
@@ -7,7 +8,6 @@
 #include "VolumeBlockHasher.h"
 
 namespace {
-    const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
     const uint32_t MAX_HASHER_WORKER_NUM = 32;
 }
 
@@ -56,7 +56,12 @@ VolumeBlockHasher::VolumeBlockHasher(const VolumeBlockHasherParam& param)
 bool VolumeBlockHasher::Start()
 {
     AssertTaskNotStarted();
-    if (m_workerThreadNum == 0 || m_workerThreadNum > MAX_HASHER_WORKER_NUM || !m_sharedConfig->hasherEnabled) {
+    if (!m_sharedConfig->hasherEnabled) {
+        WARNLOG("hasher not enabled, exit directly");
+        m_status = TaskStatus::SUCCEED;
+        return true;
+    }
+    if (m_workerThreadNum == 0 || m_workerThreadNum > MAX_HASHER_WORKER_NUM) {
         // invalid parameter
         WARNLOG("hasher diasable or invalid worker number: %lu, exit hasher directly", m_workerThreadNum);
         m_status = TaskStatus::FAILED;

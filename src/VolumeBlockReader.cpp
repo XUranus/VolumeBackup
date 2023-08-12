@@ -98,6 +98,18 @@ VolumeBlockReader::VolumeBlockReader(const VolumeBlockReaderParam& param)
     m_maxIndex = (numBlocks == 0) ? 0 : numBlocks - 1;
 }
 
+void VolumeBlockReader::Pause()
+{
+    DBGLOG("pause reader");
+    m_pause = true;
+}
+
+void VolumeBlockReader::Resume()
+{
+    DBGLOG("resume reader");
+    m_pause = false;
+}
+
 /**
  * @brief redirect current index from checkpoint bitmap
  */
@@ -129,6 +141,12 @@ void VolumeBlockReader::MainThread()
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
             break;
+        }
+
+        if (m_pause) {
+            DBGLOG("reader is paused, waiting...");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            continue;
         }
 
         if (SkipReadingBlock()) {

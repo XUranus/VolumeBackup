@@ -11,8 +11,6 @@ using namespace volumeprotect;
 using namespace volumeprotect::util;
 
 namespace {
-    constexpr auto DEFAULT_ALLOCATOR_BLOCK_NUM = 32;
-    constexpr auto DEFAULT_QUEUE_SIZE = 32;
     constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
 }
 
@@ -172,6 +170,7 @@ void VolumeRestoreTask::ThreadFunc()
         }
         RestoreSessionCheckpoint(session);
         if (!StartRestoreSession(session)) {
+            session->Abort();
             m_status = TaskStatus::FAILED;
             return;
         }

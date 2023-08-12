@@ -1,4 +1,6 @@
+#include "NativeIOInterface.h"
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <ostream>
@@ -69,6 +71,9 @@ int ExecVolumeBackup(
     const std::string& outputCopyDataDirPath,
     const std::string& outputCopyMetaDirPath)
 {
+    uint32_t hasherWorkerNum = native::ProcessorsNum();
+    std::cout << "using " << hasherWorkerNum << " processing units" << std::endl;
+
     VolumeBackupConfig backupConfig {};
     backupConfig.copyType = copyType;
     backupConfig.volumePath = volumePath;
@@ -77,7 +82,7 @@ int ExecVolumeBackup(
     backupConfig.outputCopyMetaDirPath = outputCopyMetaDirPath;
     backupConfig.blockSize = DEFAULT_BLOCK_SIZE;
     backupConfig.sessionSize = DEFAULT_SESSION_SIZE;
-    backupConfig.hasherNum = DEFAULT_HASHER_NUM;
+    backupConfig.hasherNum = hasherWorkerNum;
     backupConfig.hasherEnabled = true;
 
     std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildBackupTask(backupConfig);

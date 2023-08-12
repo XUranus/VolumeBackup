@@ -4,6 +4,7 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "BlockingQueue.h"
+#include <chrono>
 
 namespace volumeprotect {
 
@@ -176,7 +177,7 @@ class VolumeTaskCheckpointTrait {
     using CheckpointSnapshotPtr = std::shared_ptr<CheckpointSnapshot>;
 protected:
     // refresh and save checkpoint
-    void RefreshSessionCheckpoint(SessionPtr session) const;
+    void RefreshSessionCheckpoint(SessionPtr session);
     bool FlushSessionLatestHashingTable(SessionPtr session) const;
     bool FlushSessionWriter(SessionPtr session) const;
     bool FlushSessionBitmap(SessionPtr session) const;
@@ -194,6 +195,12 @@ protected:
     virtual std::shared_ptr<CheckpointSnapshot> ReadCheckpointSnapshot(
         std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool ReadLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
+
+private:
+    bool CheckLastUpdateTimer();
+
+private:
+    std::chrono::steady_clock::time_point   m_lastUpdate { std::chrono::steady_clock::now() };
 };
 }
 #endif

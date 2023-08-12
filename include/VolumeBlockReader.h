@@ -46,6 +46,11 @@ public:
     // provide to gmock or builder, not recommended to use
     VolumeBlockReader(const VolumeBlockReaderParam& param);
 
+    // block reading for updating checkpoint
+    void Pause();
+
+    void Resume();
+
 private:
     void MainThread();
     uint64_t InitCurrentIndex() const;
@@ -71,6 +76,7 @@ private:
 
     uint64_t    m_maxIndex      { 0 };
     uint64_t    m_currentIndex  { 0 };
+    bool        m_pause         { false };
 
 };
 }

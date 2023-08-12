@@ -2,12 +2,6 @@
 #ifndef VOLUMEBACKUP_PROTECT_FACADE_HEADER
 #define VOLUMEBACKUP_PROTECT_FACADE_HEADER
 
-#include <string>
-#include <cstdint>
-#include <thread>
-#include <queue>
-#include <memory>
-
 #include "VolumeProtectMacros.h"
 
 // volume backup application facade
@@ -21,6 +15,9 @@ const uint64_t ONE_TB = 1024LLU * ONE_GB;
 const uint32_t DEFAULT_BLOCK_SIZE = 4LU * ONE_MB;
 const uint64_t DEFAULT_SESSION_SIZE = ONE_TB;
 const uint32_t DEFAULT_HASHER_NUM = 8LU;
+const uint32_t DEFAULT_ALLOCATOR_BLOCK_NUM = 32; // 128MB
+const uint32_t DEFAULT_QUEUE_SIZE = 64;
+const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 
 /*
  * volume backup/restore facade and common struct defines

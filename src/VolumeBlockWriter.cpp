@@ -11,24 +11,24 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
-    if (native::IsFileExists(copyFilePath) &&
-        native::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
-        // should be full copy file, this task should be increment backup
-        DBGLOG("copy file already exists, using %s", copyFilePath.c_str());
-        return nullptr;
-    }
-    // truncate copy file to session size
-    DBGLOG("truncate target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
-    native::ErrCodeType errorCode = 0;
-    if (!native::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
-        ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
-            copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
-        return nullptr;
+    std::shared_ptr<native::DataWriter> dataWriter = nullptr;
+    if (native::IsFileExists(copyFilePath) && native::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
+        // should be full copy file, this task should be forever increment backup
+        INFOLOG("copy file already exists, using %s", copyFilePath.c_str());
+    } else {
+        // truncate copy file to session size
+        DBGLOG("truncate new target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
+        native::ErrCodeType errorCode = 0;
+        if (!native::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
+            ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
+                copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
+            return nullptr;
+        }
     }
     // init data writer
-    auto dataWriter = std::dynamic_pointer_cast<native::DataWriter>(
+    dataWriter = std::dynamic_pointer_cast<native::DataWriter>(
         std::make_shared<native::FileDataWriter>(copyFilePath));
-    if (!dataWriter->Ok()) {
+    if (dataWriter == nullptr || !dataWriter->Ok()) {
         ERRLOG("failed to init FileDataWriter, path = %s, error = %u", copyFilePath.c_str(), dataWriter->Error());
         return nullptr;
     }
