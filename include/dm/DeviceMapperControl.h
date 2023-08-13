@@ -1,19 +1,16 @@
 #ifndef VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 #define VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
+#include "VolumeProtectMacros.h"
 
-namespace volumebackup {
+namespace volumeprotect {
 namespace devicemapper {
 
 /**
  * reference url:
  * https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/include/libdm/dm_target.h
  */
-class DmTarget {
+class VOLUMEPROTECT_API DmTarget {
 public:
     DmTarget(uint64_t startSector, uint64_t sectorsCount);
 
@@ -38,7 +35,7 @@ private:
     uint64_t        m_sectorsCount;
 };
 
-class DmTargetLinear final : public DmTarget {
+class VOLUMEPROTECT_API DmTargetLinear final : public DmTarget {
 public:
     DmTargetLinear(
         const std::string& blockDevicePath,
@@ -55,7 +52,7 @@ private:
     uint64_t        m_physicalSector;
 };
 
-class DmTable {
+class VOLUMEPROTECT_API DmTable {
 public:
     bool    AddTarget(std::shared_ptr<DmTarget> target);
     
@@ -87,7 +84,7 @@ private:
  */
 
 // create dm device and activate with specified dm table and name, return dm device path
-bool CreateDevice(const std::string& name, const DmTable& dmTable, std::string& path);
+VOLUMEPROTECT_API bool CreateDevice(const std::string& name, const DmTable& dmTable, std::string& path);
 
 
 }

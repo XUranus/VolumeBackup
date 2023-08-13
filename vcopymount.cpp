@@ -21,8 +21,8 @@ using namespace xuranus;
 using namespace xuranus::getopt;
 using namespace volumeprotect;
 using namespace xuranus::minilogger;
-// using namespace volumebackup::devicemapper;
-// using namespace volumebackup::loopback;
+// using namespace volumeprotect::devicemapper;
+// using namespace volumeprotect::loopback;
 
 static void PrintHelp()
 {

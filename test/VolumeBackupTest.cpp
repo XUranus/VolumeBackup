@@ -28,8 +28,6 @@ using namespace ::testing;
 using namespace volumeprotect;
 
 namespace {
-    constexpr auto DEFAULT_ALLOCATOR_BLOCK_NUM = 32;
-    constexpr auto DEFAULT_QUEUE_SIZE = 32LLU;
     constexpr auto DEFAULT_MOCK_SESSION_BLOCK_SIZE = 4LLU * ONE_MB;
     constexpr auto DEFAULT_MOCK_SESSION_SIZE = 513LLU * ONE_MB;
     constexpr auto DEFAULT_MOCK_HASHER_NUM = 8LU;
@@ -85,7 +83,6 @@ static void InitSessionSharedConfig(std::shared_ptr<VolumeTaskSession> session)
 
 static void InitSessionSharedContext(std::shared_ptr<VolumeTaskSession> session)
 {
-    const uint32_t SHA256_CHECKSUM_SIZE = 32;
     auto sharedContext = std::make_shared<VolumeTaskSharedContext>();
     // init basic container
     sharedContext->counter = std::make_shared<SessionCounter>();

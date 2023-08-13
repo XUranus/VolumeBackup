@@ -11,7 +11,7 @@
 #include <string>
 #include <memory>
 
-using namespace volumebackup;
+using namespace volumeprotect;
 
 namespace {
     const std::string LOOP_DEVICE_CONTROL_PATH = "/dev/loop-control";

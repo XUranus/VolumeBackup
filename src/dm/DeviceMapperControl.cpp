@@ -6,8 +6,8 @@
 #include <linux/dm-ioctl.h>
 #include <sys/ioctl.h>
 
-using namespace volumebackup;
-using namespace volumebackup::devicemapper;
+using namespace volumeprotect;
+using namespace volumeprotect::devicemapper;
 
 namespace {
     // The minimum expected device mapper major.minor version
