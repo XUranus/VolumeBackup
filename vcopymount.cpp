@@ -21,8 +21,6 @@ using namespace xuranus;
 using namespace xuranus::getopt;
 using namespace volumeprotect;
 using namespace xuranus::minilogger;
-// using namespace volumeprotect::devicemapper;
-// using namespace volumeprotect::loopback;
 
 static void PrintHelp()
 {
@@ -80,7 +78,11 @@ int main(int argc, const char** argv)
     bool isMount = false;
     bool isUmount = false;
 
-    GetOptionResult result = GetOption(argv + 1, argc - 1, "m:d:", {});
+    GetOptionResult result = GetOption(
+        argv + 1,
+        argc - 1,
+        "m:d:",
+        { "--meta=", "--data=", "--target="});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "d") {
             copyDataDirPath = opt.value;

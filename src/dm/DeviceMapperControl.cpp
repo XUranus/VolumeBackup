@@ -1,8 +1,13 @@
 #include "DeviceMapperControl.h"
+#include <asm-generic/errno-base.h>
+#include <cerrno>
+#include <chrono>
 #include <cstdint>
 #include <fcntl.h>
 #include <string>
 #include <cstring>
+#include <thread>
+#include <unistd.h>
 #include <linux/dm-ioctl.h>
 #include <sys/ioctl.h>
 
@@ -17,6 +22,7 @@ namespace {
     // device mapper require 8 byte padding
     const int DM_ALIGN_MASK = 7;
     const std::string DEVICE_MAPPER_CONTROL_PATH = "/dev/mapper/control";
+    const std::string DM_DEVICE_UUID_PATH_PREFIX = "/dev/block/mapper/by-uuid";
 };
 
 static int DM_ALIGN(int x)
@@ -145,14 +151,14 @@ static void InitDmIoctlStruct(struct dm_ioctl& io, const std::string& name)
     }
 }
 
-static bool CreateDevice(const std::string& name)
+static bool CreateEmptyDevice(const std::string& name)
 {
     // TODO
     return false;
 }
 
 // create empty dm device with specified uuid
-static bool CreateDevice(const std::string& name, const std::string& uuid)
+static bool CreateEmptyDevice(const std::string& name, const std::string& uuid)
 {
     if (name.empty() || uuid.empty()) {
         // create unnamed device mapper device is not supported
@@ -211,27 +217,137 @@ static bool LoadTable(const std::string& name, const DmTable& dmTable, bool acti
     return true;
 }
 
-static bool WaitForDevice(const std::string& name, const std::string& path)
+static bool WaitForDeviceCreated(const std::string& name, const std::string& path, std::chrono::milliseconds timeout)
 {
-    // TODO
+    auto tick = std::chrono::steady_clock::now();
+    auto tok = std::chrono::steady_clock::now();
+    do {
+        if (::access(path.c_str(), F_OK) == 0) {
+            return true;
+        }
+        if (errno != ENOENT) {
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        tok = std::chrono::steady_clock::now();
+    } while (tok - tick < timeout);
     return false;
 }
 
-bool CreateDevice(
+static bool WaitForDeviceRemoved(const std::string& path, const std::chrono::milliseconds timeout)
+{
+    auto tick = std::chrono::steady_clock::now();
+    auto tok = std::chrono::steady_clock::now();
+    do {
+        if (::access(path.c_str(), F_OK) != 0 && errno == ENOENT) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        tok = std::chrono::steady_clock::now();
+    } while (tok - tick < timeout);
+    return false;
+}
+
+bool devicemapper::CreateDevice(
     const std::string& name,
     const DmTable& dmTable,
     std::string& path)
 {
-    if (!CreateDevice(name)) {
+    if (!CreateEmptyDevice(name)) {
         return false;
     }
-    //defer(DeleteDevice(name);)
     bool activate = true;
     if (!LoadTable(name, dmTable, activate)) {
+        RemoveDevice(name);
         return false;
     }
-    if (!WaitForDevice(name, path)) {
+    if (!WaitForDeviceCreated(name, path, std::chrono::milliseconds(1000))) {
+        RemoveDevice(name);
         return false;
     }
     return true;
 }
+
+bool devicemapper::RemoveDeviceIfExists(const std::string& name)
+{
+    if (devicemapper::GetDeviceStatus(name) == DmDeviceStatus::INVALID) {
+        return true;
+    }
+    return RemoveDevice(name);
+}
+
+bool devicemapper::RemoveDevice(const std::string& name)
+{
+    if (devicemapper::GetDeviceStatus(name) == DmDeviceStatus::INVALID) {
+        return true;
+    }
+    std::string uniquePath;
+    if (!devicemapper::GetDeviceStatusUniquePath(name, uniquePath)) {
+        return false;
+    }
+    // Expect to have uevent generated if the unique path actually exists. This may not exist
+    // if the device was created but has never been activated before it gets deleted.
+    bool needUevent = !uniquePath.empty() && ::access(uniquePath.c_str(), F_OK) == 0;
+
+    int dmControlFd = GetDmControlFd();
+    if (dmControlFd < 0) {
+        return false;
+    }
+    struct dm_ioctl io;
+    InitDmIoctlStruct(io, name);
+    if (::ioctl(dmControlFd, DM_DEV_REMOVE, &io)) {
+        return false;
+    }
+    // Check to make sure appropriate uevent is generated so ueventd will
+    // do the right thing and remove the corresponding device node and symlinks.
+    if (needUevent && (io.flags & DM_UEVENT_GENERATED_FLAG) == 0) {
+        // Didn't generate uevent for removal
+        return false;
+    }
+    if (uniquePath.empty()) {
+        return false;
+    }
+    if (!WaitForDeviceRemoved(uniquePath, std::chrono::milliseconds(1000))) {
+        // Failed waiting for uniquePathto be deleted
+        return false;
+    }
+    return true;
+}
+
+DmDeviceStatus devicemapper::GetDeviceStatus(const std::string &name)
+{
+    struct dm_ioctl io;
+    InitDmIoctlStruct(io, name);
+    int dmControlFd = GetDmControlFd();
+    if (dmControlFd < 0) {
+        return DmDeviceStatus::INVALID;
+    }
+    if (::ioctl(dmControlFd, DM_DEV_STATUS, &io) < 0) {
+        return DmDeviceStatus::INVALID;
+    }
+    if ((io.flags & DM_ACTIVE_PRESENT_FLAG) != 0 && (io.flags & DM_SUSPEND_FLAG) == 0) {
+        return DmDeviceStatus::ACTIVE;
+    }
+    return DmDeviceStatus::SUSPENDED;
+}
+
+bool devicemapper::GetDeviceStatusUniquePath(const std::string& name, std::string& uniquePath)
+{
+    struct dm_ioctl io;
+    InitDmIoctlStruct(io, name);
+    int dmControlFd = GetDmControlFd();
+    if (dmControlFd < 0) {
+        return false;
+    }
+    if (::ioctl(dmControlFd, DM_DEV_STATUS, &io) < 0) {
+        // failed to get device path
+        return false;
+    }
+    if (io.uuid[0] == '\0') {
+        // device does not have a unique path
+        return false;
+    }
+    uniquePath = DM_DEVICE_UUID_PATH_PREFIX + io.uuid;
+    return true;
+}
+

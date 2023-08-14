@@ -1,7 +1,12 @@
 #include "CopyMountProvider.h"
+#include "DeviceMapperControl.h"
 #include "Logger.h"
 #include "VolumeUtils.h"
 #include "dm/LoopDeviceControl.h"
+#include <chrono>
+#include <cstdint>
+#include <memory>
+#include <string>
 
 #ifdef __linux
 #include <cerrno>
@@ -13,6 +18,12 @@ using namespace volumeprotect::mount;
 using namespace volumeprotect;
 
 #ifdef __linux
+
+namespace {
+    const uint64_t SECTOR_SIZE = 512; // 512 bytes per sector
+}
+
+
 bool LinuxMountProvider::MountCopy(
     const LinuxCopyMountConfig& mountConfig,
     LinuxCopyMountRecord& mountRecord)
@@ -61,7 +72,11 @@ bool LinuxMountProvider::MountCopy(
     }
 
     // mount the loop/dm device to target
-    if (!MountDevice(mountRecord.devicePath, mountConfig.mountTargetPath)) {
+    if (!MountReadonlyDevice(
+            mountRecord.devicePath,
+            mountConfig.mountTargetPath,
+            mountConfig.mountFsType,
+            mountConfig.mountOptions)) {
         ERRLOG("failed to mount %s to %s",
             mountRecord.devicePath.c_str(), mountConfig.mountTargetPath.c_str());
         return false;
@@ -94,13 +109,14 @@ bool LinuxMountProvider::UmountCopy(const LinuxCopyMountRecord& record)
     return true;
 }
 
-bool LinuxMountProvider::MountDevice(const std::string& devicePath, const std::string& mountTargetPath)
+bool LinuxMountProvider::MountReadonlyDevice(
+    const std::string& devicePath,
+    const std::string& mountTargetPath,
+    const std::string& fsType,
+    const std::string& mountOptions)
 {
-    const char* fsType = "ext4";
-    const char* mountOptions = "noatime";
     unsigned long mountFlags = MS_RDONLY;
-    // TODO
-    if (::mount(devicePath.c_str(), mountTargetPath.c_str(), fsType, mountFlags, mountOptions) != 0) {
+    if (::mount(devicePath.c_str(), mountTargetPath.c_str(), fsType.c_str(), mountFlags, mountOptions.c_str()) != 0) {
         ERRLOG("mount failed");
         return false;
     }
@@ -121,14 +137,25 @@ bool LinuxMountProvider::CreateReadonlyDmDevice(
         std::string& dmDeviceName,
         std::string& dmDevicePath)
 {
-    // TODO
-    return false;
+    dmDeviceName = GenerateNewDmDeviceName();
+    devicemapper::DmTable dmTable;
+    for (const auto& copySlice : copySlices) {
+        std::string blockDevicePath = copySlice.loopDevicePath;
+        uint64_t startSector = copySlice.volumeOffset / SECTOR_SIZE;
+        uint64_t sectorsCount = copySlice.size / SECTOR_SIZE;
+        dmTable.AddTarget(std::make_shared<devicemapper::DmTargetLinear>(
+            blockDevicePath,
+            startSector,
+            sectorsCount,
+            0
+        ));
+    }
+    return devicemapper::CreateDevice(dmDeviceName, dmTable, dmDevicePath);
 }
 
 bool LinuxMountProvider::RemoveDmDevice(const std::string& dmDeviceName)
 {
-    // TODO
-    return false;
+    return devicemapper::RemoveDeviceIfExists(dmDeviceName);
 }
 
 bool LinuxMountProvider::AttachReadonlyLoopDevice(const std::string& filePath, std::string& loopDevicePath)
@@ -147,6 +174,14 @@ bool LinuxMountProvider::DetachLoopDevice(const std::string& loopDevicePath)
         return false;
     }
     return true;
+}
+
+std::string LinuxMountProvider::GenerateNewDmDeviceName() const
+{
+    namespace chrono = std::chrono;
+    using clock = std::chrono::system_clock;
+    auto timestamp = std::chrono::duration_cast<chrono::microseconds>(clock::now().time_since_epoch()).count();
+    return std::string("volumeprotect_dm_copy_") + std::to_string(timestamp);
 }
 
 #endif

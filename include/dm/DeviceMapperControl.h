@@ -78,6 +78,12 @@ private:
     bool   m_readonly { false };
 };
 
+enum class DmDeviceStatus {
+    INVALID,
+    SUSPENDED,
+    ACTIVE
+};
+
 /*
  * reference url:
  * https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/dm.cpp
@@ -86,6 +92,13 @@ private:
 // create dm device and activate with specified dm table and name, return dm device path
 VOLUMEPROTECT_API bool CreateDevice(const std::string& name, const DmTable& dmTable, std::string& path);
 
+VOLUMEPROTECT_API bool RemoveDeviceIfExists(const std::string& name);
+
+VOLUMEPROTECT_API bool RemoveDevice(const std::string& name);
+
+VOLUMEPROTECT_API DmDeviceStatus GetDeviceStatus(const std::string& name);
+
+VOLUMEPROTECT_API bool GetDeviceStatusUniquePath(const std::string& name, std::string& uniquePath);
 
 }
 }

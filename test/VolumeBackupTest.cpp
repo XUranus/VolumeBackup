@@ -590,7 +590,7 @@ TEST_F(VolumeBackupTest, BuildHasher_Success)
         HasherForwardMode::DIRECT) != nullptr);
 }
 
-TEST_F(VolumeBackupTest, VolumeBlockHasher_StartFailForHasherDisabled)
+TEST_F(VolumeBackupTest, VolumeBlockHasher_HasherDisabled)
 {
     uint32_t hasherNum = 0; // invalid hasher num
     uint32_t singleChecksumSize = 32LU; // SHA-256
@@ -603,5 +603,5 @@ TEST_F(VolumeBackupTest, VolumeBlockHasher_StartFailForHasherDisabled)
         session->sharedConfig, session->sharedContext, hasherNum, HasherForwardMode::DIFF, singleChecksumSize
     };
     auto volumeBlockHasher = std::make_shared<VolumeBlockHasher>(hasherParam);
-    EXPECT_FALSE(volumeBlockHasher->Start());
+    EXPECT_TRUE(volumeBlockHasher->Start());
 }

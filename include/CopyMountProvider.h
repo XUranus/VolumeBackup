@@ -2,6 +2,8 @@
 #define VOLUMEBACKUP_COPY_MOUNT_PROVIDER_HEADER
 
 #include "VolumeProtectMacros.h"
+// external logger/json library
+#include "Json.h"
 
 namespace volumeprotect {
 namespace mount {
@@ -22,28 +24,57 @@ namespace mount {
  */
 
 struct VOLUMEPROTECT_API LinuxCopyMountConfig {
-    std::string copyMetaDirPath;
-    std::string copyDataDirPath;
-    std::string mountTargetPath;
-    std::string cachePath;                      // store the checkpoint and record info of the mount task
+    std::string     copyMetaDirPath;
+    std::string     copyDataDirPath;
+    std::string     mountTargetPath;
+    std::string     cachePath;                      // store the checkpoint and record info of the mount task
+    std::string     mountFsType { "ext4" };
+    std::string     mountOptions { "noatime" };
+
+
+    SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyMetaDirPath, copyMetaDirPath);
+    SERIALIZE_FIELD(copyDataDirPath, copyDataDirPath);
+    SERIALIZE_FIELD(mountTargetPath, mountTargetPath);
+    SERIALIZE_FIELD(cachePath, cachePath);
+    SERIALIZE_FIELD(mountFsType, mountFsType);
+    SERIALIZE_FIELD(mountOptions, mountOptions);
+    SERIALIZE_SECTION_END
 };
 
 struct VOLUMEPROTECT_API CopySliceTarget {
-    std::string copyFilePath;
-    uint64_t    volumeOffset;
-    uint64_t    size;
-    std::string loopDevicePath;
+    std::string         copyFilePath;
+    uint64_t            volumeOffset;
+    uint64_t            size;
+    std::string         loopDevicePath;
+
+    SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyFilePath, copyFilePath);
+    SERIALIZE_FIELD(volumeOffset, volumeOffset);
+    SERIALIZE_FIELD(size, size);
+    SERIALIZE_FIELD(loopDevicePath, loopDevicePath);
+    SERIALIZE_SECTION_END
 };
 
 struct VOLUMEPROTECT_API LinuxCopyMountRecord {
     // attributes required for umount
-    std::string dmDeviceName;                   // [optional] required only multiple copy files contained in a volume
-    std::vector<std::string> loopDevices;       // loopback device path like /dev/loopX
-    std::string devicePath;                     // the block device mounted (loopback device path or dm device path)
-    std::string mountTargetPath;                // the mount point path
+    std::string                 dmDeviceName;       // [opt] required only multiple copy files contained in a volume
+    std::vector<std::string>    loopDevices;        // loopback device path like /dev/loopX
+    std::string                 devicePath;         // block device mounted (loopback device path or dm device path)
+    std::string                 mountTargetPath;    // the mount point path
     
     // attribute used only for debug
-    std::vector<CopySliceTarget> copySlices;
+    std::vector<CopySliceTarget>    copySlices;
+    LinuxCopyMountConfig            mountConfig;
+
+    SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(dmDeviceName, dmDeviceName);
+    SERIALIZE_FIELD(loopDevices, loopDevices);
+    SERIALIZE_FIELD(devicePath, devicePath);
+    SERIALIZE_FIELD(mountTargetPath, mountTargetPath);
+    SERIALIZE_FIELD(copySlices, copySlices);
+    SERIALIZE_FIELD(mountConfig, mountConfig);
+    SERIALIZE_SECTION_END
 };
 
 /**
@@ -56,7 +87,11 @@ public:
     bool UmountCopy(const LinuxCopyMountRecord& record);
 
 private:
-    bool MountDevice(const std::string& devicePath, const std::string& mountTargetPath);
+    bool MountReadonlyDevice(
+        const std::string& devicePath,
+        const std::string& mountTargetPath,
+        const std::string& fsType,
+        const std::string& mountOptions);
     
     bool UmountDevice(const std::string& mountTargetPath);
     
@@ -70,6 +105,8 @@ private:
     bool AttachReadonlyLoopDevice(const std::string& filePath, std::string& loopDevicePath);
     
     bool DetachLoopDevice(const std::string& loopDevicePath);
+
+    std::string GenerateNewDmDeviceName() const;
 };
 #endif
 
