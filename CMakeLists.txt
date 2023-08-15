@@ -56,6 +56,8 @@ TARGET_LINK_LIBRARIES(
     ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
     minijson
     minilogger
+    # third part dependency
+    uuid
 )
 
 # build a static library
@@ -75,6 +77,8 @@ TARGET_LINK_LIBRARIES(
     ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
     minijson_static
     minilogger_static
+    # third part dependency
+    uuid
 )
 
 
@@ -102,19 +106,8 @@ ADD_EXECUTABLE (vtools
     "GetOption.cpp"
 )
 
-IF(${CMAKE_HOST_WIN32})
-    ADD_EXECUTABLE (vcopymount
-        "vcopymount.cpp"
-        "GetOption.cpp"
-    )
-ENDIF()
-
 SET_PROPERTY(TARGET vbackup PROPERTY CXX_STANDARD 11)
 SET_PROPERTY(TARGET vtools PROPERTY CXX_STANDARD 11)
-
-IF(NOT ${CMAKE_HOST_WIN32})
-    SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)
-ENDIF()
 
 # link vbackup executable
 IF(NOT ${CMAKE_HOST_WIN32})
@@ -145,12 +138,18 @@ TARGET_LINK_LIBRARIES(
 )
 
 # build vcopymount executable
-IF(NOT ${CMAKE_HOST_WIN32})
-    TARGET_LINK_LIBRARIES(
-        vcopymount
-        volumebackup_static
-        # third part dependency provided by XUranus
-        minijson_static
-        minilogger_static
-    )
-ENDIF()
+
+ADD_EXECUTABLE (vcopymount
+    "vcopymount.cpp"
+    "GetOption.cpp"
+)
+
+SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)
+
+TARGET_LINK_LIBRARIES(
+    vcopymount
+    volumebackup_static
+    # third part dependency provided by XUranus
+    minijson_static
+    minilogger_static
+)

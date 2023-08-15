@@ -100,6 +100,8 @@ VOLUMEPROTECT_API DmDeviceStatus GetDeviceStatus(const std::string& name);
 
 VOLUMEPROTECT_API bool GetDeviceStatusUniquePath(const std::string& name, std::string& uniquePath);
 
+VOLUMEPROTECT_API bool GetDevicePathByName(const std::string& name, std::string& dmDevicePath);
+
 }
 }
 

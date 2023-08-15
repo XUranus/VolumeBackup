@@ -28,9 +28,8 @@ struct VOLUMEPROTECT_API LinuxCopyMountConfig {
     std::string     copyDataDirPath;
     std::string     mountTargetPath;
     std::string     cacheDirPath;               // store the checkpoint and record info of the mount task
-    std::string     mountFsType { "ext4" };
-    std::string     mountOptions { "noatime" };
-
+    std::string     mountFsType     { "ext4" };
+    std::string     mountOptions    { "noatime" };
 
     SERIALIZE_SECTION_BEGIN
     SERIALIZE_FIELD(copyMetaDirPath, copyMetaDirPath);

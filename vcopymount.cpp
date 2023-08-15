@@ -105,9 +105,10 @@ int main(int argc, const char** argv)
     GetOptionResult result = GetOption(
         argv + 1,
         argc - 1,
-        "m:d:h",
-        { "--meta=", "--data=", "--target=", "--mount", "--umount" });
+        "m:d:ht:o",
+        { "--meta=", "--data=", "--target=", "--mount", "--umount", "--cache=", "--type=", "--option=" });
     for (const OptionResult opt: result.opts) {
+        std::cout << opt.option << " " << opt.value << std::endl;
         if (opt.option == "d" || opt.option == "data") {
             copyDataDirPath = opt.value;
         } else if (opt.option == "m" || opt.option == "meta") {
@@ -134,15 +135,7 @@ int main(int argc, const char** argv)
     
     using namespace xuranus::minilogger;
     LoggerConfig conf {};
-    conf.target = LoggerTarget::FILE;
-    conf.archiveFilesNumMax = 10;
-    conf.fileName = "vcopymount.log";
-#ifdef __linux__
-    conf.logDirPath = "/tmp/LoggerTest";
-#endif
-#ifdef _WIN32
-    conf.logDirPath = R"(C:\LoggerTest)";
-#endif
+    conf.target = LoggerTarget::STDOUT;
     Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
     if (!Logger::GetInstance()->Init(conf)) {
         std::cerr << "Init logger failed" << std::endl;
@@ -153,7 +146,7 @@ int main(int argc, const char** argv)
                 copyDataDirPath, copyMetaDirPath, mountTargetPath, cacheDirPath, mountFsType, mountOptions);
     }
     if (isUmount) {
-        return !UmountCopy(mountRecordJsonPath))
+        return !UmountCopy(mountRecordJsonPath);
     }
     PrintHelp();
     return 0;

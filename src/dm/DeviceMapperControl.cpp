@@ -3,13 +3,19 @@
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <fcntl.h>
+#include <iostream>
 #include <string>
 #include <cstring>
 #include <thread>
 #include <unistd.h>
 #include <linux/dm-ioctl.h>
+#include <uuid/uuid.h>
 #include <sys/ioctl.h>
+#include <sys/sysmacros.h>
+#include <sys/types.h>
+#include <sys/utsname.h>
 
 using namespace volumeprotect;
 using namespace volumeprotect::devicemapper;
@@ -22,7 +28,9 @@ namespace {
     // device mapper require 8 byte padding
     const int DM_ALIGN_MASK = 7;
     const std::string DEVICE_MAPPER_CONTROL_PATH = "/dev/mapper/control";
-    const std::string DM_DEVICE_UUID_PATH_PREFIX = "/dev/block/mapper/by-uuid";
+    const std::string DM_DEVICE_UUID_PATH_PREFIX = "/dev/mapper/by-uuid/";
+    const std::string DM_DEVICE_PATH_PREFIX = "/dev/dm-";
+    const int UUID_BUFFER_MAX = 36 + 1; // 36bytes uuid with 1 \0 terminator
 };
 
 static int DM_ALIGN(int x)
@@ -151,12 +159,6 @@ static void InitDmIoctlStruct(struct dm_ioctl& io, const std::string& name)
     }
 }
 
-static bool CreateEmptyDevice(const std::string& name)
-{
-    // TODO
-    return false;
-}
-
 // create empty dm device with specified uuid
 static bool CreateEmptyDevice(const std::string& name, const std::string& uuid)
 {
@@ -170,6 +172,9 @@ static bool CreateEmptyDevice(const std::string& name, const std::string& uuid)
     }
     struct dm_ioctl io;
     InitDmIoctlStruct(io, name);
+    if (!uuid.empty()) {
+        std::sprintf(io.uuid, "%s", uuid.c_str());
+    }
     int dmControlFd = GetDmControlFd();
     if (dmControlFd < 0) {
         return false;
@@ -182,6 +187,15 @@ static bool CreateEmptyDevice(const std::string& name, const std::string& uuid)
         return false;
     }
     return true;
+}
+
+static bool CreateEmptyDevice(const std::string& name)
+{
+    uuid_t generated_uuid;
+    char uuid_str[UUID_BUFFER_MAX] = { 0 };  // string representation of UUID including null-terminator
+    uuid_generate(generated_uuid);  // generate a new UUID
+    uuid_unparse(generated_uuid, uuid_str);  // convert UUID to string
+    return CreateEmptyDevice(name, uuid_str);
 }
 
 static bool LoadTable(const std::string& name, const DmTable& dmTable, bool activate)
@@ -217,8 +231,18 @@ static bool LoadTable(const std::string& name, const DmTable& dmTable, bool acti
     return true;
 }
 
-static bool WaitForDeviceCreated(const std::string& name, const std::string& path, std::chrono::milliseconds timeout)
+static bool WaitForDeviceCreated(const std::string& name, std::string& path, std::chrono::milliseconds timeout)
 {
+    // We use the unique path for testing whether the device is ready. After
+    // that, it's safe to use the dm-N path which is compatible with callers
+    // that expect it to be formatted as such.
+    std::string uniquePath;
+    if (!devicemapper::GetDeviceStatusUniquePath(name, uniquePath) || !devicemapper::GetDevicePathByName(name, path)) {
+        devicemapper::RemoveDevice(name);
+        return false;
+    }
+
+    // on some env, uuid path won't generate, so check dm device path instead
     auto tick = std::chrono::steady_clock::now();
     auto tok = std::chrono::steady_clock::now();
     do {
@@ -261,7 +285,7 @@ bool devicemapper::CreateDevice(
         RemoveDevice(name);
         return false;
     }
-    if (!WaitForDeviceCreated(name, path, std::chrono::milliseconds(1000))) {
+    if (!WaitForDeviceCreated(name, path, std::chrono::milliseconds(1000 * 10))) {
         RemoveDevice(name);
         return false;
     }
@@ -281,13 +305,13 @@ bool devicemapper::RemoveDevice(const std::string& name)
     if (devicemapper::GetDeviceStatus(name) == DmDeviceStatus::INVALID) {
         return true;
     }
-    std::string uniquePath;
-    if (!devicemapper::GetDeviceStatusUniquePath(name, uniquePath)) {
+    std::string dmDevicePath;
+    if (!devicemapper::GetDevicePathByName(name, dmDevicePath)) {
         return false;
     }
     // Expect to have uevent generated if the unique path actually exists. This may not exist
     // if the device was created but has never been activated before it gets deleted.
-    bool needUevent = !uniquePath.empty() && ::access(uniquePath.c_str(), F_OK) == 0;
+    bool needUevent = !dmDevicePath.empty() && ::access(dmDevicePath.c_str(), F_OK) == 0;
 
     int dmControlFd = GetDmControlFd();
     if (dmControlFd < 0) {
@@ -304,10 +328,10 @@ bool devicemapper::RemoveDevice(const std::string& name)
         // Didn't generate uevent for removal
         return false;
     }
-    if (uniquePath.empty()) {
+    if (dmDevicePath.empty()) {
         return false;
     }
-    if (!WaitForDeviceRemoved(uniquePath, std::chrono::milliseconds(1000))) {
+    if (!WaitForDeviceRemoved(dmDevicePath, std::chrono::milliseconds(1000))) {
         // Failed waiting for uniquePathto be deleted
         return false;
     }
@@ -351,3 +375,21 @@ bool devicemapper::GetDeviceStatusUniquePath(const std::string& name, std::strin
     return true;
 }
 
+// Accepts a device mapper device name (like system_a, vendor_b etc) and
+// returns the path to it's device node (or symlink to the device node)
+bool devicemapper::GetDevicePathByName(const std::string& name, std::string& dmDevicePath)
+{
+    struct dm_ioctl io;
+    InitDmIoctlStruct(io, name);
+    int dmControlFd = GetDmControlFd();
+    if (dmControlFd < 0) {
+        return false;
+    }
+    if (::ioctl(dmControlFd, DM_DEV_STATUS, &io) < 0) {
+        // DM_DEV_STATUS failed for name
+        return false;
+    }
+    uint32_t devNum = ::minor(io.dev);
+    dmDevicePath = DM_DEVICE_PATH_PREFIX + std::to_string(devNum);
+    return true;
+}
