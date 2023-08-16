@@ -34,7 +34,7 @@ static std::unordered_map<int, std::string> g_statusStringTable {
  *
  */
 
-std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)
+std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)
 {
     // 1. check volume size
     uint64_t volumeSize = 0;
@@ -57,10 +57,10 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
         return nullptr;
     }
 
-    return std::make_shared<VolumeBackupTask>(backupConfig, volumeSize);
+    return std::unique_ptr<VolumeProtectTask>(new VolumeBackupTask(backupConfig, volumeSize));
 }
 
-std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const VolumeRestoreConfig& restoreConfig)
+std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const VolumeRestoreConfig& restoreConfig)
 {
     // 1. check volume size
     uint64_t volumeSize = 0;
@@ -81,7 +81,7 @@ std::shared_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
         return nullptr;
     }
 
-    return std::make_shared<VolumeRestoreTask>(restoreConfig);
+    return std::unique_ptr<VolumeProtectTask>(new VolumeRestoreTask(restoreConfig));
 }
 
 void StatefulTask::Abort()
@@ -136,4 +136,77 @@ TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) cons
     res.bytesToWrite    = statistic.bytesToWrite + this->bytesToWrite;
     res.bytesWritten    = statistic.bytesWritten + this->bytesWritten;
     return res;
+}
+
+// implement C style interface ...
+void* BuildBackupTask(VolumeBackupConf_C cBackupConf)
+{
+    VolumeBackupConfig backupConfig {};
+    backupConfig.copyType = static_cast<CopyType>(cBackupConf.copyType);
+    backupConfig.volumePath = cBackupConf.volumePath;
+    backupConfig.prevCopyMetaDirPath = cBackupConf.prevCopyMetaDirPath;
+    backupConfig.outputCopyDataDirPath = cBackupConf.outputCopyDataDirPath;
+    backupConfig.outputCopyMetaDirPath = cBackupConf.outputCopyMetaDirPath;
+    backupConfig.blockSize = cBackupConf.blockSize;
+    backupConfig.sessionSize = cBackupConf.sessionSize;
+    backupConfig.hasherNum = cBackupConf.hasherNum;
+    backupConfig.hasherEnabled = cBackupConf.hasherEnabled;
+    backupConfig.enableCheckpoint = cBackupConf.enableCheckpoint;
+    std::unique_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildBackupTask(backupConfig);
+    return reinterpret_cast<void*>(task.release());
+}
+
+void* BuildRestoreTask(VolumeRestoreConf_C cRestoreConf)
+{   VolumeRestoreConfig restoreConfig {};
+    restoreConfig.volumePath = cRestoreConf.volumePath;
+    restoreConfig.copyDataDirPath = cRestoreConf.copyDataDirPath;
+    restoreConfig.copyMetaDirPath = cRestoreConf.copyMetaDirPath;
+    restoreConfig.enableCheckpoint = cRestoreConf.enableCheckpoint;
+    std::unique_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildRestoreTask(restoreConfig);
+    return reinterpret_cast<void*>(task.release());
+}
+
+bool StartTask(void* task)
+{
+    return reinterpret_cast<VolumeProtectTask*>(task)->Start();
+}
+
+void DestroyTask(void* task)
+{
+    delete reinterpret_cast<VolumeProtectTask*>(task);
+}
+
+TaskStatistics_C GetTaskStatistics(void* task)
+{
+    TaskStatistics statistic = reinterpret_cast<VolumeProtectTask*>(task)->GetStatistics();
+    TaskStatistics_C cstat;
+    ::memset(&cstat, 0, sizeof(TaskStatistics_C));
+    cstat.blocksHashed = statistic.blocksHashed;
+    cstat.blocksToHash = statistic.blocksToHash;
+    cstat.bytesRead = statistic.bytesRead;
+    cstat.bytesToRead = statistic.bytesToRead;
+    cstat.bytesToWrite = statistic.bytesToWrite;
+    cstat.bytesWritten = statistic.bytesWritten;
+    return cstat;
+}
+
+void AbortTask(void* task)
+{
+    reinterpret_cast<VolumeProtectTask*>(task)->Abort();
+}
+
+TaskStatus_C GetTaskStatus(void* task)
+{
+    TaskStatus taskStatus = reinterpret_cast<VolumeProtectTask*>(task)->GetStatus();
+    return static_cast<TaskStatus_C>(taskStatus);
+}
+
+bool IsTaskFailed(void* task)
+{
+    return reinterpret_cast<VolumeProtectTask*>(task)->IsFailed();
+}
+
+bool IsTaskTerminated(void* task)
+{
+    return reinterpret_cast<VolumeProtectTask*>(task)->IsTerminated();
 }

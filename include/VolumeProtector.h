@@ -3,6 +3,7 @@
 #define VOLUMEBACKUP_PROTECT_FACADE_HEADER
 
 #include "VolumeProtectMacros.h"
+#include <memory>
 
 // volume backup application facade
 namespace volumeprotect {
@@ -24,8 +25,8 @@ const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
  */
 
 enum class VOLUMEPROTECT_API CopyType {
-    FULL,       // the copy contains a full volume
-    INCREMENT   // the copy is increment copy
+    FULL = 0,       // the copy contains a full volume
+    INCREMENT = 1   // the copy is increment copy
 };
 
 // immutable config, used to build volume full/increment backup task
@@ -89,11 +90,69 @@ class VOLUMEPROTECT_API VolumeProtectTask : public StatefulTask {
 public:
     virtual bool            Start() = 0;
     virtual TaskStatistics  GetStatistics() const = 0;
+    virtual ~VolumeProtectTask() = default;
 
-    static std::shared_ptr<VolumeProtectTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
-    static std::shared_ptr<VolumeProtectTask> BuildRestoreTask(const VolumeRestoreConfig& restoreConfig);
+    static std::unique_ptr<VolumeProtectTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
+    static std::unique_ptr<VolumeProtectTask> BuildRestoreTask(const VolumeRestoreConfig& restoreConfig);
 };
 
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// C style struct definition
+struct VOLUMEPROTECT_API VolumeBackupConf_C {
+    int         copyType;                       // type of target copy to be generated
+    char*       volumePath;                     // path of the block device (volume)
+    char*       prevCopyMetaDirPath;            // [optional] only be needed for increment backup
+    char*	    outputCopyDataDirPath;
+    char*	    outputCopyMetaDirPath;
+    uint32_t    blockSize;                      // [optional] default blocksize used for computing sha256
+    uint64_t    sessionSize;                    // default sesson size used to split session
+    uint32_t    hasherNum;                      // hasher worker count, set to the num of processors
+    bool        hasherEnabled;                  // if set to false, won't compute sha256
+    bool        enableCheckpoint;               // start from checkpoint if exists
+};
+
+struct VOLUMEPROTECT_API VolumeRestoreConf_C {
+    char*       volumePath;                     // path of the block device (volume)
+    char*	    copyDataDirPath;
+    char*	    copyMetaDirPath;
+    bool        enableCheckpoint { true };      // start from checkpoint if exists
+};
+
+enum VOLUMEPROTECT_API TaskStatus_C {
+    INIT        =  0,
+    RUNNING     =  1,
+    SUCCEED     =  2,
+    ABORTING    =  3,
+    ABORTED     =  4,
+    FAILED      =  5
+};
+
+struct VOLUMEPROTECT_API TaskStatistics_C {
+    uint64_t bytesToRead;
+    uint64_t bytesRead;
+    uint64_t blocksToHash;
+    uint64_t blocksHashed;
+    uint64_t bytesToWrite;
+    uint64_t bytesWritten;
+};
+
+VOLUMEPROTECT_API void*               BuildBackupTask(VolumeBackupConf_C backupConfig);
+VOLUMEPROTECT_API void*               BuildRestoreTask(VolumeRestoreConf_C restoreConfig);
+VOLUMEPROTECT_API bool                StartTask(void* task);
+VOLUMEPROTECT_API void                DestroyTask(void* task);
+VOLUMEPROTECT_API TaskStatistics_C    GetTaskStatistics(void* task);
+VOLUMEPROTECT_API void                AbortTask(void* task);
+VOLUMEPROTECT_API TaskStatus_C        GetTaskStatus(void* task);
+VOLUMEPROTECT_API bool                IsTaskFailed(void* task);
+VOLUMEPROTECT_API bool                IsTaskTerminated(void* task);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
