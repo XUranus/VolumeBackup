@@ -2,6 +2,7 @@
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
 #include "NativeIOInterface.h"
+#include <string>
 
 using namespace volumeprotect;
 
@@ -139,14 +140,19 @@ TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) cons
 }
 
 // implement C style interface ...
+inline std::string StringFromCStr(char* str)
+{
+    return str == nullptr ? std::string("") : std::string(str);
+}
+
 void* BuildBackupTask(VolumeBackupConf_C cBackupConf)
 {
     VolumeBackupConfig backupConfig {};
     backupConfig.copyType = static_cast<CopyType>(cBackupConf.copyType);
-    backupConfig.volumePath = cBackupConf.volumePath;
-    backupConfig.prevCopyMetaDirPath = cBackupConf.prevCopyMetaDirPath;
-    backupConfig.outputCopyDataDirPath = cBackupConf.outputCopyDataDirPath;
-    backupConfig.outputCopyMetaDirPath = cBackupConf.outputCopyMetaDirPath;
+    backupConfig.volumePath = StringFromCStr(cBackupConf.volumePath);
+    backupConfig.prevCopyMetaDirPath = StringFromCStr(cBackupConf.prevCopyMetaDirPath);
+    backupConfig.outputCopyDataDirPath = StringFromCStr(cBackupConf.outputCopyDataDirPath);
+    backupConfig.outputCopyMetaDirPath = StringFromCStr(cBackupConf.outputCopyMetaDirPath);
     backupConfig.blockSize = cBackupConf.blockSize;
     backupConfig.sessionSize = cBackupConf.sessionSize;
     backupConfig.hasherNum = cBackupConf.hasherNum;
@@ -158,9 +164,9 @@ void* BuildBackupTask(VolumeBackupConf_C cBackupConf)
 
 void* BuildRestoreTask(VolumeRestoreConf_C cRestoreConf)
 {   VolumeRestoreConfig restoreConfig {};
-    restoreConfig.volumePath = cRestoreConf.volumePath;
-    restoreConfig.copyDataDirPath = cRestoreConf.copyDataDirPath;
-    restoreConfig.copyMetaDirPath = cRestoreConf.copyMetaDirPath;
+    restoreConfig.volumePath = StringFromCStr(cRestoreConf.volumePath);
+    restoreConfig.copyDataDirPath = StringFromCStr(cRestoreConf.copyDataDirPath);
+    restoreConfig.copyMetaDirPath = StringFromCStr(cRestoreConf.copyMetaDirPath);
     restoreConfig.enableCheckpoint = cRestoreConf.enableCheckpoint;
     std::unique_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildRestoreTask(restoreConfig);
     return reinterpret_cast<void*>(task.release());
