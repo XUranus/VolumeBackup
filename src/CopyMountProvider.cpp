@@ -1,10 +1,15 @@
 #include "CopyMountProvider.h"
 #include "DeviceMapperControl.h"
+#include "Json.h"
 #include "Logger.h"
 #include "VolumeUtils.h"
-#include "dm/LoopDeviceControl.h"
+#include "native/LoopDeviceControl.h"
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <fstream>
 #include <memory>
 #include <string>
 
@@ -12,6 +17,7 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #endif
 
 using namespace volumeprotect::mount;
@@ -21,8 +27,50 @@ using namespace volumeprotect;
 
 namespace {
     const uint64_t SECTOR_SIZE = 512; // 512 bytes per sector
+    const std::string SEPARATOR = "/";
+    const std::string MOUNT_RECORD_JSON_NAME = "volumecopymount.record.json";
 }
 
+
+std::unique_ptr<LinuxMountProvider> LinuxMountProvider::BuildLinuxMountProvider(const std::string& cacheDirPath)
+{
+    struct stat st {};
+    if (::stat(cacheDirPath.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
+        // invalid directory path
+        return nullptr;
+    }
+    return std::unique_ptr<LinuxMountProvider>(new LinuxMountProvider(cacheDirPath));
+}
+
+std::unique_ptr<LinuxMountProvider> LinuxMountProvider::BuildLinuxUmountProvider()
+{
+    // umount does not need cache dir
+    return std::unique_ptr<LinuxMountProvider>(new LinuxMountProvider(""));
+}
+
+LinuxMountProvider::LinuxMountProvider(const std::string& cacheDirPath)
+    : m_cacheDirPath(cacheDirPath), m_error("")
+{}
+
+bool LinuxMountProvider::MountCopy(
+    const LinuxCopyMountConfig& mountConfig,
+    std::string& linuxCopyMountRecordJsonPath)
+{
+    LinuxCopyMountRecord mountRecord {};
+    if (!MountCopy(mountConfig, mountRecord)) {
+        return false;
+    }
+    std::string jsonContent = xuranus::minijson::util::Serialize(mountRecord);
+    std::string filepath = m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
+    std::ofstream file(filepath.c_str(), std::ios::trunc);
+    if (!file.is_open()) {
+        SetError("unable to open copy mount record %s for write, errno %d", filepath.c_str(), errno);
+        return false;
+    }
+    file << jsonContent;
+    file.close();
+    return true;
+}
 
 bool LinuxMountProvider::MountCopy(
     const LinuxCopyMountConfig& mountConfig,
@@ -84,6 +132,20 @@ bool LinuxMountProvider::MountCopy(
     return true;
 }
 
+bool LinuxMountProvider::UmountCopy(const std::string& linuxCopyMountRecordJsonPath)
+{
+    std::ifstream file(linuxCopyMountRecordJsonPath);
+    if (!file.is_open()) {
+        SetError("unabled to open copy mount record %s to read, errno %d", linuxCopyMountRecordJsonPath.c_str(), errno);
+        return false;
+    }
+    std::string jsonContent;
+    file >> jsonContent;
+    LinuxCopyMountRecord record {};
+    xuranus::minijson::util::Deserialize(jsonContent, record);
+    return UmountCopy(record);
+}
+
 bool LinuxMountProvider::UmountCopy(const LinuxCopyMountRecord& record)
 {
     std::string devicePath = record.devicePath;
@@ -130,6 +192,24 @@ bool LinuxMountProvider::UmountDevice(const std::string& mountTargetPath)
         return false;
     }
     return true;
+}
+
+const std::string& LinuxMountProvider::GetError() const
+{
+    return m_error;
+}
+
+void LinuxMountProvider::SetError(const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    size_t size = std::vsnprintf(nullptr, 0, message, args) + 1;
+    char* buffer = new char[size];
+    std::vsnprintf(buffer, size, message, args);
+    va_end(args);
+    std::string formattedString(buffer);
+    delete[] buffer;
+    m_error = formattedString;
 }
 
 bool LinuxMountProvider::CreateReadonlyDmDevice(
@@ -183,5 +263,61 @@ std::string LinuxMountProvider::GenerateNewDmDeviceName() const
     auto timestamp = std::chrono::duration_cast<chrono::microseconds>(clock::now().time_since_epoch()).count();
     return std::string("volumeprotect_dm_copy_") + std::to_string(timestamp);
 }
+
+// used for c library
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// implement C style interface ...
+inline static std::string StringFromCStr(char* str)
+{
+    return str == nullptr ? std::string("") : std::string(str);
+}
+
+void* CreateLinuxMountProvider(char* cacheDirPath)
+{
+    return reinterpret_cast<void*>(LinuxMountProvider::BuildLinuxMountProvider(cacheDirPath).release());
+}
+
+bool MountLinuxVolumeCopy(
+    void*                   mountProvider,
+    LinuxCopyMountConf_C    conf,
+    char*                   pathBuffer,
+    int                     bufferMax)
+{
+    LinuxCopyMountConfig mountConfig {};
+    std::string linuxCopyMountRecordJsonPath {};
+    mountConfig.copyMetaDirPath = StringFromCStr(conf.copyMetaDirPath);
+    mountConfig.copyDataDirPath = StringFromCStr(conf.copyDataDirPath);
+    mountConfig.mountTargetPath = StringFromCStr(conf.mountTargetPath);
+    mountConfig.mountFsType = StringFromCStr(conf.mountFsType);
+    mountConfig.mountOptions = StringFromCStr(conf.mountOptions);
+    bool ret = reinterpret_cast<LinuxMountProvider*>(mountProvider)->MountCopy(mountConfig, linuxCopyMountRecordJsonPath);
+    if (ret && !linuxCopyMountRecordJsonPath.empty()) {
+        memset(pathBuffer, 0, bufferMax);
+        ::strcpy(pathBuffer, linuxCopyMountRecordJsonPath.c_str());
+    }
+    return ret;
+}
+
+bool UmountLinuxVolumeCopy(void* mountProvider, char* linuxCopyMountRecordJsonPath)
+{
+    return reinterpret_cast<LinuxMountProvider*>(mountProvider)->UmountCopy(linuxCopyMountRecordJsonPath);
+}
+
+void DestroyLinuxMountProvider(void* mountProvider)
+{
+    delete reinterpret_cast<LinuxMountProvider*>(mountProvider);
+}
+
+const char* GetLinuxMountProviderError(void* mountProvider)
+{
+    return reinterpret_cast<LinuxMountProvider*>(mountProvider)->GetError().c_str();
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

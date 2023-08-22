@@ -1,5 +1,6 @@
-#include "NativeIOInterface.h"
+#include "native/NativeIOInterface.h"
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>

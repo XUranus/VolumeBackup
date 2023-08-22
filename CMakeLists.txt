@@ -17,15 +17,15 @@ ELSE()
     ADD_COMPILE_OPTIONS(-Wno-format-security)
 ENDIF()
 
-FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_SOURCES "src/*.cpp" "src/dm/*.cpp")
-FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_HEADERS "include/*.h" "dm/include/*.h")
+FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_SOURCES "src/*.cpp" "src/native/*.cpp")
+FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_HEADERS "include/*.h" "native/include/*.h")
 
 MESSAGE("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
 MESSAGE("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
 
 INCLUDE_DIRECTORIES(
     "include"
-    "include/dm" 
+    "include/native" 
     "module/minijson"
     "module/minilogger"
 )
@@ -80,7 +80,6 @@ TARGET_LINK_LIBRARIES(
     # third part dependency
     uuid
 )
-
 
 # set -DCMAKE_BUILD_TYPE=Debug to enable LLT, set -DCOVERAGE=ON to enable code coverage
 IF (CMAKE_BUILD_TYPE STREQUAL "Debug")

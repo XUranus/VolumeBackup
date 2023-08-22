@@ -4,6 +4,7 @@
 #include "VolumeProtectMacros.h"
 // external logger/json library
 #include "Json.h"
+#include <memory>
 
 namespace volumeprotect {
 namespace mount {
@@ -27,7 +28,6 @@ struct VOLUMEPROTECT_API LinuxCopyMountConfig {
     std::string     copyMetaDirPath;
     std::string     copyDataDirPath;
     std::string     mountTargetPath;
-    std::string     cacheDirPath;               // store the checkpoint and record info of the mount task
     std::string     mountFsType     { "ext4" };
     std::string     mountOptions    { "noatime" };
 
@@ -35,7 +35,6 @@ struct VOLUMEPROTECT_API LinuxCopyMountConfig {
     SERIALIZE_FIELD(copyMetaDirPath, copyMetaDirPath);
     SERIALIZE_FIELD(copyDataDirPath, copyDataDirPath);
     SERIALIZE_FIELD(mountTargetPath, mountTargetPath);
-    SERIALIZE_FIELD(cacheDirPath, cacheDirPath);
     SERIALIZE_FIELD(mountFsType, mountFsType);
     SERIALIZE_FIELD(mountOptions, mountOptions);
     SERIALIZE_SECTION_END
@@ -76,14 +75,63 @@ struct VOLUMEPROTECT_API LinuxCopyMountRecord {
     SERIALIZE_SECTION_END
 };
 
+// used for c library
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct VOLUMEPROTECT_API LinuxCopyMountConf_C {
+    char*     copyMetaDirPath;
+    char*     copyDataDirPath;
+    char*     mountTargetPath;
+    char*     mountFsType;
+    char*     mountOptions;
+};
+
+void* CreateLinuxMountProvider(char* cacheDirPath);
+
+bool MountLinuxVolumeCopy(
+    void*                   mountProvider,
+    LinuxCopyMountConf_C    conf,
+    char*                   pathBuffer,
+    int                     bufferMax);
+
+bool UmountLinuxVolumeCopy(
+    void*                   mountProvider,
+    char*                   linuxCopyMountRecordJsonPath);
+
+void DestroyLinuxMountProvider(
+    void*                   mountProvider);
+
+const char* GetLinuxMountProviderError(
+    void*                   mountProvider);
+
+#ifdef __cplusplus
+}
+#endif
+
 /**
  * provide api to mount/umount volume copy on Linux system
  */
 class VOLUMEPROTECT_API LinuxMountProvider {
 public:
+    static std::unique_ptr<LinuxMountProvider> BuildLinuxMountProvider(const std::string& cacheDirPath);
+
+    static std::unique_ptr<LinuxMountProvider> BuildLinuxUmountProvider();
+
+    LinuxMountProvider(const std::string& cacheDirPath);
+
+    bool MountCopy(const LinuxCopyMountConfig& mountConfig, std::string& linuxCopyMountRecordJsonPath);
+
     bool MountCopy(const LinuxCopyMountConfig& mountConfig, LinuxCopyMountRecord& mountRecord);
-    
+
     bool UmountCopy(const LinuxCopyMountRecord& record);
+
+    bool UmountCopy(const std::string& linuxCopyMountRecordJsonPath);
+
+    const std::string& GetError() const;
+
+    void SetError(const char* message, ...);
 
 private:
     bool MountReadonlyDevice(
@@ -106,6 +154,10 @@ private:
     bool DetachLoopDevice(const std::string& loopDevicePath);
 
     std::string GenerateNewDmDeviceName() const;
+
+private:
+    std::string m_cacheDirPath; // store the checkpoint and record info of the mount task
+    std::string m_error {};
 };
 #endif
 

@@ -22,7 +22,7 @@
 #include <iostream>
 #include <fstream>
 #include "Logger.h"
-#include "NativeIOInterface.h"
+#include "native/NativeIOInterface.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::native;

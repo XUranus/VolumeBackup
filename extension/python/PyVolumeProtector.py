@@ -6,6 +6,7 @@ import ctypes
 from ctypes import *
 from ctypes.util import find_library
 from dataclasses import dataclass
+import time
 
 VOLUME_BACKUP_LIBRARY_PATH = "./build/libvolumebackup.so"
 
@@ -84,7 +85,6 @@ shared_lib.IsTaskFailed.restype = ctypes.c_bool
 shared_lib.IsTaskTerminated.argtypes = [ctypes.c_void_p]
 shared_lib.IsTaskTerminated.restype = ctypes.c_bool
 
-
 class VolumeProtectTask:
     def __init__(self, config : any):
         if isinstance(config, VolumeBackupConf_C):
@@ -106,6 +106,18 @@ class VolumeProtectTask:
     def statistics(self) -> TaskStatistics_C:
         return shared_lib.GetTaskStatistics(self.instance)
 
+    def print_statistics(self) -> dict:
+        statistics = shared_lib.GetTaskStatistics(self.instance)
+        stat_dict = {
+            'bytesToRead'  : statistics.bytesToRead,
+            'bytesRead'    : statistics.bytesRead,
+            'blocksToHash' : statistics.blocksToHash,
+            'blocksHashed' : statistics.blocksHashed,
+            'bytesToWrite' : statistics.bytesToWrite,
+            'bytesWritten' : statistics.bytesWritten,
+        }
+        print(stat_dict)
+
     def abort(self) -> None:
         shared_lib.DestroyTask(self.instance)
 
@@ -118,17 +130,17 @@ class VolumeProtectTask:
     def is_terminated(self) -> bool:
         return shared_lib.IsTaskTerminated(self.instance)
 
-
+import threading
 
 def start_backup():
     backup_config = VolumeBackupConf_C(
-        copyType=1,
+        copyType=0,
         volumePath=b"/dev/loop0",
         prevCopyMetaDirPath=None,
         outputCopyDataDirPath=b"/home/xuranus/workspace/VolumeBackup/build/vol2",
         outputCopyMetaDirPath=b"/home/xuranus/workspace/VolumeBackup/build/vol2",
         blockSize=4096,
-        sessionSize=1024 * 1024 * 1024,
+        sessionSize=1024 * 1024 * 1024 * 100,
         hasherNum=8,
         hasherEnabled=True,
         enableCheckpoint=True
@@ -137,12 +149,14 @@ def start_backup():
     if not task.valid():
         print('invalid task')
         return
-    if task.start():
+    if not task.start():
         print('task start failed')
         return
     while not task.is_terminated():
-        print(task.statistics())
-    print(task.status())
+        task.print_statistics()
+        #time.sleep(1)
+        
+    print("task terminated with status {}".format(task.status()))
 
 def start_restore():
     restore_config = VolumeRestoreConf_C(
@@ -155,12 +169,13 @@ def start_restore():
     if not task.valid():
         print('invalid task')
         return
-    if task.start():
+    if not task.start():
         print('task start failed')
         return
     while not task.is_terminated():
-        print(task.statistics())
-    print(task.status())
+        print(task.print_statistics())
+        time.sleep(1)
+    print("task terminated with status {}".format(task.status()))
 
 
 if __name__ == "__main__":

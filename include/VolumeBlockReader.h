@@ -3,7 +3,7 @@
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
-#include "NativeIOInterface.h"
+#include "native/NativeIOInterface.h"
 
 namespace volumeprotect {
 

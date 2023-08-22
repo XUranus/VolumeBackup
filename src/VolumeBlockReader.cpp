@@ -1,5 +1,5 @@
 #include "Logger.h"
-#include "NativeIOInterface.h"
+#include "native/NativeIOInterface.h"
 #include "VolumeBlockReader.h"
 
 using namespace volumeprotect;

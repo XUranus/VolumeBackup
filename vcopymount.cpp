@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <string>
 #include "GetOption.h"
 #include "Json.h"
@@ -27,7 +28,14 @@ using namespace volumeprotect::mount;
 
 static void PrintHelp()
 {
-
+    std::cout << "Usage: vcopymount --mount | --umount [option]" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "--data    <path>      copy data dir path>" << std::endl;
+    std::cout << "--meta    <path>      copy meta dir path" << std::endl;
+    std::cout << "--cache   <path>      cache dir path to ouput checkpoint" << std::endl;
+    std::cout << "--target  <path>      dir target to mount to" << std::endl;
+    std::cout << "--type    <fs>        mount fs type, ex: ext4, xfs..." << std::endl;
+    std::cout << "--option  <option>    mount fs option args" << std::endl;
 }
 
 static bool MountCopy(
@@ -51,19 +59,22 @@ static bool MountCopy(
     mountConfig.copyMetaDirPath = copyMetaDirPath;
     mountConfig.copyDataDirPath = copyDataDirPath;
     mountConfig.mountTargetPath = mountTargetPath;
-    mountConfig.cacheDirPath = cacheDirPath;
     mountConfig.mountFsType = mountFsType;
     mountConfig.mountOptions = mountOptions;
     
-    volumeprotect::mount::LinuxMountProvider mountProvider;
+    std::shared_ptr<LinuxMountProvider> mountProvider = LinuxMountProvider::BuildLinuxMountProvider(cacheDirPath);
+    if (mountProvider == nullptr) {
+        std::cerr << "failed to build mount provider" << std::endl;
+    }
     LinuxCopyMountRecord mountRecord {};
-    if (!mountProvider.MountCopy(mountConfig, mountRecord)) {
-        std::cerr << "Nount Copy Failed" << std::endl;
+    std::string mountRecordJsonFilePath;
+    if (!mountProvider->MountCopy(mountConfig, mountRecordJsonFilePath)) {
+        std::cerr << "Mount Copy Failed" << std::endl;
+        ERRLOG("%s", mountProvider->GetError().c_str());
         return false;
     }
-    std::string mountRecordJson = minijson::util::Serialize(mountRecord);
     std::cout << "Mount Copy Success" << std::endl;
-    std::cout << mountRecordJson << std::endl;
+    std::cout << "Mount Record Json File Path: " << mountRecordJsonFilePath << std::endl; 
     return true;
 }
 
@@ -81,9 +92,15 @@ static bool UmountCopy(const std::string& mountRecordJsonPath)
     std::cout << mountRecordJsonString << std::endl;
     LinuxCopyMountRecord mountRecord {};
     minijson::util::Deserialize(mountRecordJsonString, mountRecord);
-    volumeprotect::mount::LinuxMountProvider mountProvider;
-    if (!mountProvider.UmountCopy(mountRecord)) {
+
+        
+    std::shared_ptr<LinuxMountProvider> umountProvider = LinuxMountProvider::BuildLinuxUmountProvider();
+    if (umountProvider == nullptr) {
+        std::cerr << "failed to build mount provider" << std::endl;
+    }
+    if (!umountProvider->UmountCopy(mountRecord)) {
         ERRLOG("Umount Copy Failed");
+        ERRLOG("%s", umountProvider->GetError().c_str());
         return false;
     }
     return true;

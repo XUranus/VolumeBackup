@@ -150,7 +150,6 @@ VOLUMEPROTECT_API void                AbortTask(void* task);
 VOLUMEPROTECT_API TaskStatus_C        GetTaskStatus(void* task);
 VOLUMEPROTECT_API bool                IsTaskFailed(void* task);
 VOLUMEPROTECT_API bool                IsTaskTerminated(void* task);
-
 #ifdef __cplusplus
 }
 #endif

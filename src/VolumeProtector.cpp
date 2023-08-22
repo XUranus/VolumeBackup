@@ -1,8 +1,10 @@
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
-#include "NativeIOInterface.h"
+#include "native/NativeIOInterface.h"
+#include <chrono>
 #include <string>
+#include <thread>
 
 using namespace volumeprotect;
 
@@ -140,7 +142,7 @@ TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) cons
 }
 
 // implement C style interface ...
-inline std::string StringFromCStr(char* str)
+inline static std::string StringFromCStr(char* str)
 {
     return str == nullptr ? std::string("") : std::string(str);
 }

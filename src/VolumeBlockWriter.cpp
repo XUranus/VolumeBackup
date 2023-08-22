@@ -1,6 +1,6 @@
 #include "Logger.h"
 #include "VolumeProtector.h"
-#include "NativeIOInterface.h"
+#include "native/NativeIOInterface.h"
 #include "VolumeBlockWriter.h"
 
 using namespace volumeprotect;
