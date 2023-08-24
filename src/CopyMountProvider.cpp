@@ -24,11 +24,6 @@ using namespace volumeprotect;
 namespace {
     const uint64_t SECTOR_SIZE = 512; // 512 bytes per sector
     const std::string SEPARATOR = "/";
-    const std::string DEVICE_MAPPER_DEVICE_NAME_PREFIX = "volumeprotect_dm_copy_";
-    const std::string MOUNT_RECORD_JSON_NAME = "volumecopymount.record.json";
-    const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
-    const std::string DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX = ".dm.record";
-
     const int NUM1 = 1;
 }
 
@@ -149,6 +144,7 @@ bool LinuxMountProvider::MountReadOnlyDevice(
 
 bool LinuxMountProvider::UmountDeviceIfExists(const std::string& mountTargetPath)
 {
+    // TODO:: check mounted
     if (::umount2(mountTargetPath.c_str(), MNT_FORCE) != 0) {
         RecordError("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
         return false;
@@ -180,21 +176,72 @@ void LinuxMountProvider::RecordError(const char* message, ...)
 
 bool LinuxMountProvider::ClearResidue()
 {
-    std::vector<std::string> loopDeviceResidualList;
+    bool success = true; // allow failure, make every effort to remove residual
+    // check residual dm device and remove
     std::vector<std::string> dmDeviceResidualList;
-    if (!LoadCreatedLoopDeviceList(loopDeviceResidualList)) {
-        RecordError("failed to load loopback device residual list");
-    }
-    if (!LoadCreatedLoopDeviceList(dmDeviceResidualList)) {
+    if (!LoadResidualDmDeviceList(dmDeviceResidualList)) {
         RecordError("failed to load device mapper device residual list");
     }
-    bool success = true; // allow failure, make every effort to remove residual
+    for (const std::string& dmDeviceName : dmDeviceResidualList) {
+        if (!RemoveDmDeviceIfExists(dmDeviceName)) {
+            success = false;
+        }
+    }
+    // check residual loopback device and detach
+    std::vector<std::string> loopDeviceResidualList;
+    if (!LoadResidualLoopDeviceList(loopDeviceResidualList)) {
+        RecordError("failed to load loopback device residual list");
+    }
     for (const std::string& loopDevicePath : loopDeviceResidualList) {
         if (!DetachLoopDeviceIfExists(loopDevicePath)) {
             success = false;
         }
     }
     return success;
+}
+
+// used to load checkpoint in cache directory
+bool LinuxMountProvider::LoadResidualLoopDeviceList(std::vector<std::string>& loopDeviceList)
+{
+    std::vector<std::string> filelist;
+    if (!ListRecordFiles(filelist)) {
+        return false;
+    }
+    // filter name list of all created loopback device
+    std::copy_if(filelist.begin(), filelist.end(),
+        std::back_inserter(loopDeviceList),
+        [&](const std::string& filename) {
+            return filename.find(LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX) != std::string::npos;
+        });
+    for (std::string& loopDevicePath : loopDeviceList) {
+        if (loopDevicePath.find("/dev/") != 0) {
+            loopDevicePath = "/dev/" + loopDevicePath;
+        }
+    }
+    return true;
+}
+
+bool LinuxMountProvider::LoadResidualDmDeviceList(std::vector<std::string>& dmDeviceNameList)
+{
+    std::vector<std::string> filelist;
+    if (!ListRecordFiles(filelist)) {
+        return false;
+    }
+    // filter name list of all created dm device
+    std::copy_if(filelist.begin(), filelist.end(),
+        std::back_inserter(dmDeviceNameList),
+        [&](const std::string& filename) {
+            return filename.find(DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX) != std::string::npos;
+        });
+    for (std::string& dmDeviceName : dmDeviceNameList) {
+        dmDeviceName = dmDeviceName.substr(0, dmDeviceName.length() - DEVICE_MAPPER_DEVICE_NAME_PREFIX.length());
+    }
+    return true;
+}
+
+std::string LinuxMountProvider::GetMountRecordJsonPath() const
+{
+    return m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
 }
 
 // implement private methods here ...
@@ -283,6 +330,7 @@ bool LinuxMountProvider::AttachReadOnlyLoopDevice(const std::string& filePath, s
 
 bool LinuxMountProvider::DetachLoopDeviceIfExists(const std::string& loopDevicePath)
 {
+    // TODO:: check attached
     if (!loopback::Detach(loopDevicePath)) {
         RecordError("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
         return false;
@@ -307,9 +355,9 @@ bool LinuxMountProvider::SaveLoopDeviceCreationRecord(const std::string& loopDev
     std::string loopDeviceParent = "/dev";
     if (loopDeviceName.find(loopDeviceParent) == 0) {
         loopDeviceName = loopDeviceParent.substr(loopDeviceName.size());
-        return CreateEmptyFile(loopDeviceName + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+        return CreateEmptyFileInCacheDir(loopDeviceName + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RecordError("save loop device creation record failed, illegal loopback device path %s",
+    RecordError("save loop device creation record failed, loopback device name %s",
         loopDeviceName.c_str());
     return false;
 }
@@ -317,51 +365,38 @@ bool LinuxMountProvider::SaveLoopDeviceCreationRecord(const std::string& loopDev
 bool LinuxMountProvider::SaveDmDeviceCreationRecord(const std::string& dmDeviceName)
 {
     if (dmDeviceName.find(SEPARATOR) == std::string::npos) {
-        return CreateEmptyFile(dmDeviceName + DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX);
+        return CreateEmptyFileInCacheDir(dmDeviceName + DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RecordError("save dm device creation record failed, illegal dm device name %s",
+    RecordError("save dm device creation record failed, dm device name %s",
         dmDeviceName.c_str());
     return false;
 }
 
-// used to load checkpoint in cache directory
-bool LinuxMountProvider::LoadCreatedLoopDeviceList(std::vector<std::string>& loopDeviceList)
+bool LinuxMountProvider::RemoveLoopDeviceCreationRecord(const std::string& loopDevicePath)
 {
-    std::vector<std::string> filelist;
-    if (!ListRecordFiles(filelist)) {
-        return false;
+    std::string loopDeviceName = loopDevicePath;
+    std::string loopDeviceParent = "/dev";
+    if (loopDeviceName.find(loopDeviceParent) == 0) {
+        loopDeviceName = loopDeviceParent.substr(loopDeviceName.size());
+        return RemoveFileInCacheDir(loopDeviceName + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    // filter name list of all created loopback device
-    std::copy_if(filelist.begin(), filelist.end(),
-        std::back_inserter(loopDeviceList),
-        [&](const std::string& filename) {
-            return filename.find(LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX) != std::string::npos;
-        });
-    for (std::string& loopDevicePath : loopDeviceList) {
-        if (loopDevicePath.find("/dev/") != 0) {
-            loopDevicePath = "/dev/" + loopDevicePath;
-        }
-    }
-    return true;
+    RecordError("remove loop device creation record failed, loopback device name %s, cache dir %s",
+        loopDeviceName.c_str(), m_cacheDirPath.c_str());
+    return false;
 }
 
-bool LinuxMountProvider::LoadCreatedDmDeviceList(std::vector<std::string>& dmDeviceList)
+bool LinuxMountProvider::RemoveDmDeviceCreationRecord(const std::string& dmDeviceName)
 {
-    std::vector<std::string> filelist;
-    if (!ListRecordFiles(filelist)) {
-        return false;
+    if (dmDeviceName.find(SEPARATOR) == std::string::npos) {
+        return RemoveFileInCacheDir(dmDeviceName + DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    // filter name list of all created dm device
-    std::copy_if(filelist.begin(), filelist.end(),
-        std::back_inserter(dmDeviceList),
-        [&](const std::string& filename) {
-            return filename.find(DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX) != std::string::npos;
-        });
-    return true;
+    RecordError("save dm device creation record failed, dm device name %s, cache dir %s",
+        dmDeviceName.c_str(), m_cacheDirPath.c_str());
+    return false;
 }
 
-// create empty file is not exist
-bool LinuxMountProvider::CreateEmptyFile(const std::string& filename)
+// create empty file in cache directory is not exist
+bool LinuxMountProvider::CreateEmptyFileInCacheDir(const std::string& filename)
 {
     std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
     int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
@@ -370,6 +405,17 @@ bool LinuxMountProvider::CreateEmptyFile(const std::string& filename)
         return false;
     }
     ::close(fd);
+    return true;
+}
+
+// remove file in cache directory is exists
+bool LinuxMountProvider::RemoveFileInCacheDir(const std::string& filename)
+{
+    std::string fullpath = m_cacheDirPath = SEPARATOR + filename;
+    if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
+        RecordError("failed to remove file %s, errno %u", fullpath.c_str(), errno);
+        return false;
+    }
     return true;
 }
 

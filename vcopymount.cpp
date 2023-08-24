@@ -67,40 +67,32 @@ static bool MountCopy(
         std::cerr << "failed to build mount provider" << std::endl;
     }
     LinuxCopyMountRecord mountRecord {};
-    std::string mountRecordJsonFilePath;
-    if (!mountProvider->MountCopy(mountConfig, mountRecordJsonFilePath)) {
-        std::cerr << "Mount Copy Failed" << std::endl;
-        ERRLOG("%s", mountProvider->GetError().c_str());
+    if (!mountProvider->MountCopy(mountConfig)) {
+        std::cerr << "=== Mount Copy Failed! ===" << std::endl;
+        std::cerr << mountProvider->GetErrors() << std::endl;
+        if (!mountProvider->ClearResidue()) {
+            std::cerr << "Residue Not Cleared!" << std::endl;
+        }
         return false;
     }
     std::cout << "Mount Copy Success" << std::endl;
-    std::cout << "Mount Record Json File Path: " << mountRecordJsonFilePath << std::endl; 
+    std::cout << "Mount Record Json File Path: " << mountProvider->GetMountRecordJsonPath() << std::endl; 
     return true;
 }
 
-static bool UmountCopy(const std::string& mountRecordJsonPath)
+static bool UmountCopy(const std::string& cacheDirPath)
 {
-    std::cout << "Umount Copy Using Record Json: " << mountRecordJsonPath << std::endl;
-    std::ifstream in(mountRecordJsonPath);
-    if (!in.is_open()) {
-        std::cout << "Open Mount Record JSON Failed, errno " << errno << std::endl;
-        return false;
-    }
-    std::string mountRecordJsonString;
-    in >> mountRecordJsonString;
-    in.close();
-    std::cout << mountRecordJsonString << std::endl;
-    LinuxCopyMountRecord mountRecord {};
-    minijson::util::Deserialize(mountRecordJsonString, mountRecord);
-
-        
-    std::shared_ptr<LinuxMountProvider> umountProvider = LinuxMountProvider::BuildLinuxUmountProvider();
+    std::cout << "Umount Copy Using Cache Dir: " << cacheDirPath << std::endl;        
+    std::shared_ptr<LinuxMountProvider> umountProvider = LinuxMountProvider::BuildLinuxMountProvider(cacheDirPath);
     if (umountProvider == nullptr) {
         std::cerr << "failed to build mount provider" << std::endl;
     }
-    if (!umountProvider->UmountCopy(mountRecord)) {
-        ERRLOG("Umount Copy Failed");
-        ERRLOG("%s", umountProvider->GetError().c_str());
+    if (!umountProvider->UmountCopy()) {
+        ERRLOG("=== Umount Copy Failed! ===");
+        std::cerr << umountProvider->GetErrors() << std::endl;
+        if (!umountProvider->ClearResidue()) {
+            std::cerr << "Residue Not Cleared!" << std::endl;
+        }
         return false;
     }
     return true;
@@ -117,7 +109,6 @@ int main(int argc, const char** argv)
     std::string mountOptions = "";
     bool isMount = false;
     bool isUmount = false;
-    std::string mountRecordJsonPath = "";
 
     GetOptionResult result = GetOption(
         argv + 1,
@@ -142,8 +133,6 @@ int main(int argc, const char** argv)
             mountFsType = opt.value;
         } else if (opt.option == "o" || opt.option == "option") {
             mountOptions = opt.value;
-        } else if (opt.option == "record") {
-            mountRecordJsonPath = opt.value;
         } else if (opt.option == "h") {
             PrintHelp();
             return 0;
@@ -163,7 +152,7 @@ int main(int argc, const char** argv)
                 copyDataDirPath, copyMetaDirPath, mountTargetPath, cacheDirPath, mountFsType, mountOptions);
     }
     if (isUmount) {
-        return !UmountCopy(mountRecordJsonPath);
+        return !UmountCopy(cacheDirPath);
     }
     PrintHelp();
     return 0;

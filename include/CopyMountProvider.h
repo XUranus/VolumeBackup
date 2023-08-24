@@ -75,8 +75,26 @@ struct VOLUMEPROTECT_API LinuxCopyMountRecord {
     SERIALIZE_SECTION_END
 };
 
+// define constants for LinuxMountProvider
+const std::string DEVICE_MAPPER_DEVICE_NAME_PREFIX = "volumeprotect_dm_copy_";
+const std::string MOUNT_RECORD_JSON_NAME = "volumecopymount.record.json";
+const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
+const std::string DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX = ".dm.record";
+
 /**
  * provide api to mount volume copy on Linux system
+ * LinuxMountProvider need a cache directory to store mount record and residual device info for each mount task.
+ *
+ * "MountCopy" method require a config struct containing mount fs type, options, target path and so on,
+ * and save mount record as volumecopymount.record.json into cache directory if success.
+ *
+ * "UmountCopy" method load the volumecopymount.record.json from cache directory and execute umount and remove device.
+ *
+ * When mount/umount action failed:
+ * For each created dm device, a "dmDeviceName.dm.record" file will be created,
+ * and For each attached loop device, a "loopX.loop.record" file will be created.
+ * These files will be used to track residual device if mount task is partial failed.
+ * Callers can use ClearResidue method to try to clear the residual device.
  */
 class VOLUMEPROTECT_API LinuxMountProvider {
 public:
@@ -98,6 +116,13 @@ public:
 
     // if mount failed, caller can call this methods to try to remove residual loop/dm device
     bool ClearResidue();
+
+    // used to load residual record in cache directory
+    bool LoadResidualLoopDeviceList(std::vector<std::string>& loopDeviceList);
+
+    bool LoadResidualDmDeviceList(std::vector<std::string>& dmDeviceNameList);
+
+    std::string GetMountRecordJsonPath() const;
 
 private:
     virtual bool ReadMountRecord(LinuxCopyMountRecord& record);
@@ -136,16 +161,12 @@ private:
 
     bool RemoveDmDeviceCreationRecord(const std::string& dmDeviceName);
 
-    // used to load checkpoint in cache directory
-    bool LoadCreatedLoopDeviceList(std::vector<std::string>& loopDeviceList);
-
-    bool LoadCreatedDmDeviceList(std::vector<std::string>& dmDeviceList);
-
     // native interface ...
-    virtual bool CreateEmptyFile(const std::string& filename);
+    virtual bool CreateEmptyFileInCacheDir(const std::string& filename);
+
+    virtual bool RemoveFileInCacheDir(const std::string& filename);
 
     virtual bool ListRecordFiles(std::vector<std::string>& filelist);
-    
 
 private:
     std::string m_cacheDirPath; // store the checkpoint and record info of the mount task
