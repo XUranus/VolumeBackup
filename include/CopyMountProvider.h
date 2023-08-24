@@ -4,7 +4,7 @@
 #include "VolumeProtectMacros.h"
 // external logger/json library
 #include "Json.h"
-#include <memory>
+#include "VolumeUtils.h"
 
 namespace volumeprotect {
 namespace mount {
@@ -75,89 +75,81 @@ struct VOLUMEPROTECT_API LinuxCopyMountRecord {
     SERIALIZE_SECTION_END
 };
 
-// used for c library
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct VOLUMEPROTECT_API LinuxCopyMountConf_C {
-    char*     copyMetaDirPath;
-    char*     copyDataDirPath;
-    char*     mountTargetPath;
-    char*     mountFsType;
-    char*     mountOptions;
-};
-
-void* CreateLinuxMountProvider(char* cacheDirPath);
-
-bool MountLinuxVolumeCopy(
-    void*                   mountProvider,
-    LinuxCopyMountConf_C    conf,
-    char*                   pathBuffer,
-    int                     bufferMax);
-
-bool UmountLinuxVolumeCopy(
-    void*                   mountProvider,
-    char*                   linuxCopyMountRecordJsonPath);
-
-void DestroyLinuxMountProvider(
-    void*                   mountProvider);
-
-const char* GetLinuxMountProviderError(
-    void*                   mountProvider);
-
-#ifdef __cplusplus
-}
-#endif
-
 /**
- * provide api to mount/umount volume copy on Linux system
+ * provide api to mount volume copy on Linux system
  */
 class VOLUMEPROTECT_API LinuxMountProvider {
 public:
     static std::unique_ptr<LinuxMountProvider> BuildLinuxMountProvider(const std::string& cacheDirPath);
 
-    static std::unique_ptr<LinuxMountProvider> BuildLinuxUmountProvider();
-
     LinuxMountProvider(const std::string& cacheDirPath);
 
-    bool MountCopy(const LinuxCopyMountConfig& mountConfig, std::string& linuxCopyMountRecordJsonPath);
+    // create device and mount using mountConfig and save result to volumecopymount.record.json in cache directory
+    bool MountCopy(const LinuxCopyMountConfig& mountConfig);
 
-    bool MountCopy(const LinuxCopyMountConfig& mountConfig, LinuxCopyMountRecord& mountRecord);
+    // load volumecopymount.record.json in cache directory and execute umount and remove device
+    bool UmountCopy();
 
-    bool UmountCopy(const LinuxCopyMountRecord& record);
+    // get all errors splited by "\n"
+    std::string GetErrors() const;
 
-    bool UmountCopy(const std::string& linuxCopyMountRecordJsonPath);
+    // format error message and store inner, provider a debugging way for JNI c extension
+    void RecordError(const char* message, ...);
 
-    const std::string& GetError() const;
-
-    void SetError(const char* message, ...);
+    // if mount failed, caller can call this methods to try to remove residual loop/dm device
+    bool ClearResidue();
 
 private:
-    bool MountReadonlyDevice(
+    virtual bool ReadMountRecord(LinuxCopyMountRecord& record);
+
+    virtual bool SaveMountRecord(LinuxCopyMountRecord& mountRecord);
+
+    virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
+
+    virtual bool MountReadOnlyDevice(
         const std::string& devicePath,
         const std::string& mountTargetPath,
         const std::string& fsType,
         const std::string& mountOptions);
     
-    bool UmountDevice(const std::string& mountTargetPath);
+    virtual bool UmountDeviceIfExists(const std::string& mountTargetPath);
     
-    bool CreateReadonlyDmDevice(
+    virtual bool CreateReadOnlyDmDevice(
         const std::vector<CopySliceTarget> copySlices,
         std::string& dmDeviceName,
         std::string& dmDevicePath);
     
-    bool RemoveDmDevice(const std::string& dmDeviceName);
+    virtual bool RemoveDmDeviceIfExists(const std::string& dmDeviceName);
     
-    bool AttachReadonlyLoopDevice(const std::string& filePath, std::string& loopDevicePath);
+    virtual bool AttachReadOnlyLoopDevice(const std::string& filePath, std::string& loopDevicePath);
     
-    bool DetachLoopDevice(const std::string& loopDevicePath);
+    virtual bool DetachLoopDeviceIfExists(const std::string& loopDevicePath);
 
     std::string GenerateNewDmDeviceName() const;
 
+    // used to store checkpoint
+    bool SaveLoopDeviceCreationRecord(const std::string& loopDevicePath);
+
+    bool SaveDmDeviceCreationRecord(const std::string& dmDeviceName);
+
+    bool RemoveLoopDeviceCreationRecord(const std::string& loopDevicePath);
+
+    bool RemoveDmDeviceCreationRecord(const std::string& dmDeviceName);
+
+    // used to load checkpoint in cache directory
+    bool LoadCreatedLoopDeviceList(std::vector<std::string>& loopDeviceList);
+
+    bool LoadCreatedDmDeviceList(std::vector<std::string>& dmDeviceList);
+
+    // native interface ...
+    virtual bool CreateEmptyFile(const std::string& filename);
+
+    virtual bool ListRecordFiles(std::vector<std::string>& filelist);
+    
+
 private:
     std::string m_cacheDirPath; // store the checkpoint and record info of the mount task
-    std::string m_error {};
+    std::vector<std::string> m_errors {};
 };
 #endif
 

@@ -1,7 +1,6 @@
 #ifndef VOLUMEBACKUP_NATIVE_IO_INTERFACE_HEADER
 #define VOLUMEBACKUP_NATIVE_IO_INTERFACE_HEADER
 
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN 1
 #define UNICODE /* foring using WCHAR on windows */

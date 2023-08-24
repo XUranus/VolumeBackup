@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <fcntl.h>
 #include <linux/loop.h>
-#include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <unistd.h>

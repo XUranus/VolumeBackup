@@ -3,7 +3,6 @@
 #define VOLUMEBACKUP_PROTECT_FACADE_HEADER
 
 #include "VolumeProtectMacros.h"
-#include <memory>
 
 // volume backup application facade
 namespace volumeprotect {

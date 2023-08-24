@@ -1,5 +1,4 @@
 #include "DeviceMapperControl.h"
-#include <asm-generic/errno-base.h>
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -191,11 +190,11 @@ static bool CreateEmptyDevice(const std::string& name, const std::string& uuid)
 
 static bool CreateEmptyDevice(const std::string& name)
 {
-    uuid_t generated_uuid;
-    char uuid_str[UUID_BUFFER_MAX] = { 0 };  // string representation of UUID including null-terminator
-    uuid_generate(generated_uuid);  // generate a new UUID
-    uuid_unparse(generated_uuid, uuid_str);  // convert UUID to string
-    return CreateEmptyDevice(name, uuid_str);
+    uuid_t generatedUuid;
+    char uuidStr[UUID_BUFFER_MAX] = { 0 };  // string representation of UUID including null-terminator
+    uuid_generate(generatedUuid);  // generate a new UUID
+    uuid_unparse(generatedUuid, uuidStr);  // convert UUID to string
+    return CreateEmptyDevice(name, uuidStr);
 }
 
 static bool LoadTable(const std::string& name, const DmTable& dmTable, bool activate)

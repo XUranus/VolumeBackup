@@ -4,7 +4,6 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "BlockingQueue.h"
-#include <chrono>
 
 namespace volumeprotect {
 
