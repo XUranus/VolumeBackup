@@ -101,7 +101,7 @@ bool LinuxMountProvider::MountCopy(const LinuxCopyMountConfig& mountConfig)
         return false;
     }
     // save mount record json to cache directory
-    return !SaveMountRecord(mountRecord);
+    return SaveMountRecord(mountRecord);
 }
 
 bool LinuxMountProvider::UmountCopy()
@@ -259,7 +259,7 @@ bool LinuxMountProvider::LoadResidualDmDeviceList(std::vector<std::string>& dmDe
             return filename.find(DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX) != std::string::npos;
         });
     for (std::string& dmDeviceName : dmDeviceNameList) {
-        dmDeviceName = dmDeviceName.substr(0, dmDeviceName.length() - DEVICE_MAPPER_DEVICE_NAME_PREFIX.length());
+        dmDeviceName = dmDeviceName.substr(0, dmDeviceName.length() - DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX.length());
     }
     return true;
 }
@@ -362,7 +362,7 @@ bool LinuxMountProvider::AttachReadOnlyLoopDevice(const std::string& filePath, s
 
 bool LinuxMountProvider::DetachLoopDeviceIfAttached(const std::string& loopDevicePath)
 {
-    if (loopback::Attached(loopDevicePath)) {
+    if (!loopback::Attached(loopDevicePath)) {
         RemoveLoopDeviceCreationRecord(loopDevicePath);
         return true;
     }
@@ -446,7 +446,7 @@ bool LinuxMountProvider::CreateEmptyFileInCacheDir(const std::string& filename)
 // remove file in cache directory is exists
 bool LinuxMountProvider::RemoveFileInCacheDir(const std::string& filename)
 {
-    std::string fullpath = m_cacheDirPath = SEPARATOR + filename;
+    std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
     if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
         RECORD_ERROR("failed to remove file %s, errno %u", fullpath.c_str(), errno);
         return false;
