@@ -1,3 +1,4 @@
+#include <cerrno>
 #include <cstdio>
 #ifdef __linux__
 #include <fcntl.h>
@@ -478,6 +479,7 @@ static uint64_t GetVolumeSizeLinux(const std::string& devicePath)
     ::close(fd);
     return size;
 }
+
 #endif
 
 uint64_t native::ReadVolumeSize(const std::string& volumePath)
@@ -520,3 +522,23 @@ uint32_t native::ProcessorsNum()
     return processorCount <= 0 ? DEFAULT_PROCESSORS_NUM : processorCount;
 #endif
 }
+
+#ifdef __linux__
+uint64_t native::ReadSectorSizeLinux(const std::string& devicePath)
+{
+    int fd = ::open(devicePath.c_str(), O_RDONLY);
+    if (fd == -1) {
+        throw SystemApiException("failed to open block device", errno);
+        return 0;
+    }
+
+    uint64_t sectorSize = 0;
+    if (::ioctl(fd, BLKSSZGET, &sectorSize) == -1) {
+        throw SystemApiException("failed to execute ioctl BLKSSZGET", errno);
+        ::close(fd);
+        return 0;
+    }
+    ::close(fd);
+    return sectorSize;
+}
+#endif

@@ -2,6 +2,7 @@
 #include "DeviceMapperControl.h"
 #include "Json.h"
 #include "Logger.h"
+#include "NativeIOInterface.h"
 #include "VolumeUtils.h"
 #include "native/LoopDeviceControl.h"
 #include <iterator>
@@ -11,6 +12,7 @@
 #include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <mntent.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,10 +23,15 @@ using namespace volumeprotect;
 
 #ifdef __linux
 
+#define RECORD_ERROR(format, args...) do { \
+    ERRLOG(format, ##args); \
+    RecordError(format, ##args); \
+} while (0) \
+
 namespace {
-    const uint64_t SECTOR_SIZE = 512; // 512 bytes per sector
     const std::string SEPARATOR = "/";
     const int NUM1 = 1;
+    const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
 }
 
 // implement public methods here ...
@@ -109,18 +116,18 @@ bool LinuxMountProvider::UmountCopy()
     std::string mountTargetPath = record.mountTargetPath;
     // umount the device first
     if (!UmountDeviceIfExists(mountTargetPath.c_str())) {
-        RecordError("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
+        RECORD_ERROR("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
         success = false;
     }
     // check if need to remove dm device
     if (!dmDeviceName.empty() && !RemoveDmDeviceIfExists(dmDeviceName)) {
-        RecordError("failed to remove devicemapper device %s, errno", dmDeviceName.c_str(), errno);
+        RECORD_ERROR("failed to remove devicemapper device %s, errno", dmDeviceName.c_str(), errno);
         success = false;
     }
     // finally detach all loopback devices involed
     for (const std::string& loopDevicePath: record.loopDevices) {
         if (!DetachLoopDeviceIfExists(loopDevicePath)) {
-            RecordError("failed to detach loopback device %s, errno %u", devicePath.c_str(), errno);
+            RECORD_ERROR("failed to detach loopback device %s, errno %u", devicePath.c_str(), errno);
             success = false;
         }
     }
@@ -135,7 +142,7 @@ bool LinuxMountProvider::MountReadOnlyDevice(
 {
     unsigned long mountFlags = MS_RDONLY;
     if (::mount(devicePath.c_str(), mountTargetPath.c_str(), fsType.c_str(), mountFlags, mountOptions.c_str()) != 0) {
-        RecordError("mount %s to %s failed, type %s, option %s, errno %u",
+        RECORD_ERROR("mount %s to %s failed, type %s, option %s, errno %u",
             devicePath.c_str(), mountTargetPath.c_str(), fsType.c_str(), mountOptions.c_str(), errno);
         return false;
     }
@@ -144,9 +151,27 @@ bool LinuxMountProvider::MountReadOnlyDevice(
 
 bool LinuxMountProvider::UmountDeviceIfExists(const std::string& mountTargetPath)
 {
-    // TODO:: check mounted
+    // check if directory has fs mounted
+    bool mounted = false;
+    FILE* mountsFile = ::setmntent(SYS_MOUNTS_ENTRY_PATH.c_str(), "r");
+    if (mountsFile == nullptr) {
+        RECORD_ERROR("failed to open /proc/mounts, errno %u", errno);
+        return false;
+    }
+    struct mntent* entry = nullptr;
+    while ((entry = ::getmntent(mountsFile)) != nullptr) {
+        if (std::string(entry->mnt_dir) == mountTargetPath) {
+            mounted = true;
+            break;
+        } 
+    }
+    ::endmntent(mountsFile);
+    if (!mounted) {
+        return true;
+    }
+    // umount the target
     if (::umount2(mountTargetPath.c_str(), MNT_FORCE) != 0) {
-        RecordError("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
+        RECORD_ERROR("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
         return false;
     }
     return true;
@@ -180,7 +205,7 @@ bool LinuxMountProvider::ClearResidue()
     // check residual dm device and remove
     std::vector<std::string> dmDeviceResidualList;
     if (!LoadResidualDmDeviceList(dmDeviceResidualList)) {
-        RecordError("failed to load device mapper device residual list");
+        RECORD_ERROR("failed to load device mapper device residual list");
     }
     for (const std::string& dmDeviceName : dmDeviceResidualList) {
         if (!RemoveDmDeviceIfExists(dmDeviceName)) {
@@ -190,7 +215,7 @@ bool LinuxMountProvider::ClearResidue()
     // check residual loopback device and detach
     std::vector<std::string> loopDeviceResidualList;
     if (!LoadResidualLoopDeviceList(loopDeviceResidualList)) {
-        RecordError("failed to load loopback device residual list");
+        RECORD_ERROR("failed to load loopback device residual list");
     }
     for (const std::string& loopDevicePath : loopDeviceResidualList) {
         if (!DetachLoopDeviceIfExists(loopDevicePath)) {
@@ -251,7 +276,7 @@ bool LinuxMountProvider::ReadMountRecord(LinuxCopyMountRecord& record)
     std::string linuxCopyMountRecordJsonPath = m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
     std::ifstream file(linuxCopyMountRecordJsonPath);
     if (!file.is_open()) {
-        RecordError("unabled to open copy mount record %s to read, errno %u", linuxCopyMountRecordJsonPath.c_str(), errno);
+        RECORD_ERROR("unabled to open copy mount record %s to read, errno %u", linuxCopyMountRecordJsonPath.c_str(), errno);
         return false;
     }
     std::string jsonContent;
@@ -266,7 +291,7 @@ bool LinuxMountProvider::SaveMountRecord(LinuxCopyMountRecord& mountRecord)
     std::string filepath = m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
     std::ofstream file(filepath.c_str(), std::ios::trunc);
     if (!file.is_open()) {
-        RecordError("failed to save mount record to %s, errno %u", filepath.c_str(), errno);
+        RECORD_ERROR("failed to save mount record to %s, errno %u", filepath.c_str(), errno);
         return false;
     }
     file << jsonContent;
@@ -277,7 +302,7 @@ bool LinuxMountProvider::SaveMountRecord(LinuxCopyMountRecord& mountRecord)
 bool LinuxMountProvider::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
 {
     if (util::ReadVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta)) {
-        RecordError("failed to read volume copy meta in directory %s", copyMetaDirPath.c_str());
+        RECORD_ERROR("failed to read volume copy meta in directory %s", copyMetaDirPath.c_str());
         return false;
     }
     return true;
@@ -292,14 +317,21 @@ bool LinuxMountProvider::CreateReadOnlyDmDevice(
     devicemapper::DmTable dmTable;
     for (const auto& copySlice : copySlices) {
         std::string blockDevicePath = copySlice.loopDevicePath;
-        uint64_t startSector = copySlice.volumeOffset / SECTOR_SIZE;
-        uint64_t sectorsCount = copySlice.size / SECTOR_SIZE;
+        uint64_t sectorSize = 0LLU;
+        try {
+            sectorSize = native::ReadSectorSizeLinux(blockDevicePath);
+        } catch (const native::SystemApiException& e) {
+            RECORD_ERROR(e.what());
+            return false;
+        }
+        uint64_t startSector = copySlice.volumeOffset / sectorSize;
+        uint64_t sectorsCount = copySlice.size / sectorSize;
         dmTable.AddTarget(std::make_shared<devicemapper::DmTargetLinear>(
             blockDevicePath, startSector, sectorsCount, 0
         ));
     }
     if (!devicemapper::CreateDevice(dmDeviceName, dmTable, dmDevicePath)) {
-        RecordError("failed to create dm device, errno %u", errno);
+        RECORD_ERROR("failed to create dm device, errno %u", errno);
         return false;
     }
     // keep checkpoint for devicemapper device creation
@@ -310,7 +342,7 @@ bool LinuxMountProvider::CreateReadOnlyDmDevice(
 bool LinuxMountProvider::RemoveDmDeviceIfExists(const std::string& dmDeviceName)
 {
     if (!devicemapper::RemoveDeviceIfExists(dmDeviceName)) {
-        RecordError("failed to remove dm device %s, errno %u", dmDeviceName.c_str(), errno);
+        RECORD_ERROR("failed to remove dm device %s, errno %u", dmDeviceName.c_str(), errno);
         return false;
     }
     RemoveDmDeviceCreationRecord(dmDeviceName);
@@ -320,7 +352,7 @@ bool LinuxMountProvider::RemoveDmDeviceIfExists(const std::string& dmDeviceName)
 bool LinuxMountProvider::AttachReadOnlyLoopDevice(const std::string& filePath, std::string& loopDevicePath)
 {
     if (!loopback::Attach(filePath, loopDevicePath, O_RDONLY)) {
-        RecordError("failed to attach read only loopback device from %s, errno %u", filePath.c_str(), errno);
+        RECORD_ERROR("failed to attach read only loopback device from %s, errno %u", filePath.c_str(), errno);
         return false;
     }
     // keep checkpoint for loopback device creation
@@ -332,7 +364,7 @@ bool LinuxMountProvider::DetachLoopDeviceIfExists(const std::string& loopDeviceP
 {
     // TODO:: check attached
     if (!loopback::Detach(loopDevicePath)) {
-        RecordError("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
+        RECORD_ERROR("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
         return false;
     }
     RemoveLoopDeviceCreationRecord(loopDevicePath);
@@ -357,7 +389,7 @@ bool LinuxMountProvider::SaveLoopDeviceCreationRecord(const std::string& loopDev
         loopDeviceName = loopDeviceParent.substr(loopDeviceName.size());
         return CreateEmptyFileInCacheDir(loopDeviceName + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RecordError("save loop device creation record failed, loopback device name %s",
+    RECORD_ERROR("save loop device creation record failed, loopback device name %s",
         loopDeviceName.c_str());
     return false;
 }
@@ -367,7 +399,7 @@ bool LinuxMountProvider::SaveDmDeviceCreationRecord(const std::string& dmDeviceN
     if (dmDeviceName.find(SEPARATOR) == std::string::npos) {
         return CreateEmptyFileInCacheDir(dmDeviceName + DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RecordError("save dm device creation record failed, dm device name %s",
+    RECORD_ERROR("save dm device creation record failed, dm device name %s",
         dmDeviceName.c_str());
     return false;
 }
@@ -380,7 +412,7 @@ bool LinuxMountProvider::RemoveLoopDeviceCreationRecord(const std::string& loopD
         loopDeviceName = loopDeviceParent.substr(loopDeviceName.size());
         return RemoveFileInCacheDir(loopDeviceName + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RecordError("remove loop device creation record failed, loopback device name %s, cache dir %s",
+    RECORD_ERROR("remove loop device creation record failed, loopback device name %s, cache dir %s",
         loopDeviceName.c_str(), m_cacheDirPath.c_str());
     return false;
 }
@@ -390,7 +422,7 @@ bool LinuxMountProvider::RemoveDmDeviceCreationRecord(const std::string& dmDevic
     if (dmDeviceName.find(SEPARATOR) == std::string::npos) {
         return RemoveFileInCacheDir(dmDeviceName + DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RecordError("save dm device creation record failed, dm device name %s, cache dir %s",
+    RECORD_ERROR("save dm device creation record failed, dm device name %s, cache dir %s",
         dmDeviceName.c_str(), m_cacheDirPath.c_str());
     return false;
 }
@@ -401,7 +433,7 @@ bool LinuxMountProvider::CreateEmptyFileInCacheDir(const std::string& filename)
     std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
     int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
     if (fd == -1) {
-        RecordError("error creating empty file %s, errno %u", fullpath.c_str(), errno);
+        RECORD_ERROR("error creating empty file %s, errno %u", fullpath.c_str(), errno);
         return false;
     }
     ::close(fd);
@@ -413,7 +445,7 @@ bool LinuxMountProvider::RemoveFileInCacheDir(const std::string& filename)
 {
     std::string fullpath = m_cacheDirPath = SEPARATOR + filename;
     if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
-        RecordError("failed to remove file %s, errno %u", fullpath.c_str(), errno);
+        RECORD_ERROR("failed to remove file %s, errno %u", fullpath.c_str(), errno);
         return false;
     }
     return true;
@@ -424,7 +456,7 @@ bool LinuxMountProvider::ListRecordFiles(std::vector<std::string>& filelist)
 {
     DIR* dir = ::opendir(m_cacheDirPath.c_str());
     if (dir == nullptr) {
-        RecordError("error opening directory %s, errno %u", m_cacheDirPath.c_str(), errno);
+        RECORD_ERROR("error opening directory %s, errno %u", m_cacheDirPath.c_str(), errno);
         return false;
     }
     struct dirent* entry = nullptr;

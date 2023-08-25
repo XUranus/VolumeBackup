@@ -113,7 +113,7 @@ int main(int argc, const char** argv)
     GetOptionResult result = GetOption(
         argv + 1,
         argc - 1,
-        "m:d:ht:o",
+        "m:d:ht:o:",
         { "--meta=", "--data=", "--target=", "--mount", "--umount", "--cache=", "--type=", "--option=" });
     for (const OptionResult opt: result.opts) {
         std::cout << opt.option << " " << opt.value << std::endl;

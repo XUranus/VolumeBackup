@@ -113,6 +113,10 @@ VOLUMEPROTECT_API bool IsVolumeExists(const std::string& volumePath);
 VOLUMEPROTECT_API uint64_t ReadVolumeSize(const std::string& volumePath);
 
 VOLUMEPROTECT_API uint32_t ProcessorsNum();
+
+#ifdef __linux__
+uint64_t VOLUMEPROTECT_API ReadSectorSizeLinux(const std::string& devicePath);
+#endif
 }
 };
 
