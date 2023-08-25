@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <fcntl.h>
+#include <dirent.h>
 #include <linux/loop.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -15,6 +16,7 @@ using namespace volumeprotect;
 namespace {
     const std::string LOOP_DEVICE_CONTROL_PATH = "/dev/loop-control";
     const std::string LOOP_DEVICE_PREFIX = "/dev/loop"; // loopback device path /dev/loopX
+    const std::string SYS_BLOCK_PATH = "/sys/block";
 }
 
 bool loopback::Attach(const std::string& filepath, std::string& loopDevicePath, uint32_t flag = O_RDONLY)
@@ -72,4 +74,25 @@ bool loopback::Detach(int loopFd)
         return false;
     }
     return true;
+}
+
+bool loopback::Attached(const std::string& loopDevicePath)
+{
+    std::string loopDeviceName = loopDevicePath;
+    if (loopDeviceName.find("/dev/") == 0) {
+        loopDeviceName = loopDeviceName.substr(std::string("/dev/").length());
+    }
+    struct dirent *entry = nullptr;
+    DIR *dir = ::opendir(SYS_BLOCK_PATH.c_str());
+    if (dir == nullptr) {
+        return false;
+    }
+    while ((entry = ::readdir(dir)) != nullptr) {
+        if (std::string(entry->d_name) == loopDeviceName) {
+            ::closedir(dir);
+            return true;
+        }
+    }
+    ::closedir(dir);
+    return false;
 }

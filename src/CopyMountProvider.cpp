@@ -108,7 +108,7 @@ bool LinuxMountProvider::UmountCopy()
 {
     LinuxCopyMountRecord record {};
     bool success = true; // if error occurs, make every effort to clear the mount
-    if (ReadMountRecord(record)) {
+    if (!ReadMountRecord(record)) {
         return false;
     }
     std::string devicePath = record.devicePath;
@@ -126,7 +126,7 @@ bool LinuxMountProvider::UmountCopy()
     }
     // finally detach all loopback devices involed
     for (const std::string& loopDevicePath: record.loopDevices) {
-        if (!DetachLoopDeviceIfExists(loopDevicePath)) {
+        if (!DetachLoopDeviceIfAttached(loopDevicePath)) {
             RECORD_ERROR("failed to detach loopback device %s, errno %u", devicePath.c_str(), errno);
             success = false;
         }
@@ -218,7 +218,7 @@ bool LinuxMountProvider::ClearResidue()
         RECORD_ERROR("failed to load loopback device residual list");
     }
     for (const std::string& loopDevicePath : loopDeviceResidualList) {
-        if (!DetachLoopDeviceIfExists(loopDevicePath)) {
+        if (!DetachLoopDeviceIfAttached(loopDevicePath)) {
             success = false;
         }
     }
@@ -301,7 +301,7 @@ bool LinuxMountProvider::SaveMountRecord(LinuxCopyMountRecord& mountRecord)
 
 bool LinuxMountProvider::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
 {
-    if (util::ReadVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta)) {
+    if (!util::ReadVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta)) {
         RECORD_ERROR("failed to read volume copy meta in directory %s", copyMetaDirPath.c_str());
         return false;
     }
@@ -309,9 +309,9 @@ bool LinuxMountProvider::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, 
 }
 
 bool LinuxMountProvider::CreateReadOnlyDmDevice(
-        const std::vector<CopySliceTarget> copySlices,
-        std::string& dmDeviceName,
-        std::string& dmDevicePath)
+    const std::vector<CopySliceTarget> copySlices,
+    std::string& dmDeviceName,
+    std::string& dmDevicePath)
 {
     dmDeviceName = GenerateNewDmDeviceName();
     devicemapper::DmTable dmTable;
@@ -360,9 +360,12 @@ bool LinuxMountProvider::AttachReadOnlyLoopDevice(const std::string& filePath, s
     return true;
 }
 
-bool LinuxMountProvider::DetachLoopDeviceIfExists(const std::string& loopDevicePath)
+bool LinuxMountProvider::DetachLoopDeviceIfAttached(const std::string& loopDevicePath)
 {
-    // TODO:: check attached
+    if (loopback::Attached(loopDevicePath)) {
+        RemoveLoopDeviceCreationRecord(loopDevicePath);
+        return true;
+    }
     if (!loopback::Detach(loopDevicePath)) {
         RECORD_ERROR("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
         return false;

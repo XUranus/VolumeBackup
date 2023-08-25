@@ -148,7 +148,7 @@ private:
     
     virtual bool AttachReadOnlyLoopDevice(const std::string& filePath, std::string& loopDevicePath);
     
-    virtual bool DetachLoopDeviceIfExists(const std::string& loopDevicePath);
+    virtual bool DetachLoopDeviceIfAttached(const std::string& loopDevicePath);
 
     std::string GenerateNewDmDeviceName() const;
 

@@ -18,6 +18,8 @@ VOLUMEPROTECT_API bool Attach(int fileFd, std::string& loopDevicePath);
 VOLUMEPROTECT_API bool Detach(const std::string& loopDevicePath);
 VOLUMEPROTECT_API bool Detach(int loopFd);
 
+VOLUMEPROTECT_API bool Attached(const std::string& loopDevicePath);
+
 VOLUMEPROTECT_API bool GetFreeLoopDevice(std::string& loopDevicePath);
 
 }
