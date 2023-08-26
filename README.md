@@ -24,6 +24,11 @@ cmake --build .
 make volumebackup_coverage_test
 ```
 
+build JNI volume copy mount extension `libvolumemount_jni.so`:
+```
+cmake .. -DJNI_INCLUDE=your_jni_headers_directory_path && cmake --build .
+```
+
 ## Usage
 1. view volume info (**voltool**)
 ```bash

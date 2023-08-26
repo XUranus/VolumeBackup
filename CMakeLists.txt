@@ -33,6 +33,10 @@ INCLUDE_DIRECTORIES(
 ADD_SUBDIRECTORY(module/minijson)
 ADD_SUBDIRECTORY(module/minilogger)
 
+IF (NOT "${JNI_INCLUDE}" STREQUAL "")
+    MESSAGE("COMPILE JNI EXTENSION, INCLUDE ${JNI_INCLUDE}")
+    ADD_SUBDIRECTORY(extension/java)
+ENDIF()
 
 # build a dynamic library
 MESSAGE("Build libvolumebackup dynamic library ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}")

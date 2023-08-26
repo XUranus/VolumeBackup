@@ -1,0 +1,38 @@
+CMAKE_MINIMUM_REQUIRED (VERSION 3.14)
+SET(Project volumemount_jni)
+PROJECT(${Project} C CXX)
+SET(SOURCE_DIR ${${Project}_SOURCE_DIR})
+
+MESSAGE("=== COMPILE JNI EXTENSION ${Project} ==")
+MESSAGE("Project = ${Project}")
+MESSAGE("SOURCE_DIR = ${SOURCE_DIR}")
+MESSAGE("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+MESSAGE("COVERAGE = ${COVERAGE}")
+MESSAGE("JNI_INCLUDE = ${JNI_INCLUDE}")
+
+# supress MSVC/GCC warnings
+IF(${CMAKE_HOST_WIN32})
+    SET(CMAKE_CXX_FLAGS_DEBUG "/MTd /Zi /Ob0 /Od /RTC1")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
+ELSE()
+    ADD_COMPILE_OPTIONS(-Wno-format-security)
+ENDIF()
+
+# define headers and sources
+SET(Headers JLinuxVolumeCopyMountProvider.h)
+SET(Sources JLinuxVolumeCopyMountProvider.cpp)
+
+INCLUDE_DIRECTORIES(
+    ${JNI_INCLUDE}
+    ${JNI_INCLUDE}/linux
+    "../../include"
+)
+
+# build a dynamic JNI library
+SET(LINUX_VOLUME_MOUNT_JNI_LIBRARY_TARGET ${Project})
+MESSAGE("Build minilogger dynamic library ${LINUX_VOLUME_MOUNT_JNI_LIBRARY_TARGET}")
+ADD_LIBRARY(${LINUX_VOLUME_MOUNT_JNI_LIBRARY_TARGET} SHARED ${Sources} ${Headers})
+SET_PROPERTY(TARGET ${LINUX_VOLUME_MOUNT_JNI_LIBRARY_TARGET} PROPERTY CXX_STANDARD 11)
+# to generate export library when build dynamic library, pass LIBRARY_EXPORT macro
+TARGET_COMPILE_DEFINITIONS(${LINUX_VOLUME_MOUNT_JNI_LIBRARY_TARGET} PRIVATE -DLIBRARY_EXPORT)
