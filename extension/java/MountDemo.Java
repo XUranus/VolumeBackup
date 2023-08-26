@@ -14,6 +14,5 @@ public class MountDemo {
 
     public static void main(String[] args) {
         testMount();
-        testMount();
     }
 }

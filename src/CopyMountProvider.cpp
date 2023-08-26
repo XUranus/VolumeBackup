@@ -5,7 +5,9 @@
 #include "NativeIOInterface.h"
 #include "VolumeUtils.h"
 #include "native/LoopDeviceControl.h"
+#include <cstddef>
 #include <iterator>
+#include <string>
 
 #ifdef __linux
 #include <cerrno>
@@ -32,6 +34,7 @@ namespace {
     const std::string SEPARATOR = "/";
     const int NUM1 = 1;
     const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
+    const std::string LOOPBACK_DEVICE_PATH_PREFIX = "/dev/loop";
 }
 
 // implement public methods here ...
@@ -190,13 +193,11 @@ void LinuxMountProvider::RecordError(const char* message, ...)
 {
     va_list args;
     va_start(args, message);
-    size_t size = std::vsnprintf(nullptr, 0, message, args) + 1;
-    char* buffer = new char[size];
-    std::vsnprintf(buffer, size, message, args);
+    int length = vsnprintf(nullptr, 0, message, args);
+    std::string result(++length, '\0');
+    vsnprintf(&result[0], length, message, args);
     va_end(args);
-    std::string formattedString(buffer);
-    delete[] buffer;
-    m_errors.emplace_back(formattedString);
+    m_errors.emplace_back(result);
 }
 
 bool LinuxMountProvider::ClearResidue()
@@ -239,9 +240,8 @@ bool LinuxMountProvider::LoadResidualLoopDeviceList(std::vector<std::string>& lo
             return filename.find(LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX) != std::string::npos;
         });
     for (std::string& loopDevicePath : loopDeviceList) {
-        if (loopDevicePath.find("/dev/") != 0) {
-            loopDevicePath = "/dev/" + loopDevicePath;
-        }
+        std::size_t pos = loopDevicePath.find(LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+        loopDevicePath = LOOPBACK_DEVICE_PATH_PREFIX + loopDevicePath.substr(0, pos);
     }
     return true;
 }
@@ -386,14 +386,13 @@ std::string LinuxMountProvider::GenerateNewDmDeviceName() const
 // used to store checkpoint
 bool LinuxMountProvider::SaveLoopDeviceCreationRecord(const std::string& loopDevicePath)
 {
-    std::string loopDeviceName = loopDevicePath;
-    std::string loopDeviceParent = "/dev";
-    if (loopDeviceName.find(loopDeviceParent) == 0) {
-        loopDeviceName = loopDeviceParent.substr(loopDeviceName.size());
-        return CreateEmptyFileInCacheDir(loopDeviceName + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+    if (loopDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
+        std::string loopDeviceNumber = loopDevicePath.substr(
+            0, loopDevicePath.length() - LOOPBACK_DEVICE_PATH_PREFIX.length());
+        return CreateEmptyFileInCacheDir(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RECORD_ERROR("save loop device creation record failed, loopback device name %s",
-        loopDeviceName.c_str());
+    RECORD_ERROR("save loop device creation record failed, loopback device %s",
+        loopDevicePath.c_str());
     return false;
 }
 
@@ -409,14 +408,13 @@ bool LinuxMountProvider::SaveDmDeviceCreationRecord(const std::string& dmDeviceN
 
 bool LinuxMountProvider::RemoveLoopDeviceCreationRecord(const std::string& loopDevicePath)
 {
-    std::string loopDeviceName = loopDevicePath;
-    std::string loopDeviceParent = "/dev";
-    if (loopDeviceName.find(loopDeviceParent) == 0) {
-        loopDeviceName = loopDeviceParent.substr(loopDeviceName.size());
-        return RemoveFileInCacheDir(loopDeviceName + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+    if (loopDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
+        std::string loopDeviceNumber = loopDevicePath.substr(
+            0, loopDevicePath.length() - LOOPBACK_DEVICE_PATH_PREFIX.length());
+        return RemoveFileInCacheDir(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
-    RECORD_ERROR("remove loop device creation record failed, loopback device name %s, cache dir %s",
-        loopDeviceName.c_str(), m_cacheDirPath.c_str());
+    RECORD_ERROR("remove loop device creation record failed, loopback device path %s, cache dir %s",
+        loopDevicePath.c_str(), m_cacheDirPath.c_str());
     return false;
 }
 
