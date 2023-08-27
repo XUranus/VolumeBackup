@@ -100,13 +100,13 @@ ENDIF()
 
 # build executable tools
 ADD_EXECUTABLE (vbackup
-    "vbackup.cpp"
-    "GetOption.cpp"
+    "demo/vbackup.cpp"
+    "demo/GetOption.cpp"
 )
 
 ADD_EXECUTABLE (vtools
-    "vtools.cpp"
-    "GetOption.cpp"
+    "demo/vtools.cpp"
+    "demo/GetOption.cpp"
 )
 
 SET_PROPERTY(TARGET vbackup PROPERTY CXX_STANDARD 11)
@@ -143,8 +143,8 @@ TARGET_LINK_LIBRARIES(
 # build vcopymount executable
 
 ADD_EXECUTABLE (vcopymount
-    "vcopymount.cpp"
-    "GetOption.cpp"
+    "demo/vcopymount.cpp"
+    "demo/GetOption.cpp"
 )
 
 SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)

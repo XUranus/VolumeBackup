@@ -26,8 +26,8 @@ using namespace volumeprotect;
 #ifdef __linux
 
 #define RECORD_ERROR(format, args...) do { \
-    ERRLOG(format, ##args); \
     RecordError(format, ##args); \
+    ERRLOG(format, ##args); \
 } while (0) \
 
 namespace {
@@ -184,7 +184,7 @@ std::string LinuxMountProvider::GetErrors() const
 {
     std::string errors;
     for (const std::string& errorMessage : m_errors) {
-        errors += errorMessage;
+        errors += errorMessage + "\n";
     }
     return errors;
 }
@@ -193,11 +193,21 @@ void LinuxMountProvider::RecordError(const char* message, ...)
 {
     va_list args;
     va_start(args, message);
-    int length = vsnprintf(nullptr, 0, message, args);
-    std::string result(++length, '\0');
-    vsnprintf(&result[0], length, message, args);
+    // Determine the length of the formatted string
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int length = std::vsnprintf(nullptr, 0, message, args_copy);
+    va_end(args_copy);
+    if (length <= 0) {
+        va_end(args);
+        ERRLOG("failed to compute str format buffer size, errno %u", errno);
+        return;
+    }
+    // Create a buffer to store the formatted string
+    std::string formattedString(static_cast<size_t>(length) + 1, '\0');
+    std::vsnprintf(&formattedString[0], formattedString.size(), message, args);
     va_end(args);
-    m_errors.emplace_back(result);
+    m_errors.emplace_back(formattedString);
 }
 
 bool LinuxMountProvider::ClearResidue()
@@ -387,8 +397,7 @@ std::string LinuxMountProvider::GenerateNewDmDeviceName() const
 bool LinuxMountProvider::SaveLoopDeviceCreationRecord(const std::string& loopDevicePath)
 {
     if (loopDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
-        std::string loopDeviceNumber = loopDevicePath.substr(
-            0, loopDevicePath.length() - LOOPBACK_DEVICE_PATH_PREFIX.length());
+        std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
         return CreateEmptyFileInCacheDir(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
     RECORD_ERROR("save loop device creation record failed, loopback device %s",
@@ -409,8 +418,7 @@ bool LinuxMountProvider::SaveDmDeviceCreationRecord(const std::string& dmDeviceN
 bool LinuxMountProvider::RemoveLoopDeviceCreationRecord(const std::string& loopDevicePath)
 {
     if (loopDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
-        std::string loopDeviceNumber = loopDevicePath.substr(
-            0, loopDevicePath.length() - LOOPBACK_DEVICE_PATH_PREFIX.length());
+        std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
         return RemoveFileInCacheDir(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     }
     RECORD_ERROR("remove loop device creation record failed, loopback device path %s, cache dir %s",

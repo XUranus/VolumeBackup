@@ -70,6 +70,8 @@ MESSAGE("code coverage is enabled, using gcovr")
         "*googletest*"
         "*build*"
         "${PROJECT_SOURCE_DIR}/module/*"
-        "*/native/*"
+        "${PROJECT_SOURCE_DIR}/src/native/*"
+        "${PROJECT_SOURCE_DIR}/include/native/*"
+        "${PROJECT_SOURCE_DIR}/demo/*"
     )
 ENDIF()

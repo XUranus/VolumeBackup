@@ -193,9 +193,9 @@ bool VolumeBlockReader::SkipReadingBlock() const
 {
     if (m_sharedConfig->checkpointEnabled &&
         m_sharedContext->processedBitmap->Test(m_currentIndex)) {
+        DBGLOG("checkpoint enabled, reader skip reading current index: %llu", m_currentIndex);
         return true;
     }
-    DBGLOG("checkpoint enabled, reader skip reading current index: %llu", m_currentIndex);
     return false;
 }
 

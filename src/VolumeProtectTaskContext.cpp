@@ -98,6 +98,7 @@ Bitmap::Bitmap(uint64_t size)
 {
     m_capacity = size / BITS_PER_UINT8 + 1;
     m_table = new uint8_t[m_capacity]; // avoid using make_unique (requiring CXX14)
+    memset(m_table, 0, sizeof(uint8_t) * m_capacity);
 }
 
 Bitmap::Bitmap(uint8_t* ptr, uint64_t capacity)

@@ -82,9 +82,10 @@ int ExecVolumeBackup(
     backupConfig.outputCopyDataDirPath = outputCopyDataDirPath;
     backupConfig.outputCopyMetaDirPath = outputCopyMetaDirPath;
     backupConfig.blockSize = DEFAULT_BLOCK_SIZE;
-    backupConfig.sessionSize = DEFAULT_SESSION_SIZE;
+    backupConfig.sessionSize = 3 * ONE_GB;
     backupConfig.hasherNum = hasherWorkerNum;
     backupConfig.hasherEnabled = true;
+    backupConfig.enableCheckpoint = true;
 
     std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildBackupTask(backupConfig);
     if (task == nullptr) {
@@ -102,7 +103,7 @@ int ExecVolumeBackup(
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     PrintTaskStatistics(task->GetStatistics());
-    std::cout << "volume backup task completed!" << std::endl;
+    std::cout << "volume backup task completed with status " << task->GetStatusString() << std::endl;
     return 0;
 }
 

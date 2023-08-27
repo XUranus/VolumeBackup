@@ -14,7 +14,7 @@ class LinuxVolumeCopyMountConfig {
 public class JLinuxVolumeCopyMountProvider {
     
     static {
-        System.loadLibrary("libvolumebackup.so"); // Load the shared library containing your C functions
+        System.load("/path/to/libvolumemount_jni.so"); // Load the shared library containing your C functions
     }
 
     public JLinuxVolumeCopyMountProvider(String cacheDirPath) throws IllegalArgumentException {
@@ -83,4 +83,59 @@ public class JLinuxVolumeCopyMountProvider {
 
     private String errorString;
     private String cacheDirPath;
+}
+
+class MountDemo {
+    private static String cacheDirPath = "/dummy/path";
+    
+    private static LinuxVolumeCopyMountConfig mountConfig = new LinuxVolumeCopyMountConfig();
+    
+    static {
+        mountConfig.copyMetaDirPath = "/dummy/path";
+        mountConfig.copyDataDirPath = "/dummy/path";
+        mountConfig.mountTargetPath = "/dummy/path";
+        mountConfig.mountTargetPath = "/mnt/volumecopy";
+        mountConfig.mountOptions = "ro";
+        mountConfig.mountFsType = "ext4";
+    }
+
+    public static void testMount() {
+        try {
+            JLinuxVolumeCopyMountProvider mountProvider = new JLinuxVolumeCopyMountProvider(cacheDirPath);
+            if (mountProvider.mountCopy(mountConfig)) {
+                System.out.println("mount success");
+            } else {
+                System.out.println("mount failed");
+                System.out.println("===== ERROR ======");
+                System.out.println(mountProvider.getErrorString());
+                System.out.println("---- Start To Clear Residue ----");
+                if (!mountProvider.clearResidue()) {
+                    System.out.println("failed to clear residue");
+                    System.out.println("===== ERROR =====");
+                    System.out.println(mountProvider.getErrorString());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void testUmount() {
+        try {
+            JLinuxVolumeCopyMountProvider mountProvider = new JLinuxVolumeCopyMountProvider(cacheDirPath);
+            if (mountProvider.umountCopy()) {
+                System.out.println("umount success");
+            } else {
+                System.out.println("umount failed");
+                System.out.println("===== ERROR ======");
+                System.out.println(mountProvider.getErrorString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        testMount();
+    }
 }

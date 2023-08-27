@@ -7,6 +7,7 @@
 #include "VolumeBlockWriter.h"
 #include "BlockingQueue.h"
 #include "VolumeBackupTask.h"
+#include <iostream>
 
 using namespace volumeprotect;
 using namespace volumeprotect::util;
@@ -137,7 +138,8 @@ bool VolumeBackupTask::InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskS
 
 bool VolumeBackupTask::InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const
 {
-    DBGLOG("init backup session context");
+    DBGLOG("init backup session context, offset %llu, size %llu",
+            session->sharedConfig->sessionOffset, session->sharedConfig->sessionSize);
     // 1. init basic backup container
     session->sharedContext = std::make_shared<VolumeTaskSharedContext>();
     session->sharedContext->counter = std::make_shared<SessionCounter>();
@@ -193,7 +195,6 @@ void VolumeBackupTask::ThreadFunc()
         // pop a session from session queue to init a new session
         std::shared_ptr<VolumeTaskSession> session = std::make_shared<VolumeTaskSession>(m_sessionQueue.front());
         m_sessionQueue.pop();
-
         if (!InitBackupSessionContext(session)) {
             m_status = TaskStatus::FAILED;
             return;

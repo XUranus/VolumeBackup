@@ -70,8 +70,11 @@ static bool MountCopy(
     if (!mountProvider->MountCopy(mountConfig)) {
         std::cerr << "=== Mount Copy Failed! ===" << std::endl;
         std::cerr << mountProvider->GetErrors() << std::endl;
+        std::cout << "===== Mount Rollback =====" << std::endl;
         if (!mountProvider->ClearResidue()) {
             std::cerr << "Residue Not Cleared!" << std::endl;
+        } else {
+            std::cout << "Residue Cleared!" << std::endl;
         }
         return false;
     }
@@ -95,6 +98,7 @@ static bool UmountCopy(const std::string& cacheDirPath)
         }
         return false;
     }
+    std::cout << "Umount Success!" << std::endl;
     return true;
 }
 
@@ -116,7 +120,6 @@ int main(int argc, const char** argv)
         "m:d:ht:o:",
         { "--meta=", "--data=", "--target=", "--mount", "--umount", "--cache=", "--type=", "--option=" });
     for (const OptionResult opt: result.opts) {
-        std::cout << opt.option << " " << opt.value << std::endl;
         if (opt.option == "d" || opt.option == "data") {
             copyDataDirPath = opt.value;
         } else if (opt.option == "m" || opt.option == "meta") {
