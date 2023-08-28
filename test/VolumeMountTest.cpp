@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <memory>
 #include <vector>
 #include <string>
 #include <thread>
@@ -21,6 +22,13 @@ using namespace ::testing;
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
 
+
+namespace {
+    const std::string DUMMY_CACHE_DIR = "/dummy/cache";
+    const std::string DUMMY_TARGET_DIR = "/dummy/target";
+    const std::string DUMMY_META_DIR = "/dummy/meta";
+    const std::string DUMMY_DATA_DIR = "/dummy/data";
+}
 
 class VolumeMountTest : public ::testing::Test {
 protected:
@@ -43,11 +51,15 @@ protected:
 
 class LinuxMountProviderMock : public LinuxMountProvider {
 public:
-    MOCK_METHOD(bool, ReadMountRecord, (LinuxCopyMountRecord& record), (override));
+    LinuxMountProviderMock();
+
+    bool ReadMountRecord(LinuxCopyMountRecord& record) override;
+
+    bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta) override;
+    
+    bool ListRecordFiles(std::vector<std::string>& filelist) override;
 
     MOCK_METHOD(bool, SaveMountRecord, (LinuxCopyMountRecord& mountRecord), (override));
-
-    MOCK_METHOD(bool, ReadVolumeCopyMeta, (const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta), (override));
 
     MOCK_METHOD(bool, MountReadOnlyDevice, (
         const std::string& devicePath,
@@ -72,11 +84,61 @@ public:
     MOCK_METHOD(bool, CreateEmptyFileInCacheDir, (const std::string& filename), (override));
 
     MOCK_METHOD(bool, RemoveFileInCacheDir, (const std::string& filename), (override));
-
-    MOCK_METHOD(bool, ListRecordFiles, (std::vector<std::string>& filelist), (override));
 };
+
+LinuxMountProviderMock::LinuxMountProviderMock()
+    : LinuxMountProvider(DUMMY_CACHE_DIR)
+{}
+
+bool ReadMountRecord(LinuxCopyMountRecord& record)
+{
+    
+    return true;
+}
+
+bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
+{
+    return true;
+}
+
+bool ListRecordFiles(std::vector<std::string>& filelist)
+{
+    filelist = {
+        "1.loop.record",
+        "2.loop.record",
+        "3.loop.record",
+        "xuranus-volume.dm.record"
+    };
+    return true;
+}
 
 TEST_F(VolumeMountTest, Mount_Success)
 {
-    EXPECT_TRUE(true);
+    auto mountProviderMock = std::make_unique<LinuxMountProviderMock>();
+    EXPECT_CALL(*mountProviderMock, SaveMountRecord(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, MountReadOnlyDevice(_, _, _, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, UmountDeviceIfExists(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, CreateReadOnlyDmDevice(_, _, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, RemoveDmDeviceIfExists(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, AttachReadOnlyLoopDevice(_, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, DetachLoopDeviceIfAttached(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, CreateEmptyFileInCacheDir(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mountProviderMock, RemoveFileInCacheDir(_))
+        .WillRepeatedly(Return(true));
+
+    LinuxCopyMountConfig mountConfig {};
+    mountConfig.copyMetaDirPath = DUMMY_META_DIR;
+    mountConfig.copyDataDirPath = DUMMY_DATA_DIR;
+    mountConfig.mountTargetPath = DUMMY_TARGET_DIR;
+    mountConfig.mountFsType = "ext4";
+    mountConfig.mountOptions = "noatime";
+    EXPECT_TRUE(mountProviderMock->MountCopy(mountConfig));
 }
