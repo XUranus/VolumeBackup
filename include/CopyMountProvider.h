@@ -124,7 +124,7 @@ public:
 
     std::string GetMountRecordJsonPath() const;
 
-private:
+protected:
     virtual bool ReadMountRecord(LinuxCopyMountRecord& record);
 
     virtual bool SaveMountRecord(LinuxCopyMountRecord& mountRecord);

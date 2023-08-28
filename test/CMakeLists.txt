@@ -3,7 +3,11 @@ SET(Project "volumebackup_test")
 SET(${Project} C CXX)
 
 SET(Headers)
-SET(Sources VolumeBackupTest.cpp)
+SET(
+    Sources
+    VolumeBackupTest.cpp
+    VolumeMountTest.cpp
+)
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # build test and run code coverage
@@ -50,8 +54,11 @@ IF (${COVERAGE} STREQUAL "lcov")
         "/usr/include/*"
         "*googlemock*"
         "*googletest*"
+        "*build*"
         "${PROJECT_SOURCE_DIR}/module/*"
-        "*/native/*"
+        "${PROJECT_SOURCE_DIR}/src/native/*"
+        "${PROJECT_SOURCE_DIR}/include/native/*"
+        "${PROJECT_SOURCE_DIR}/demo/*"
     )
 ENDIF()
 
