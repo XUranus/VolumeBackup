@@ -51,7 +51,9 @@ protected:
 
 class LinuxMountProviderMock : public LinuxMountProvider {
 public:
-    LinuxMountProviderMock();
+    LinuxMountProviderMock(const std::string& cacheDirPath);
+
+    ~LinuxMountProviderMock() = default;
 
     bool ReadMountRecord(LinuxCopyMountRecord& record) override;
 
@@ -86,22 +88,22 @@ public:
     MOCK_METHOD(bool, RemoveFileInCacheDir, (const std::string& filename), (override));
 };
 
-LinuxMountProviderMock::LinuxMountProviderMock()
-    : LinuxMountProvider(DUMMY_CACHE_DIR)
+LinuxMountProviderMock::LinuxMountProviderMock(const std::string& cacheDirPath)
+    : LinuxMountProvider(cacheDirPath)
 {}
 
-bool ReadMountRecord(LinuxCopyMountRecord& record)
+bool LinuxMountProviderMock::ReadMountRecord(LinuxCopyMountRecord& record)
 {
     
     return true;
 }
 
-bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
+bool LinuxMountProviderMock::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
 {
     return true;
 }
 
-bool ListRecordFiles(std::vector<std::string>& filelist)
+bool LinuxMountProviderMock::ListRecordFiles(std::vector<std::string>& filelist)
 {
     filelist = {
         "1.loop.record",
@@ -114,7 +116,7 @@ bool ListRecordFiles(std::vector<std::string>& filelist)
 
 TEST_F(VolumeMountTest, Mount_Success)
 {
-    auto mountProviderMock = std::make_unique<LinuxMountProviderMock>();
+    auto mountProviderMock = std::make_shared<LinuxMountProviderMock>(DUMMY_CACHE_DIR);
     EXPECT_CALL(*mountProviderMock, SaveMountRecord(_))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*mountProviderMock, MountReadOnlyDevice(_, _, _, _))

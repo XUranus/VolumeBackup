@@ -102,6 +102,8 @@ public:
 
     LinuxMountProvider(const std::string& cacheDirPath);
 
+    virtual ~LinuxMountProvider() = default;
+
     // create device and mount using mountConfig and save result to volumecopymount.record.json in cache directory
     bool MountCopy(const LinuxCopyMountConfig& mountConfig);
 

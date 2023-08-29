@@ -42,7 +42,7 @@ INCLUDE(GoogleTest)
 gtest_discover_tests(${Project})
 
 # configure code coverage
-IF (${COVERAGE} STREQUAL "lcov")
+IF ("${COVERAGE}" STREQUAL "lcov")
     MESSAGE("code coverage is enabled, using lcov")
     INCLUDE(CodeCoverage.cmake)
     APPEND_COVERAGE_COMPILER_FLAGS()
@@ -50,11 +50,11 @@ IF (${COVERAGE} STREQUAL "lcov")
         NAME "volumebackup_coverage_test"
         EXECUTABLE make test
         EXCLUDE
-        "${PROJECT_SOURCE_DIR}/test/*"
         "/usr/include/*"
         "*googlemock*"
         "*googletest*"
-        "*build*"
+        "${PROJECT_SOURCE_DIR}/build/*"
+        "${PROJECT_SOURCE_DIR}/test/*"
         "${PROJECT_SOURCE_DIR}/module/*"
         "${PROJECT_SOURCE_DIR}/src/native/*"
         "${PROJECT_SOURCE_DIR}/include/native/*"
@@ -62,7 +62,7 @@ IF (${COVERAGE} STREQUAL "lcov")
     )
 ENDIF()
 
-IF (${COVERAGE} STREQUAL "gcovr")
+IF ("${COVERAGE}" STREQUAL "gcovr")
 MESSAGE("code coverage is enabled, using gcovr")
     INCLUDE(CodeCoverage.cmake)
     APPEND_COVERAGE_COMPILER_FLAGS()
@@ -71,11 +71,11 @@ MESSAGE("code coverage is enabled, using gcovr")
         EXECUTABLE make test
         BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
         EXCLUDE
-        "${PROJECT_SOURCE_DIR}/test/*"
         "/usr/include/*"
         "*googlemock*"
         "*googletest*"
-        "*build*"
+        "${PROJECT_SOURCE_DIR}/build/*"
+        "${PROJECT_SOURCE_DIR}/test/*"
         "${PROJECT_SOURCE_DIR}/module/*"
         "${PROJECT_SOURCE_DIR}/src/native/*"
         "${PROJECT_SOURCE_DIR}/include/native/*"
