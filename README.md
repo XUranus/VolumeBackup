@@ -19,7 +19,7 @@ mkdir build && cd build
 # use lcov
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=lcov
 # or use gcovr
-# cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=gcovr
+# cmake .. -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=gcovr -DGCOVR_ADDITIONAL_ARGS="--gcov-ignore-parse-errors"
 cmake --build .
 make volumebackup_coverage_test
 ```

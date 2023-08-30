@@ -129,7 +129,7 @@ public:
 protected:
     virtual bool ReadMountRecord(LinuxCopyMountRecord& record);
 
-    virtual bool SaveMountRecord(LinuxCopyMountRecord& mountRecord);
+    virtual bool SaveMountRecord(const LinuxCopyMountRecord& mountRecord);
 
     virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 

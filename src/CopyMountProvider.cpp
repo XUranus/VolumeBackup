@@ -295,7 +295,7 @@ bool LinuxMountProvider::ReadMountRecord(LinuxCopyMountRecord& record)
     return true;
 }
 
-bool LinuxMountProvider::SaveMountRecord(LinuxCopyMountRecord& mountRecord)
+bool LinuxMountProvider::SaveMountRecord(const LinuxCopyMountRecord& mountRecord)
 {
     std::string jsonContent = xuranus::minijson::util::Serialize(mountRecord);
     std::string filepath = m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
