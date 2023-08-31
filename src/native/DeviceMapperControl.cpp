@@ -1,4 +1,7 @@
+#ifdef __linux__
+
 #include "DeviceMapperControl.h"
+
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -8,6 +11,7 @@
 #include <string>
 #include <cstring>
 #include <thread>
+
 #include <unistd.h>
 #include <linux/dm-ioctl.h>
 #include <uuid/uuid.h>
@@ -392,3 +396,5 @@ bool devicemapper::GetDevicePathByName(const std::string& name, std::string& dmD
     dmDevicePath = DM_DEVICE_PATH_PREFIX + std::to_string(devNum);
     return true;
 }
+
+#endif

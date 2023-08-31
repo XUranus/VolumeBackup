@@ -1,6 +1,7 @@
 #ifndef VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 #define VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 
+#ifdef __linux__
 #include "VolumeProtectMacros.h"
 
 namespace volumeprotect {
@@ -105,4 +106,5 @@ VOLUMEPROTECT_API bool GetDevicePathByName(const std::string& name, std::string&
 }
 }
 
+#endif
 #endif

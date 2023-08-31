@@ -1,3 +1,5 @@
+#ifdef __linux
+
 #include "CopyMountProvider.h"
 #include "DeviceMapperControl.h"
 #include "Json.h"
@@ -5,9 +7,6 @@
 #include "NativeIOInterface.h"
 #include "VolumeUtils.h"
 #include "native/LoopDeviceControl.h"
-#include <cstddef>
-#include <iterator>
-#include <string>
 
 #ifdef __linux
 #include <cerrno>
@@ -478,4 +477,5 @@ bool LinuxMountProvider::ListRecordFiles(std::vector<std::string>& filelist)
     return true;
 }
 
+#endif
 #endif

@@ -9,6 +9,7 @@
  *                 generated from volumebackup using dm linear mapper
  * ==================================================================
  */
+#ifdef __linux__
 
 #include <cstdint>
 #include <fstream>
@@ -160,3 +161,5 @@ int main(int argc, const char** argv)
     PrintHelp();
     return 0;
 }
+
+#endif

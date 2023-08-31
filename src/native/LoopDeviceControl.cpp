@@ -1,3 +1,5 @@
+#ifdef __linux__
+
 #include "LoopDeviceControl.h"
 
 #include <cstddef>
@@ -96,3 +98,5 @@ bool loopback::Attached(const std::string& loopDevicePath)
     ::closedir(dir);
     return false;
 }
+
+#endif

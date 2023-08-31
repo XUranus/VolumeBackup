@@ -1,6 +1,8 @@
 #ifndef VOLUMEBACKUP_DM_LOOP_DEVICE_CONTROL_H
 #define VOLUMEBACKUP_DM_LOOP_DEVICE_CONTROL_H
 
+#ifdef __linux__
+
 #include "VolumeProtectMacros.h"
 
 namespace volumeprotect {
@@ -25,4 +27,5 @@ VOLUMEPROTECT_API bool GetFreeLoopDevice(std::string& loopDevicePath);
 }
 }
 
+#endif
 #endif
