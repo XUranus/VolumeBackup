@@ -16,7 +16,7 @@
 *.dylib
 *.dll
 
-# Fortran module files
+# Fortran dependency files
 *.mod
 *.smod
 
@@ -34,5 +34,5 @@
 build/
 .vscode/
 .cache
-module/minijson
-module/minilogger
+dependency/minijson
+dependency/minilogger

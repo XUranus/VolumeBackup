@@ -55,10 +55,10 @@ IF ("${COVERAGE}" STREQUAL "lcov")
         "*googletest*"
         "${PROJECT_SOURCE_DIR}/build/*"
         "${PROJECT_SOURCE_DIR}/test/*"
-        "${PROJECT_SOURCE_DIR}/module/*"
+        "${PROJECT_SOURCE_DIR}/dependency/*"
         "${PROJECT_SOURCE_DIR}/src/native/*"
         "${PROJECT_SOURCE_DIR}/include/native/*"
-        "${PROJECT_SOURCE_DIR}/demo/*"
+        "${PROJECT_SOURCE_DIR}/cli/*"
     )
 ENDIF()
 
@@ -76,9 +76,9 @@ MESSAGE("code coverage is enabled, using gcovr")
         "*googletest*"
         "${PROJECT_SOURCE_DIR}/build/*"
         "${PROJECT_SOURCE_DIR}/test/*"
-        "${PROJECT_SOURCE_DIR}/module/*"
+        "${PROJECT_SOURCE_DIR}/dependency/*"
         "${PROJECT_SOURCE_DIR}/src/native/*"
         "${PROJECT_SOURCE_DIR}/include/native/*"
-        "${PROJECT_SOURCE_DIR}/demo/*"
+        "${PROJECT_SOURCE_DIR}/cli/*"
     )
 ENDIF()

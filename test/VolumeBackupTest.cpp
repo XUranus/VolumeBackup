@@ -160,8 +160,9 @@ class VolumeBackupTaskMock : public VolumeBackupTask
 {
 public:
     VolumeBackupTaskMock(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);
+    bool ValidateIncrementBackup() const;
     bool InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
-    bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
+    bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta) const;
     bool LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTaskSession> session) const;
     std::shared_ptr<CheckpointSnapshot> ReadCheckpointSnapshot(
         std::shared_ptr<VolumeTaskSession> session) const;
@@ -177,7 +178,13 @@ public:
 VolumeBackupTaskMock::VolumeBackupTaskMock(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
   : VolumeBackupTask(backupConfig, volumeSize) {}
 
-bool VolumeBackupTaskMock::SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta)
+bool VolumeBackupTaskMock::ValidateIncrementBackup() const
+{
+    return true;
+}
+
+bool VolumeBackupTaskMock::SaveVolumeCopyMeta(
+    const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta) const
 {
     return SaveVolumeCopyMetaMockReturn();
 }
@@ -437,6 +444,7 @@ class VolumeRestoreTaskMock : public VolumeRestoreTask
 {
 public:
     VolumeRestoreTaskMock(const VolumeRestoreConfig& restoreConfig);
+    bool ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const;
     bool InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
     bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
     bool IsSessionRestarted(std::shared_ptr<VolumeTaskSession> session) const;
@@ -458,6 +466,11 @@ bool VolumeRestoreTaskMock::ReadVolumeCopyMeta(const std::string& copyMetaDirPat
         { 0, ONE_MB * 512 }, { ONE_MB * 512, ONE_MB * 512 }
     };
     return ReadVolumeCopyMetaMockReturn();
+}
+
+bool VolumeRestoreTaskMock::ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const
+{
+    return true;
 }
 
 bool VolumeRestoreTaskMock::InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const

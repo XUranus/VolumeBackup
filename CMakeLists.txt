@@ -26,12 +26,12 @@ MESSAGE("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
 INCLUDE_DIRECTORIES(
     "include"
     "include/native" 
-    "module/minijson"
-    "module/minilogger"
+    "dependency/minijson"
+    "dependency/minilogger"
 )
 
-ADD_SUBDIRECTORY(module/minijson)
-ADD_SUBDIRECTORY(module/minilogger)
+ADD_SUBDIRECTORY(dependency/minijson)
+ADD_SUBDIRECTORY(dependency/minilogger)
 
 IF (NOT "${JNI_INCLUDE}" STREQUAL "")
     MESSAGE("COMPILE JNI EXTENSION, INCLUDE ${JNI_INCLUDE}")
@@ -100,13 +100,13 @@ ENDIF()
 
 # build executable tools
 ADD_EXECUTABLE (vbackup
-    "demo/vbackup.cpp"
-    "demo/GetOption.cpp"
+    "cli/vbackup.cpp"
+    "cli/GetOption.cpp"
 )
 
 ADD_EXECUTABLE (vtools
-    "demo/vtools.cpp"
-    "demo/GetOption.cpp"
+    "cli/vtools.cpp"
+    "cli/GetOption.cpp"
 )
 
 SET_PROPERTY(TARGET vbackup PROPERTY CXX_STANDARD 11)
@@ -143,8 +143,8 @@ TARGET_LINK_LIBRARIES(
 # build vcopymount executable
 IF(NOT ${CMAKE_HOST_WIN32})
     ADD_EXECUTABLE (vcopymount
-        "demo/vcopymount.cpp"
-        "demo/GetOption.cpp"
+        "cli/vcopymount.cpp"
+        "cli/GetOption.cpp"
     )
 
     SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)

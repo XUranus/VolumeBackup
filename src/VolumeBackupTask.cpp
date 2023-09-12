@@ -64,8 +64,9 @@ bool VolumeBackupTask::Prepare()
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
     volumeCopyMeta.volumePath = volumePath;
 
-    if (IsIncrementBackup()) {
-        // TODO:: validate increment backup meta
+    if (IsIncrementBackup() && !ValidateIncrementBackup()) {
+        ERRLOG("failed to validate increment backup");
+        return false;
     }
 
     // 2. split session
@@ -74,33 +75,8 @@ bool VolumeBackupTask::Prepare()
         if (sessionOffset + m_backupConfig->sessionSize >= m_volumeSize) {
             sessionSize = m_volumeSize - sessionOffset;
         }
-        std::string lastestChecksumBinPath = util::GetChecksumBinPath(
-            m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
-        std::string copyFilePath = util::GetCopyFilePath(
-            m_backupConfig->outputCopyDataDirPath, sessionOffset, sessionSize);
-        std::string writerBitmapPath = util::GetWriterBitmapFilePath(
-            m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
-        // for increment backup
-        std::string prevChecksumBinPath = "";
-        if (IsIncrementBackup()) {
-            prevChecksumBinPath = util::GetChecksumBinPath(m_backupConfig->prevCopyMetaDirPath, sessionOffset, sessionSize);
-        }
-
-        VolumeTaskSession session {};
-        session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
-        session.sharedConfig->volumePath = m_backupConfig->volumePath;
-        session.sharedConfig->hasherEnabled = m_backupConfig->hasherEnabled;
-        session.sharedConfig->hasherWorkerNum = m_backupConfig->hasherNum;
-        session.sharedConfig->blockSize = m_backupConfig->blockSize;
-        session.sharedConfig->sessionOffset = sessionOffset;
-        session.sharedConfig->sessionSize = sessionSize;
-        session.sharedConfig->lastestChecksumBinPath = lastestChecksumBinPath;
-        session.sharedConfig->prevChecksumBinPath = prevChecksumBinPath;
-        session.sharedConfig->copyFilePath = copyFilePath;
-        session.sharedConfig->checkpointFilePath = writerBitmapPath;
-        session.sharedConfig->checkpointEnabled = m_backupConfig->enableCheckpoint;
         volumeCopyMeta.copySlices.emplace_back(sessionOffset, sessionSize);
-        m_sessionQueue.push(session);
+        m_sessionQueue.push(NewVolumeTaskSession(sessionOffset, sessionSize));
         sessionOffset += sessionSize;
     }
 
@@ -109,6 +85,38 @@ bool VolumeBackupTask::Prepare()
         return false;
     }
     return true;
+}
+
+VolumeTaskSession VolumeBackupTask::NewVolumeTaskSession(
+    uint64_t sessionOffset, uint64_t sessionSize) const
+{
+    std::string lastestChecksumBinPath = util::GetChecksumBinPath(
+        m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
+    std::string copyFilePath = util::GetCopyFilePath(
+        m_backupConfig->outputCopyDataDirPath, sessionOffset, sessionSize);
+    std::string writerBitmapPath = util::GetWriterBitmapFilePath(
+        m_backupConfig->outputCopyMetaDirPath, sessionOffset, sessionSize);
+    // for increment backup, set previous checksum bin path
+    std::string prevChecksumBinPath = "";
+    if (IsIncrementBackup()) {
+        prevChecksumBinPath = util::GetChecksumBinPath(
+            m_backupConfig->prevCopyMetaDirPath, sessionOffset, sessionSize);
+    }
+
+    VolumeTaskSession session {};
+    session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
+    session.sharedConfig->volumePath = m_backupConfig->volumePath;
+    session.sharedConfig->hasherEnabled = m_backupConfig->hasherEnabled;
+    session.sharedConfig->hasherWorkerNum = m_backupConfig->hasherNum;
+    session.sharedConfig->blockSize = m_backupConfig->blockSize;
+    session.sharedConfig->sessionOffset = sessionOffset;
+    session.sharedConfig->sessionSize = sessionSize;
+    session.sharedConfig->lastestChecksumBinPath = lastestChecksumBinPath;
+    session.sharedConfig->prevChecksumBinPath = prevChecksumBinPath;
+    session.sharedConfig->copyFilePath = copyFilePath;
+    session.sharedConfig->checkpointFilePath = writerBitmapPath;
+    session.sharedConfig->checkpointEnabled = m_backupConfig->enableCheckpoint;
+    return session;
 }
 
 bool VolumeBackupTask::InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const
@@ -274,7 +282,29 @@ bool VolumeBackupTask::LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTas
     return true;
 }
 
-bool VolumeBackupTask::SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta)
+bool VolumeBackupTask::SaveVolumeCopyMeta(
+    const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta) const
 {
     return util::WriteVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta);
+}
+
+bool VolumeBackupTask::ValidateIncrementBackup() const
+{
+    if (!native::IsDirectoryExists(m_backupConfig->outputCopyDataDirPath)
+        || !native::IsDirectoryExists(m_backupConfig->prevCopyMetaDirPath)) {
+        ERRLOG("data directory %s or previous meta directory %s not exists!",
+            m_backupConfig->outputCopyDataDirPath.c_str(), m_backupConfig->prevCopyMetaDirPath.c_str());
+        return false;
+    }
+    VolumeCopyMeta volumeCopyMeta {};
+    if (!util::ReadVolumeCopyMeta(m_backupConfig->prevCopyMetaDirPath, volumeCopyMeta)) {
+        ERRLOG("failed to read previous copy meta in %s", m_backupConfig->prevCopyMetaDirPath.c_str());
+        return false;
+    }
+    if (m_backupConfig->blockSize != volumeCopyMeta.blockSize) {
+        ERRLOG("increment backup block size mismatach! (previous: %llu latest: %llu)",
+            m_backupConfig->blockSize, volumeCopyMeta.blockSize);
+        return false;
+    }
+    return true;
 }

@@ -57,9 +57,13 @@ bool VolumeRestoreTask::Prepare()
         return false;
     }
 
-    // TODO:: read volume info and validate
+    // 2. read volume info and validate
+    if (!ValidateRestoreTask(volumeCopyMeta)) {
+        ERRLOG("failed to validate restore task!");
+        return false;
+    }
 
-    // 2. split session
+    // 3. split session
     uint64_t volumeSize = volumeCopyMeta.volumeSize;
     CopyType copyType = static_cast<CopyType>(volumeCopyMeta.copyType);
     for (const std::pair<uint64_t, uint64_t> slice: volumeCopyMeta.copySlices) {
@@ -82,6 +86,27 @@ bool VolumeRestoreTask::Prepare()
         m_sessionQueue.push(session);
     }
 
+    return true;
+}
+
+bool VolumeRestoreTask::ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const
+{
+    if (!native::IsDirectoryExists(m_restoreConfig->copyDataDirPath)
+        || !native::IsDirectoryExists(m_restoreConfig->copyMetaDirPath)) {
+        ERRLOG("data directory %s or meta directory %s not exists!",
+            m_restoreConfig->copyDataDirPath.c_str(), m_restoreConfig->copyMetaDirPath.c_str());
+        return false;
+    }
+    uint64_t volumeSize = 0;
+    try {
+        volumeSize = native::ReadVolumeSize(m_restoreConfig->volumePath);
+    } catch (const native::SystemApiException& e) {
+        ERRLOG("retrive volume size got exception: %s", e.what());
+        return false;
+    }
+    if (volumeSize != volumeCopyMeta.volumeSize) {
+        ERRLOG("restore volume size mismatch ! (copy : %llu, target: %llu)", volumeCopyMeta.volumeSize, volumeSize);
+    }
     return true;
 }
 
