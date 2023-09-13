@@ -34,3 +34,5 @@
 build/
 .vscode/
 .cache
+dependency/minijson
+dependency/minilogger
