@@ -1,6 +1,6 @@
 #ifdef __linux__
 
-#include "LoopDeviceControl.h"
+#include "native/linux/LoopDeviceControl.h"
 
 #include <cstddef>
 #include <fcntl.h>

@@ -1,12 +1,12 @@
 #ifdef __linux
 
 #include "CopyMountProvider.h"
-#include "DeviceMapperControl.h"
+#include "native/linux/DeviceMapperControl.h"
 #include "Json.h"
 #include "Logger.h"
 #include "NativeIOInterface.h"
 #include "VolumeUtils.h"
-#include "native/LoopDeviceControl.h"
+#include "native/linux/LoopDeviceControl.h"
 
 #ifdef __linux
 #include <cerrno>

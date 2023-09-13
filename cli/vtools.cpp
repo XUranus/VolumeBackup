@@ -243,7 +243,6 @@ VolumeInfo GetVolumeInfoLinux(const std::string& volumePath)
         volumeInfo.volumeSize = GetVolumeSizeLinux(volumePath);
     } catch (const SystemApiException& e) {
         throw e;
-        return volumeInfo;
     }
     return volumeInfo;
 }

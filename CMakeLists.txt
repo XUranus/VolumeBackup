@@ -17,8 +17,29 @@ ELSE()
     ADD_COMPILE_OPTIONS(-Wno-format-security)
 ENDIF()
 
-FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_SOURCES "src/*.cpp" "src/native/*.cpp")
-FILE(GLOB_RECURSE VOLUMEPROTECTPROTECT_HEADERS "include/*.h" "native/include/*.h")
+IF(${CMAKE_HOST_WIN32})
+    FILE(
+        GLOB_RECURSE
+        VOLUMEPROTECTPROTECT_SOURCES
+        "src/*.cpp"
+        "src/native/*.cpp"
+        "src/native/win32/*.cpp"
+    )
+ELSE()
+    FILE(
+        GLOB_RECURSE
+        VOLUMEPROTECTPROTECT_SOURCES
+        "src/*.cpp"
+        "src/native/*.cpp"
+        "src/native/linux/*.cpp"
+    )
+ENDIF()
+
+FILE(
+    GLOB_RECURSE
+    VOLUMEPROTECTPROTECT_HEADERS
+    "include/*.h"
+)
 
 MESSAGE("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
 MESSAGE("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
