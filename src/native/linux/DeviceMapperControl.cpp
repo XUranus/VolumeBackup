@@ -220,7 +220,6 @@ static bool LoadTable(const std::string& name, const DmTable& dmTable, bool acti
     if (::ioctl(dmControlFd, DM_TABLE_LOAD, io)) {
         return false;
     }
-    // TODO
     if (!activate) {
         return true;
     }

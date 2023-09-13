@@ -39,17 +39,17 @@ using namespace xuranus::getopt;
 class SystemApiException : public std::exception {
 public:
     // Constructor
-    SystemApiException(uint32_t errorCode) : m_message(nullptr), m_errorCode(errorCode) {}
-    SystemApiException(const char* message, uint32_t errorCode) : m_message(message), m_errorCode(errorCode) {}
+    SystemApiException(const char* message, uint32_t errorCode) {
+        m_message = std::string(message) + " , error code = " + std::to_string(errorCode);
+    }
 
     // Override the what() method to provide a description of the exception
     const char* what() const noexcept override {
-        return "TODO";
+        return m_message.c_str();
     }
 
 private:
-    const char* m_message;
-    uint32_t    m_errorCode;
+    std::string m_message;
 };
 
 /**
@@ -238,7 +238,7 @@ uint64_t GetVolumeSizeLinux(const std::string& devicePath) {
 VolumeInfo GetVolumeInfoLinux(const std::string& volumePath)
 {
     VolumeInfo volumeInfo {};
-    // TODO:: implement reading linux volume info
+    // TODO::implement reading linux volume info
     try {
         volumeInfo.volumeSize = GetVolumeSizeLinux(volumePath);
     } catch (const SystemApiException& e) {
