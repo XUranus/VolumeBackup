@@ -1,6 +1,0 @@
-[submodule "dependency/minijson"]
-	path = dependency/minijson
-	url = git@github.com:XUranus/minijson.git
-[submodule "dependency/minilogger"]
-	path = dependency/minilogger
-	url = git@github.com:XUranus/minilogger.git
