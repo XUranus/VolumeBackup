@@ -23,10 +23,10 @@
 #include <iostream>
 #include <fstream>
 #include "Logger.h"
-#include "native/NativeIOInterface.h"
+#include "native/RawIO.h"
 
 using namespace volumeprotect;
-using namespace volumeprotect::native;
+using namespace volumeprotect::fsapi;
 
 namespace {
     constexpr auto DEFAULT_PROCESSORS_NUM = 4;
@@ -55,7 +55,7 @@ const char* SystemApiException::what() const noexcept
     return m_message.c_str();
 }
 
-bool native::IsFileExists(const std::string& path)
+bool fsapi::IsFileExists(const std::string& path)
 {
 #ifdef __linux__
     struct stat st;
@@ -68,7 +68,7 @@ bool native::IsFileExists(const std::string& path)
 #endif
 }
 
-uint64_t native::GetFileSize(const std::string& path)
+uint64_t fsapi::GetFileSize(const std::string& path)
 {
 #ifdef __linux__
     struct stat st;
@@ -88,7 +88,7 @@ uint64_t native::GetFileSize(const std::string& path)
 #endif
 }
 
-bool native::IsDirectoryExists(const std::string& path)
+bool fsapi::IsDirectoryExists(const std::string& path)
 {
 #ifdef _WIN32
     std::wstring wpath = Utf8ToUtf16(path);
@@ -111,7 +111,7 @@ bool native::IsDirectoryExists(const std::string& path)
  * @brief read bytes from file
  * @return uint8_t* ptr to data
  */
-uint8_t* native::ReadBinaryBuffer(const std::string& filepath, uint64_t length)
+uint8_t* fsapi::ReadBinaryBuffer(const std::string& filepath, uint64_t length)
 {
     if (length == 0) {
         WARNLOG("read empty binary file %s", filepath.c_str());
@@ -150,7 +150,7 @@ uint8_t* native::ReadBinaryBuffer(const std::string& filepath, uint64_t length)
  * @brief write n bytes from file
  * @return if success
  */
-bool native::WriteBinaryBuffer(const std::string& filepath, const uint8_t* buffer, uint64_t length)
+bool fsapi::WriteBinaryBuffer(const std::string& filepath, const uint8_t* buffer, uint64_t length)
 {
     try {
         std::ofstream file(filepath, std::ios::binary | std::ios::trunc);
@@ -235,7 +235,7 @@ static uint64_t GetVolumeSizeLinux(const std::string& devicePath)
 
 #endif
 
-uint64_t native::ReadVolumeSize(const std::string& volumePath)
+uint64_t fsapi::ReadVolumeSize(const std::string& volumePath)
 {
     uint64_t size = 0;
     try {
@@ -252,7 +252,7 @@ uint64_t native::ReadVolumeSize(const std::string& volumePath)
     return size;
 }
 
-bool native::IsVolumeExists(const std::string& volumePath)
+bool fsapi::IsVolumeExists(const std::string& volumePath)
 {
     try {
         ReadVolumeSize(volumePath);
@@ -262,7 +262,7 @@ bool native::IsVolumeExists(const std::string& volumePath)
     return true;
 }
 
-uint32_t native::ProcessorsNum()
+uint32_t fsapi::ProcessorsNum()
 {
 #ifdef __linux
     auto processorCount = sysconf(_SC_NPROCESSORS_ONLN);
@@ -277,7 +277,7 @@ uint32_t native::ProcessorsNum()
 }
 
 #ifdef __linux__
-uint64_t native::ReadSectorSizeLinux(const std::string& devicePath)
+uint64_t fsapi::ReadSectorSizeLinux(const std::string& devicePath)
 {
     int fd = ::open(devicePath.c_str(), O_RDONLY);
     if (fd == -1) {

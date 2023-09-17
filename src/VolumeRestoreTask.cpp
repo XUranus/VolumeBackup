@@ -5,6 +5,7 @@
 #include "VolumeBlockReader.h"
 #include "VolumeBlockWriter.h"
 #include "BlockingQueue.h"
+#include "native/FileSystemAPI.h"
 #include "VolumeRestoreTask.h"
 
 using namespace volumeprotect;
@@ -66,15 +67,17 @@ bool VolumeRestoreTask::Prepare()
     // 3. split session
     uint64_t volumeSize = volumeCopyMeta.volumeSize;
     CopyType copyType = static_cast<CopyType>(volumeCopyMeta.copyType);
-    for (const std::pair<uint64_t, uint64_t> slice: volumeCopyMeta.copySlices) {
-        uint64_t sessionOffset = slice.first;
-        uint64_t sessionSize = slice.second;
+    CopyFormat copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
+    for (const CopySegment& segment: volumeCopyMeta.segments) {
+        uint64_t sessionOffset = segment.offset;
+        uint64_t sessionSize = segment.length;
+        int sessionIndex = segment.index;
         INFOLOG("Size = %llu sessionOffset %d sessionSize %d", volumeSize, sessionOffset, sessionSize);
-        std::string copyFilePath = util::GetCopyFilePath(
-            m_restoreConfig->copyDataDirPath, sessionOffset, sessionSize);
-
+        std::string copyFilePath = util::GetCopyDataFilePath(
+            m_restoreConfig->copyDataDirPath, volumeCopyMeta.copyName, copyFormat, sessionIndex);
         VolumeTaskSession session {};
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
+        session.sharedConfig->copyFormat = volumeCopyMeta.copyFormat;
         session.sharedConfig->volumePath = volumePath;
         session.sharedConfig->hasherEnabled = false;
         session.sharedConfig->blockSize = volumeCopyMeta.blockSize;
@@ -91,16 +94,16 @@ bool VolumeRestoreTask::Prepare()
 
 bool VolumeRestoreTask::ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const
 {
-    if (!native::IsDirectoryExists(m_restoreConfig->copyDataDirPath)
-        || !native::IsDirectoryExists(m_restoreConfig->copyMetaDirPath)) {
+    if (!fsapi::IsDirectoryExists(m_restoreConfig->copyDataDirPath)
+        || !fsapi::IsDirectoryExists(m_restoreConfig->copyMetaDirPath)) {
         ERRLOG("data directory %s or meta directory %s not exists!",
             m_restoreConfig->copyDataDirPath.c_str(), m_restoreConfig->copyMetaDirPath.c_str());
         return false;
     }
     uint64_t volumeSize = 0;
     try {
-        volumeSize = native::ReadVolumeSize(m_restoreConfig->volumePath);
-    } catch (const native::SystemApiException& e) {
+        volumeSize = fsapi::ReadVolumeSize(m_restoreConfig->volumePath);
+    } catch (const fsapi::SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return false;
     }

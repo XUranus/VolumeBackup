@@ -1,4 +1,4 @@
-//#ifdef _WIN32
+#ifdef _WIN32
 
 #define WIN32_LEAN_AND_MEAN 1
 #define UNICODE /* foring using WCHAR on windows */
@@ -9,7 +9,11 @@
 #include <Windows.h>
 #include <winioctl.h>
 
+using namespace volumeprotect;
+using namespace volumeprotect::rawio;
+using namespace volumeprotect::rawio::win32;
 
+// Implement common WIN32 API utils
 static std::wstring Utf8ToUtf16(const std::string& str)
 {
     using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
@@ -32,6 +36,7 @@ inline void SetOverlappedStructOffset(OVERLAPPED& ov, uint64_t offset)
     ov.OffsetHigh = *(ptr + 1);
 }
 
+// implement Win32RawDataReader methods...
 Win32RawDataReader::Win32RawDataReader(const std::string& path, int flag, uint64_t shiftOffset)
     : m_flag(flag), m_shiftOffset(shiftOffset)
 {
@@ -83,6 +88,7 @@ Win32RawDataReader::~Win32RawDataReader()
     m_handle = INVALID_HANDLE_VALUE;
 }
 
+// implement Win32RawDataWriter methods
 Win32RawDataWriter::Win32RawDataWriter(const std::string& path, int flag, uint64_t shiftOffset)
     : m_flag(flag), m_shiftOffset(shiftOffset)
 {
@@ -142,6 +148,72 @@ Win32RawDataWriter::~Win32RawDataWriter()
     m_handle = INVALID_HANDLE_VALUE;
 }
 
+
+// implement Win32VirtualDiskVolumeRawDataReader methods...
+Win32VirtualDiskVolumeRawDataReader::Win32VirtualDiskVolumeRawDataReader(const std::string& virtualDiskFilePath, bool autoDetach)
+{
+    // TODO
+}
+
+~Win32VirtualDiskVolumeRawDataReader::Win32VirtualDiskVolumeRawDataReader()
+{
+    // TODO
+}
+
+bool Win32VirtualDiskVolumeRawDataReader::Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
+{
+    // TODO
+    return true;
+}
+
+bool Win32VirtualDiskVolumeRawDataReader::Ok()
+{
+    // TODO
+    return true;
+}
+
+ErrCodeType Win32VirtualDiskVolumeRawDataReader::Error()
+{
+    // TODO
+    return 0;
+}
+
+// implement Win32VirtualDiskVolumeRawDataWriter methods...
+Win32VirtualDiskVolumeRawDataWriter::Win32VirtualDiskVolumeRawDataWriter(const std::string& path, bool autoDetach)
+{
+    // TODO
+}
+
+~Win32VirtualDiskVolumeRawDataWriter::Win32VirtualDiskVolumeRawDataWriter()
+{
+    // TODO
+}
+
+bool Win32VirtualDiskVolumeRawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
+{
+    // TODO
+    return true;
+}
+
+bool Win32VirtualDiskVolumeRawDataWriter::Ok()
+{
+    // TODO
+    return true;
+}
+
+bool Win32VirtualDiskVolumeRawDataWriter::Flush()
+{
+    // TODO
+    return true;
+}
+
+ErrCodeType Win32VirtualDiskVolumeRawDataWriter::Error()
+{
+    // TODO
+    return 0;
+}
+
+// implement static functions...
 bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode)
 {
     std::wstring wPath = Utf8ToUtf16(path);
@@ -185,6 +257,58 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
     return true;
 }
 
+static bool volumeprotect::rawio::win32::CreateFixedVHDFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    // TODO
+    return false;
+}
 
+static bool volumeprotect::rawio::win32::CreateFixedVHDXFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    // TODO
+    return false;
+}
 
-//#endif
+static bool volumeprotect::rawio::win32::CreateDynamicVHDFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    // TODO
+    return false;
+}
+
+static bool volumeprotect::rawio::win32::CreateDynamicVHDXFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    // TODO
+    return false;
+}
+
+static bool volumeprotect::rawio::win32::InitVirtualDiskGPT(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    // TODO
+    return false;
+}
+
+static bool volumeprotect::rawio::win32::AttachVirtualDisk(
+    const std::string&  virtualDiskFilePath,
+    std::string&        mountedDevicePath,
+    ErrorCodeType&      errorCode)
+{
+    // TODO
+    return false;
+}
+
+#endif

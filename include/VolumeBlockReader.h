@@ -3,7 +3,7 @@
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
-#include "native/NativeIOInterface.h"
+#include "native/RawIO.h"
 
 namespace volumeprotect {
 
@@ -20,7 +20,7 @@ struct VOLUMEPROTECT_API VolumeBlockReaderParam {
     SourceType  sourceType;
     std::string sourcePath;
     uint64_t    sourceOffset;
-    std::shared_ptr<native::DataReader>         dataReader;
+    std::shared_ptr<rawio::RawDataReader>         dataReader;
     std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
     std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
 
@@ -72,7 +72,7 @@ private:
     // mutable fields
     std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
     std::thread                                         m_readerThread;
-    std::shared_ptr<volumeprotect::native::DataReader>  m_dataReader;
+    std::shared_ptr<volumeprotect::rawio::RawDataReader>  m_dataReader;
 
     uint64_t    m_maxIndex      { 0 };
     uint64_t    m_currentIndex  { 0 };

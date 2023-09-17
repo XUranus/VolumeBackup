@@ -1,8 +1,8 @@
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
-#include "native/NativeIOInterface.h"
-
+#include "native/RawIO.h"
+#include "native/FileSystemAPI.h"
 using namespace volumeprotect;
 
 static std::unordered_map<int, std::string> g_statusStringTable {
@@ -39,8 +39,8 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
     // 1. check volume size
     uint64_t volumeSize = 0;
     try {
-        volumeSize = native::ReadVolumeSize(backupConfig.volumePath);
-    } catch (const native::SystemApiException& e) {
+        volumeSize = fsapi::ReadVolumeSize(backupConfig.volumePath);
+    } catch (const fsapi::SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return nullptr;
     }
@@ -49,10 +49,10 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
     }
 
     // 2. check dir existence
-    if (!native::IsDirectoryExists(backupConfig.outputCopyDataDirPath) ||
-        !native::IsDirectoryExists(backupConfig.outputCopyMetaDirPath) ||
+    if (!fsapi::IsDirectoryExists(backupConfig.outputCopyDataDirPath) ||
+        !fsapi::IsDirectoryExists(backupConfig.outputCopyMetaDirPath) ||
         (backupConfig.copyType == CopyType::INCREMENT &&
-        !native::IsDirectoryExists(backupConfig.prevCopyMetaDirPath))) {
+        !fsapi::IsDirectoryExists(backupConfig.prevCopyMetaDirPath))) {
         ERRLOG("failed to prepare copy directory");
         return nullptr;
     }
@@ -65,8 +65,8 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
     // 1. check volume size
     uint64_t volumeSize = 0;
     try {
-        volumeSize = native::ReadVolumeSize(restoreConfig.volumePath);
-    } catch (const native::SystemApiException& e) {
+        volumeSize = fsapi::ReadVolumeSize(restoreConfig.volumePath);
+    } catch (const fsapi::SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return nullptr;
     }
@@ -75,8 +75,8 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
     }
 
     // 2. check dir existence
-    if (!native::IsDirectoryExists(restoreConfig.copyDataDirPath) ||
-        !native::IsDirectoryExists(restoreConfig.copyMetaDirPath)) {
+    if (!fsapi::IsDirectoryExists(restoreConfig.copyDataDirPath) ||
+        !fsapi::IsDirectoryExists(restoreConfig.copyMetaDirPath)) {
         ERRLOG("failed to prepare copy directory");
         return nullptr;
     }

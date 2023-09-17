@@ -1,3 +1,5 @@
+#ifdef __linux__
+
 #ifndef VOLUMEBACKUP_NATIVE_POSIX_RAW_IO_HEADER
 #define VOLUMEBACKUP_NATIVE_POSIX_RAW_IO_HEADER
 
@@ -5,8 +7,9 @@
 #include "RawIO.h"
 
 // Raw I/O Reader/Writer for *unix platform posix API implementation
-
+namespace volumeprotect {
 namespace rawio {
+namespace posix {
 
 // PosixRawDataReader can read from any block device or common file at given offset
 class PosixRawDataReader : public RawDataReader {
@@ -39,8 +42,9 @@ private:
     uint64_t m_shiftOffset { 0 };
 };
 
-static bool TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode);
-
+}
+}
 }
 
+#endif
 #endif

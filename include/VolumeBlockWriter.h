@@ -3,7 +3,7 @@
 
 #include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
-#include "native/NativeIOInterface.h"
+#include "native/RawIO.h"
 
 namespace volumeprotect {
 
@@ -20,7 +20,7 @@ struct VOLUMEPROTECT_API VolumeBlockWriterParam {
     std::string     targetPath;
     std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
     std::shared_ptr<VolumeTaskSharedContext>    sharedContext;
-    std::shared_ptr<native::DataWriter>         dataWriter;
+    std::shared_ptr<rawio::RawDataWriter>         dataWriter;
 };
 
 class VOLUMEPROTECT_API VolumeBlockWriter : public StatefulTask {
@@ -57,7 +57,7 @@ private:
     // mutable fields
     std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext { nullptr };
     std::thread                                         m_writerThread;
-    std::shared_ptr<volumeprotect::native::DataWriter>  m_dataWriter    { nullptr };
+    std::shared_ptr<volumeprotect::rawio::RawDataWriter>  m_dataWriter    { nullptr };
 };
 
 }

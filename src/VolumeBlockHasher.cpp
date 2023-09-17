@@ -5,6 +5,7 @@
 
 #include "Logger.h"
 #include "VolumeProtectTaskContext.h"
+#include "native/FileSystemAPI.h"
 #include "VolumeBlockHasher.h"
 
 namespace {

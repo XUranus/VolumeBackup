@@ -2,20 +2,13 @@
 #define VOLUMEBACKUP_NATIVE_RAW_IO_HEADER
 
 #include "VolumeProtectMacros.h"
+#include <string>
 
 /**
  * @brief this module is used to shield native I/O interface differences to provide a unified I/O layer
  */
 namespace volumeprotect {
 namespace rawio {
-
-#ifdef _WIN32
-using ErrCodeType = DWORD;
-#endif
-
-#ifdef __linux__
-using ErrCodeType = int;
-#endif
 
 /**
  * @brief RawDataReader and RawDataWriter provide basic raw I/O interface
@@ -40,24 +33,31 @@ public:
     virtual ~DataWriter() = default;
 };
 
-enum class RAW_IO_FACTORY_TYPE_ENUM {
-    POSIX_FILE      = 0,
-    POSIX_DEVICE    = 1,
-    WIN32_FILE      = 2,
-    WIN32_DEVICE    = 3
+// param struct to build RawDataReader/RawDataWriter for each backup restore session
+// to read/write from/to copyfile
+struct SessionCopyRawIOParam {
+    CopyFormat          copyFormat;
+    std::string         copyFilePath;
+    uint64_t            volumeOffset;
+    uint64_t            length;
 };
 
-
-static bool PrepareTargetCopy(
-    VolumeBackupConfig
+static bool PrepareBackupCopy(
     CopyFormat          copyFormat,
     uint64_t            volumeSize,
     const std::string&  copyDataDirPath,
     const std::string&  copyName);
     
-static std::unique_ptr<DataReader> OpenRawDataReader(RAW_IO_FACTORY_ENUM readerType, const std::string& path);
-static std::unique_ptr<DataWriter> CreateRawDataWriter(RAW_IO_FACTORY_ENUM writerType, const std::string& path);
+static std::unique_ptr<RawDataReader> OpenRawDataCopyReader(const SessionCopyRawIOParam& param);
 
+static std::unique_ptr<RawDataWriter> OpenRawDataCopyWriter(const SessionCopyRawIOParam& param);
+
+static std::unique_ptr<RawDataReader> OpenRawDataVolumeReader(const std::string& volumePath);
+
+static std::unique_ptr<RawDataWriter> OpenRawDataVolumeWriter(const std::string& volumePath);
+
+// implementation depend on OS platform
+static bool TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode);
 
 }
 };

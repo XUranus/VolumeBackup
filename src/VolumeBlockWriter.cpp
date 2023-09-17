@@ -1,6 +1,6 @@
 #include "Logger.h"
 #include "VolumeProtector.h"
-#include "native/NativeIOInterface.h"
+#include "native/RawIO.h"
 #include "VolumeBlockWriter.h"
 
 using namespace volumeprotect;
@@ -11,23 +11,23 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
-    std::shared_ptr<native::DataWriter> dataWriter = nullptr;
-    if (native::IsFileExists(copyFilePath) && native::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
+    std::shared_ptr<rawio::RawDataWriter> dataWriter = nullptr;
+    if (fsapi::IsFileExists(copyFilePath) && fsapi::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
         // should be full copy file, this task should be forever increment backup
         INFOLOG("copy file already exists, using %s", copyFilePath.c_str());
     } else {
         // truncate copy file to session size
         DBGLOG("truncate new target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
-        native::ErrCodeType errorCode = 0;
-        if (!native::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
+        fsapi::ErrCodeType errorCode = 0;
+        if (!fsapi::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
             ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
                 copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
             return nullptr;
         }
     }
     // init data writer
-    dataWriter = std::dynamic_pointer_cast<native::DataWriter>(
-        std::make_shared<native::FileDataWriter>(copyFilePath));
+    dataWriter = std::dynamic_pointer_cast<rawio::RawDataWriter>(
+        std::make_shared<fsapi::FileDataWriter>(copyFilePath));
     if (dataWriter == nullptr || !dataWriter->Ok()) {
         ERRLOG("failed to init FileDataWriter, path = %s, error = %u", copyFilePath.c_str(), dataWriter->Error());
         return nullptr;
@@ -49,8 +49,8 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
 {
     std::string volumePath = sharedConfig->volumePath;
     // check target block device valid to write
-    auto dataWriter = std::dynamic_pointer_cast<native::DataWriter>(
-        std::make_shared<native::VolumeDataWriter>(volumePath));
+    auto dataWriter = std::dynamic_pointer_cast<rawio::RawDataWriter>(
+        std::make_shared<fsapi::VolumeDataWriter>(volumePath));
     if (!dataWriter->Ok()) {
         ERRLOG("failed to init VolumeDataWriter, path = %s, error = %u", volumePath.c_str(), dataWriter->Error());
         return nullptr;
@@ -104,7 +104,7 @@ VolumeBlockWriter::VolumeBlockWriter(const VolumeBlockWriterParam& param)
 void VolumeBlockWriter::MainThread()
 {
     VolumeConsumeBlock consumeBlock {};
-    native::ErrCodeType errorCode = 0;
+    fsapi::ErrCodeType errorCode = 0;
     DBGLOG("writer thread start");
 
     while (true) {

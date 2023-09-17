@@ -1,5 +1,6 @@
 #include "Logger.h"
-#include "native/NativeIOInterface.h"
+#include "native/RawIO.h"
+#include "native/FileSystemAPI.h"
 #include "VolumeBlockReader.h"
 
 using namespace volumeprotect;
@@ -14,18 +15,21 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildVolumeReader(
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     std::string volumePath = sharedConfig->volumePath;
-    uint64_t offset = sharedConfig->sessionOffset;
-    auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
-        std::make_shared<native::VolumeDataReader>(volumePath));
+
+    std::shared_ptr<RawDataReader> dataReader = rawio::OpenRawDataVolumeReader(volumePath);
+    if (dataReader == nullptr) {
+        ERRLOG("failed to build volume data reader");
+        return nullptr;
+    }
     if (!dataReader->Ok()) {
-        ERRLOG("failed to init VolumeDataReader, path = %s, error = %u",
+        ERRLOG("failed to init volume data reader, path = %s, error = %u",
             volumePath.c_str(), dataReader->Error());
         return nullptr;
     }
     VolumeBlockReaderParam param {
         SourceType::VOLUME,
         volumePath,
-        offset,
+        sharedConfig->sessionOffset,
         dataReader,
         sharedConfig,
         sharedContext
@@ -40,11 +44,21 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
     uint64_t offset = 0; // read copy file from beginning
-    auto dataReader = std::dynamic_pointer_cast<native::DataReader>(
-        std::make_shared<native::FileDataReader>(copyFilePath));
+
+    SessionCopyRawIOParam sessionIOParam {};
+    sessionIOParam.copyFormat = sharedConfig->copyFormat;
+    sessionIOParam.volumeOffset = sharedConfig->sessionOffset;
+    sessionIOParam.length = sharedConfig->sessionSize;
+    sessionIOParam.copyFilePath = sharedConfig->copyFilePath;
+
+    std::shared_ptr<RawDataReader> dataReader = rawio::OpenRawDataCopyReader(sessionIOParam);
+    if (dataReader == nullptr) {
+        ERRLOG("failed to build copy data reader");
+        return nullptr;
+    }
     if (!dataReader->Ok()) {
-        ERRLOG("failed to init FileDataReader, path = %s, error = %u",
-            copyFilePath.c_str(), dataReader->Error());
+        ERRLOG("failed to init copy data reader, format = %d, copyfile = %s, error = %u",
+            sharedConfig->copyFormat, sharedConfig->copyFilePath.c_str(), dataReader->Error());
         return nullptr;
     }
     VolumeBlockReaderParam param {
@@ -231,7 +245,7 @@ uint8_t* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
 
 bool VolumeBlockReader::ReadBlock(uint8_t* buffer, uint32_t& nBytesToRead)
 {
-    native::ErrCodeType errorCode = 0;
+    fsapi::ErrCodeType errorCode = 0;
     uint32_t blockSize = m_sharedConfig->blockSize;
     uint64_t currentOffset = m_baseOffset + m_currentIndex * m_sharedConfig->blockSize;
     uint64_t bytesRemain = m_sharedConfig->sessionSize - m_currentIndex * blockSize;

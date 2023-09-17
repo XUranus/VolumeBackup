@@ -3,6 +3,7 @@
 #define VOLUMEBACKUP_PROTECT_FACADE_HEADER
 
 #include "VolumeProtectMacros.h"
+#include <string>
 
 // volume backup application facade
 namespace volumeprotect {
@@ -28,9 +29,20 @@ enum class VOLUMEPROTECT_API CopyType {
     INCREMENT = 1   // the copy is increment copy
 };
 
+enum class VOLUMEPROTECT_API CopyFormat {
+    BIN = 0,            // save as sector-by-sector *.bin/*.bin.partX file with no header (allow fragmentation)
+    IMAGE = 1,          // save as sector-by-sector *.img file with no header (force one fragmentation)
+    VHD_FIXED = 2,      // save as fixed *.vhd file, no size limit (force one fragmentation)
+    VHD_DYNAMIC = 3,    // save as dynamic *.vhd file, limit volume size to 2040GB (force one fragmentation)
+    VHDX_FIXED = 4,     // save as fixed *.vhdx file, limit volume size to 64TB (force one fragmentation)
+    VHDX_DYNAMIC = 5    // save as dyamic *.vhdx file, limit volume size to 64TB (force one fragmentation)
+};
+
 // immutable config, used to build volume full/increment backup task
 struct VOLUMEPROTECT_API VolumeBackupConfig {
     CopyType        copyType        { CopyType::FULL };     // type of target copy to be generated
+    CopyFormat      copyFormat      { CopyFormat::BIN };  // format of target copy to be generated
+    std::string     copyName;
     std::string     volumePath;                             // path of the block device (volume)
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
     std::string	    outputCopyDataDirPath;

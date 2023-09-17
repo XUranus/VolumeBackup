@@ -1,5 +1,6 @@
 #include "Logger.h"
 #include "VolumeUtils.h"
+#include <string>
 
 namespace {
 #ifdef _WIN32
@@ -9,42 +10,57 @@ namespace {
 #endif
     constexpr auto VOLUME_COPY_META_JSON_FILENAME = "volumecopy.meta.json";
     constexpr auto SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX = ".sha256.meta.bin";
-    constexpr auto COPY_BINARY_FILENAME_SUFFIX = ".copydata.bin";
+    constexpr auto COPY_DATA_BIN_FILENAME_SUFFIX = ".copydata.bin";
+    constexpr auto COPY_DATA_BIN_PARTED_FILENAME_SUFFIX = ".copydata.bin.part";
+    constexpr auto COPY_DATA_VHD_FILENAME_SUFFIX = ".copydata.vhd";
+    constexpr auto COPY_DATA_VHDX_FILENAME_SUFFIX = ".copydata.vhdx";
     constexpr auto WRITER_BITMAP_FILENAME_SUFFIX = ".checkpoint.bin";
 }
 
 using namespace volumeprotect;
 
-inline std::string ConcatSessionFileName(uint64_t sessionOffset, uint64_t sessionSize, const std::string& suffix)
-{
-    return std::to_string(sessionOffset) + "." + std::to_string(sessionSize) + suffix;
-}
-
 std::string util::GetChecksumBinPath(
-    const std::string& copyMetaDirPath,
-    uint64_t sessionOffset,
-    uint64_t sessionSize)
+    const std::string&  copyMetaDirPath,
+    const std::string&  copyName,
+    int                 sessionIndex)
 {
-    std::string filename = ConcatSessionFileName(sessionOffset, sessionSize, SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX);
+    std::string filename = copyName + "." + std::to_string(sessionIndex) + SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX;
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
-std::string util::GetCopyFilePath(
-    const std::string& copyDataDirPath,
-    uint64_t sessionOffset,
-    uint64_t sessionSize)
+std::string util::GetCopyDataFilePath(
+    const std::string&  copyDataDirPath,
+    const std::string&  copyName,
+    CopyFormat          copyFormat,
+    int                 sessionIndex)
 {
-    std::string filename = ConcatSessionFileName(sessionOffset, sessionSize, COPY_BINARY_FILENAME_SUFFIX);
+    std::string suffix = COPY_DATA_BIN_FILENAME_SUFFIX;
+    std::string filename;
+    if (copyFormat == CopyFormat::BIN && sessionIndex == 0) {
+        filename = copyName + COPY_DATA_BIN_FILENAME_SUFFIX;        
+    } else if (copyFormat == CopyFormat::BIN && sessionIndex != 0) {
+        filename = copyName + COPY_DATA_BIN_PARTED_FILENAME_SUFFIX + std::to_string(sessionIndex);
+    } else if (copyFormat == CopyFormat::VHD_FIXED || copyFormat == CopyFormat::VHD_DYNAMIC) {
+        filename = copyName + COPY_DATA_VHD_FILENAME_SUFFIX;
+    } else if (copyFormat == CopyFormat::VHDX_FIXED || copyFormat == CopyFormat::VHDX_DYNAMIC) {
+        filename = copyName + COPY_DATA_VHDX_FILENAME_SUFFIX;
+    }
     return copyDataDirPath + SEPARATOR + filename;
 }
 
 std::string util::GetWriterBitmapFilePath(
-    const std::string&          copyMetaDirPath,
-    uint64_t                    sessionOffset,
-    uint64_t                    sessionSize)
+    const std::string&  copyMetaDirPath,
+    const std::string&  copyName,
+    int                 sessionIndex)
 {
-    std::string filename = ConcatSessionFileName(sessionOffset, sessionSize, WRITER_BITMAP_FILENAME_SUFFIX);
+    std::string filename = copyName + "." + std::to_string(sessionIndex) + WRITER_BITMAP_FILENAME_SUFFIX;
     return copyMetaDirPath + SEPARATOR + filename;
+}
+
+std::string util::GetFileName(const std::string& fullpath)
+{
+    auto pos = fullpath.rfind(SEPARATOR);
+    return pos == std::string::npos ? fullpath : fullpath.substr(pos + 1);
 }
 
 bool util::WriteVolumeCopyMeta(

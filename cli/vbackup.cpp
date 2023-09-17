@@ -1,4 +1,4 @@
-#include "native/NativeIOInterface.h"
+#include "native/RawIO.h"
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -72,7 +72,7 @@ int ExecVolumeBackup(
     const std::string& outputCopyDataDirPath,
     const std::string& outputCopyMetaDirPath)
 {
-    uint32_t hasherWorkerNum = native::ProcessorsNum();
+    uint32_t hasherWorkerNum = fsapi::ProcessorsNum();
     std::cout << "using " << hasherWorkerNum << " processing units" << std::endl;
 
     VolumeBackupConfig backupConfig {};

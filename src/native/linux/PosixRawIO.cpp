@@ -16,7 +16,9 @@ namespace {
     const int INVALID_POSIX_FD_VALUE = -1;
 }
 
-using namespace rawio;
+using namespace volumeprotect;
+using namespace volumeprotect::rawio;
+using namespace volumeprotect::rawio::posix;
 
 PosixRawDataReader::PosixRawDataReader(const std::string& path, int flag, uint64_t shiftOffset)
     : m_flag(flag), m_shiftOffset(shiftOffset)
@@ -109,21 +111,10 @@ PosixRawDataWriter::~PosixRawDataWriter()
     m_fd = INVALID_POSIX_FD_VALUE;
 }
 
-bool native::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode)
-{
-    int fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    if (fd < 0) {
-        return false;
-    }
-    ::close(fd);
-    if (::truncate(path.c_str(), size) < 0) {
-        errorCode = static_cast<ErrCodeType>(errno);
-        return false;
-    }
-    return true;
-}
-
-static bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode)
+bool volumeprotect::rawio::TruncateCreateFile(
+    const std::string&  path,
+    uint64_t            size,
+    ErrCodeType&        errorCode)
 {
     int fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
     if (fd < 0) {

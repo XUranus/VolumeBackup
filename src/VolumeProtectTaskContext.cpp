@@ -284,13 +284,13 @@ CheckpointSnapshot::~CheckpointSnapshot()
 
 std::shared_ptr<CheckpointSnapshot> CheckpointSnapshot::LoadFrom(const std::string& filepath)
 {
-    uint64_t totalSize = native::GetFileSize(filepath);
+    uint64_t totalSize = fsapi::GetFileSize(filepath);
     if (totalSize == 0 || totalSize % NUM2 != 0) {
         ERRLOG("size of checkpoint snapshot file should be divided by 3!, length = %", totalSize);
         return nullptr;
     }
     uint64_t bitmapBytes = totalSize / NUM2;
-    uint8_t* buffer = native::ReadBinaryBuffer(filepath, totalSize);
+    uint8_t* buffer = fsapi::ReadBinaryBuffer(filepath, totalSize);
     if (buffer == nullptr) {
         ERRLOG("failed to read checkpoint snapshot file, path: %s", filepath.c_str());
         return nullptr;
@@ -312,7 +312,7 @@ bool CheckpointSnapshot::SaveTo(const std::string& filepath) const
     memcpy(buffer + offset, processedBitmapBuffer, bitmapBufferBytesLength);
     offset += bitmapBufferBytesLength;
     memcpy(buffer + offset, writtenBitmapBuffer, bitmapBufferBytesLength);
-    bool ret = native::WriteBinaryBuffer(filepath, buffer, totalSize);
+    bool ret = fsapi::WriteBinaryBuffer(filepath, buffer, totalSize);
     delete[] buffer;
     buffer = nullptr;
     return ret;
@@ -324,7 +324,7 @@ bool CheckpointSnapshot::SaveTo(const std::string& filepath) const
 // any session started (completed/crashed and restarted) is considered "Restarted"
 bool VolumeTaskCheckpointTrait::IsSessionRestarted(std::shared_ptr<VolumeTaskSession> session) const
 {
-    return native::IsFileExists(session->sharedConfig->checkpointFilePath);
+    return fsapi::IsFileExists(session->sharedConfig->checkpointFilePath);
 }
 
 bool VolumeTaskCheckpointTrait::IsCheckpointEnabled(std::shared_ptr<VolumeTaskSession> session) const
@@ -391,7 +391,7 @@ bool VolumeTaskCheckpointTrait::FlushSessionLatestHashingTable(std::shared_ptr<V
     if (session->sharedConfig->hasherEnabled && latestChecksumTable != nullptr) {
         std::string filepath = session->sharedConfig->lastestChecksumBinPath;
         DBGLOG("save latest hash checksum table to %s, size = %llu", filepath.c_str(), latestChecksumTableSize);
-        if (!native::WriteBinaryBuffer(filepath, latestChecksumTable, latestChecksumTableSize)) {
+        if (!fsapi::WriteBinaryBuffer(filepath, latestChecksumTable, latestChecksumTableSize)) {
             ERRLOG("failed to save session hashing context");
             return false;
         }
@@ -509,7 +509,7 @@ bool VolumeTaskCheckpointTrait::ReadLatestHashingTable(std::shared_ptr<VolumeTas
 {
     std::string lastestChecksumBinPath = session->sharedConfig->lastestChecksumBinPath;
     uint64_t lastestChecksumTableSize = session->sharedContext->hashingContext->lastestSize;
-    uint8_t* buffer = native::ReadBinaryBuffer(lastestChecksumBinPath, lastestChecksumTableSize);
+    uint8_t* buffer = fsapi::ReadBinaryBuffer(lastestChecksumBinPath, lastestChecksumTableSize);
     if (buffer == nullptr) {
         ERRLOG("failed to read latest hashing table from %s", lastestChecksumBinPath.c_str());
         return false;

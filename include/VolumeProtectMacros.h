@@ -22,6 +22,14 @@
 #include <map>
 #include <unordered_map>
 
+#ifdef _WIN32
+using ErrCodeType = DWORD;
+#endif
+
+#ifdef __linux__
+using ErrCodeType = int;
+#endif
+
  /*
  * @brief
  * add -DLIBRARY_EXPORT build param to export lib on Win32 MSVC

@@ -4,8 +4,9 @@
 #include "native/linux/DeviceMapperControl.h"
 #include "Json.h"
 #include "Logger.h"
-#include "NativeIOInterface.h"
+#include "RawIO.h"
 #include "VolumeUtils.h"
+#include "native/FileSystemAPI.h"
 #include "native/linux/LoopDeviceControl.h"
 
 #ifdef __linux
@@ -64,10 +65,17 @@ bool LinuxMountProvider::MountCopy(const LinuxCopyMountConfig& mountConfig)
         return false;
     }
     // build loopback device from copy slice
-    for (const auto& range : volumeCopyMeta.copySlices) {
-        uint64_t volumeOffset = range.first;
-        uint64_t size = range.second;
-        std::string copyFilePath = util::GetCopyFilePath(mountConfig.copyDataDirPath, volumeOffset, size);
+    std::string copyName = volumeCopyMeta.copyName;
+    CopyFormat copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
+    if (copyFormat != CopyFormat::BIN) {
+        ERRLOG("unsupport copy format %d for linux mount provider!", volumeCopyMeta.copyFormat);
+        return false;
+    }
+    for (const auto& segment : volumeCopyMeta.segments) {
+        uint64_t volumeOffset = segment.offset;
+        uint64_t size = segment.length;
+        int sessionIndex = segment.index;
+        std::string copyFilePath = util::GetCopyDataFilePath(mountConfig.copyDataDirPath, copyName, copyFormat, sessionIndex);
         std::string loopDevicePath;
         if (!AttachReadOnlyLoopDevice(copyFilePath, loopDevicePath)) {
             return false;
@@ -328,8 +336,8 @@ bool LinuxMountProvider::CreateReadOnlyDmDevice(
         std::string blockDevicePath = copySlice.loopDevicePath;
         uint64_t sectorSize = 0LLU;
         try {
-            sectorSize = native::ReadSectorSizeLinux(blockDevicePath);
-        } catch (const native::SystemApiException& e) {
+            sectorSize = fsapi::ReadSectorSizeLinux(blockDevicePath);
+        } catch (const fsapi::SystemApiException& e) {
             RECORD_ERROR(e.what());
             return false;
         }

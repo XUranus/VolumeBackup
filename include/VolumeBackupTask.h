@@ -26,7 +26,7 @@ private:
     virtual bool InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
     bool IsIncrementBackup() const;
     void SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session);
-    VolumeTaskSession NewVolumeTaskSession(uint64_t sessionOffset, uint64_t sessionSize) const;
+    VolumeTaskSession NewVolumeTaskSession(uint64_t sessionOffset, uint64_t sessionSize, int sessionIndex) const;
     bool InitHashingContext(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta) const;

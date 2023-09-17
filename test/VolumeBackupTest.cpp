@@ -53,19 +53,19 @@ protected:
     }
 };
 
-class DataReaderMock : public native::DataReader {
+class DataReaderMock : public rawio::RawDataReader {
 public:
-    MOCK_METHOD(bool, Read, (uint64_t offset, uint8_t* buffer, int length, native::ErrCodeType& errorCode), (override));
+    MOCK_METHOD(bool, Read, (uint64_t offset, uint8_t* buffer, int length, fsapi::ErrCodeType& errorCode), (override));
     MOCK_METHOD(bool, Ok, (), (override));
-    MOCK_METHOD(native::ErrCodeType, Error, (), (override));
+    MOCK_METHOD(fsapi::ErrCodeType, Error, (), (override));
 };
 
-class DataWriterMock : public native::DataWriter {
+class DataWriterMock : public rawio::RawDataWriter {
 public:
-    MOCK_METHOD(bool, Write, (uint64_t offset, uint8_t* buffer, int length, native::ErrCodeType& errorCode), (override));
+    MOCK_METHOD(bool, Write, (uint64_t offset, uint8_t* buffer, int length, fsapi::ErrCodeType& errorCode), (override));
     MOCK_METHOD(bool, Ok, (), (override));
     MOCK_METHOD(bool, Flush, (), (override));
-    MOCK_METHOD(native::ErrCodeType, Error, (), (override));
+    MOCK_METHOD(fsapi::ErrCodeType, Error, (), (override));
 };
 
 static void InitSessionSharedConfig(std::shared_ptr<VolumeTaskSession> session)
@@ -104,7 +104,7 @@ static void InitSessionSharedContext(std::shared_ptr<VolumeTaskSession> session)
 
 static void InitSessionBlockVolumeReader(
     std::shared_ptr<VolumeTaskSession> session,
-    std::shared_ptr<native::DataReader> dataReader)
+    std::shared_ptr<rawio::RawDataReader> dataReader)
 {
     VolumeBlockReaderParam readerParam {
         SourceType::VOLUME,
@@ -120,7 +120,7 @@ static void InitSessionBlockVolumeReader(
 
 static void InitSessionBlockCopyWriter(
     std::shared_ptr<VolumeTaskSession> session,
-    std::shared_ptr<native::DataWriter> dataWriter)
+    std::shared_ptr<rawio::RawDataWriter> dataWriter)
 {
     VolumeBlockWriterParam writerParam {
         TargetType::COPYFILE,
@@ -220,7 +220,7 @@ bool VolumeBackupTaskMock::InitBackupSessionTaskExecutor(std::shared_ptr<VolumeT
     EXPECT_CALL(*dataReaderMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataReaderMock, Error())
-        .WillRepeatedly(Return(static_cast<native::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
 
     auto dataWriterMock = std::make_shared<DataWriterMock>();
     EXPECT_CALL(*dataWriterMock, Write(_, _, _, _))
@@ -228,13 +228,13 @@ bool VolumeBackupTaskMock::InitBackupSessionTaskExecutor(std::shared_ptr<VolumeT
     EXPECT_CALL(*dataWriterMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataWriterMock, Error())
-        .WillRepeatedly(Return(static_cast<native::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
     EXPECT_CALL(*dataWriterMock, Flush())
         .WillRepeatedly(Return(true));
 
     // init session
-    InitSessionBlockVolumeReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
-    InitSessionBlockCopyWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
+    InitSessionBlockVolumeReader(session, std::dynamic_pointer_cast<rawio::RawDataReader>(dataReaderMock));
+    InitSessionBlockCopyWriter(session, std::dynamic_pointer_cast<rawio::RawDataWriter>(dataWriterMock));
     InitSessionBlockHasher(session);
     return true;
 }
@@ -411,7 +411,7 @@ TEST_F(VolumeBackupTest, VolumeBackTask_FailToSaveCopyMetaJson)
 
 static void InitSessionBlockCopyReader(
     std::shared_ptr<VolumeTaskSession> session,
-    std::shared_ptr<native::DataReader> dataReader)
+    std::shared_ptr<rawio::RawDataReader> dataReader)
 {
     VolumeBlockReaderParam readerParam {
         SourceType::COPYFILE,
@@ -427,7 +427,7 @@ static void InitSessionBlockCopyReader(
 
 static void InitSessionBlockVolumeWriter(
     std::shared_ptr<VolumeTaskSession> session,
-    std::shared_ptr<native::DataWriter> dataWriter)
+    std::shared_ptr<rawio::RawDataWriter> dataWriter)
 {
     VolumeBlockWriterParam writerParam {
         TargetType::VOLUME,
@@ -482,7 +482,7 @@ bool VolumeRestoreTaskMock::InitRestoreSessionTaskExecutor(std::shared_ptr<Volum
     EXPECT_CALL(*dataReaderMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataReaderMock, Error())
-        .WillRepeatedly(Return(static_cast<native::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
 
     auto dataWriterMock = std::make_shared<DataWriterMock>();
     EXPECT_CALL(*dataWriterMock, Write(_, _, _, _))
@@ -490,13 +490,13 @@ bool VolumeRestoreTaskMock::InitRestoreSessionTaskExecutor(std::shared_ptr<Volum
     EXPECT_CALL(*dataWriterMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataWriterMock, Error())
-        .WillRepeatedly(Return(static_cast<native::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
     EXPECT_CALL(*dataWriterMock, Flush())
         .WillRepeatedly(Return(true));
 
     // init session
-    InitSessionBlockCopyReader(session, std::dynamic_pointer_cast<native::DataReader>(dataReaderMock));
-    InitSessionBlockVolumeWriter(session, std::dynamic_pointer_cast<native::DataWriter>(dataWriterMock));
+    InitSessionBlockCopyReader(session, std::dynamic_pointer_cast<rawio::RawDataReader>(dataReaderMock));
+    InitSessionBlockVolumeWriter(session, std::dynamic_pointer_cast<rawio::RawDataWriter>(dataWriterMock));
     return true;
 }
 

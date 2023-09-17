@@ -99,6 +99,7 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
     uint32_t        hasherWorkerNum;
     std::string     volumePath;
     std::string     copyFilePath;
+    CopyFormat      copyFormat;
 
     // immutable fields (for backup)
     std::string     lastestChecksumBinPath;
