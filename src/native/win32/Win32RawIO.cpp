@@ -157,7 +157,7 @@ Win32VirtualDiskVolumeRawDataReader::Win32VirtualDiskVolumeRawDataReader(const s
     // TODO
 }
 
-~Win32VirtualDiskVolumeRawDataReader::Win32VirtualDiskVolumeRawDataReader()
+Win32VirtualDiskVolumeRawDataReader::~Win32VirtualDiskVolumeRawDataReader()
 {
     // TODO
 }
@@ -186,7 +186,7 @@ Win32VirtualDiskVolumeRawDataWriter::Win32VirtualDiskVolumeRawDataWriter(const s
     // TODO
 }
 
-~Win32VirtualDiskVolumeRawDataWriter::Win32VirtualDiskVolumeRawDataWriter()
+Win32VirtualDiskVolumeRawDataWriter::~Win32VirtualDiskVolumeRawDataWriter()
 {
     // TODO
 }
@@ -259,7 +259,7 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
     return true;
 }
 
-static bool volumeprotect::rawio::win32::CreateFixedVHDFile(
+bool volumeprotect::rawio::win32::CreateFixedVHDFile(
     const std::string&  filePath,
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
@@ -268,7 +268,7 @@ static bool volumeprotect::rawio::win32::CreateFixedVHDFile(
     return false;
 }
 
-static bool volumeprotect::rawio::win32::CreateFixedVHDXFile(
+bool volumeprotect::rawio::win32::CreateFixedVHDXFile(
     const std::string&  filePath,
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
@@ -277,7 +277,7 @@ static bool volumeprotect::rawio::win32::CreateFixedVHDXFile(
     return false;
 }
 
-static bool volumeprotect::rawio::win32::CreateDynamicVHDFile(
+bool volumeprotect::rawio::win32::CreateDynamicVHDFile(
     const std::string&  filePath,
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
@@ -286,7 +286,7 @@ static bool volumeprotect::rawio::win32::CreateDynamicVHDFile(
     return false;
 }
 
-static bool volumeprotect::rawio::win32::CreateDynamicVHDXFile(
+bool volumeprotect::rawio::win32::CreateDynamicVHDXFile(
     const std::string&  filePath,
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
@@ -295,7 +295,7 @@ static bool volumeprotect::rawio::win32::CreateDynamicVHDXFile(
     return false;
 }
 
-static bool volumeprotect::rawio::win32::InitVirtualDiskGPT(
+bool volumeprotect::rawio::win32::InitVirtualDiskGPT(
     const std::string&  filePath,
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
@@ -304,10 +304,10 @@ static bool volumeprotect::rawio::win32::InitVirtualDiskGPT(
     return false;
 }
 
-static bool volumeprotect::rawio::win32::AttachVirtualDisk(
+bool volumeprotect::rawio::win32::AttachVirtualDisk(
     const std::string&  virtualDiskFilePath,
     std::string&        mountedDevicePath,
-    ErrorCodeType&      errorCode)
+    ErrCodeType&      errorCode)
 {
     // TODO
     return false;

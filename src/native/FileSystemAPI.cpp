@@ -34,6 +34,24 @@ namespace {
     constexpr auto DEFAULT_MKDIR_MASK = 0755;
 }
 
+#ifdef _WIN32
+// Implement common WIN32 API utils
+static std::wstring Utf8ToUtf16(const std::string& str)
+{
+    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+    std::wstring_convert<ConvertTypeX> converterX;
+    std::wstring wstr = converterX.from_bytes(str);
+    return wstr;
+}
+
+static std::string Utf16ToUtf8(const std::wstring& wstr)
+{
+    using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
+    std::wstring_convert<ConvertTypeX> converterX;
+    return converterX.to_bytes(wstr);
+}
+#endif
+
 SystemApiException::SystemApiException(ErrCodeType errorCode)
 {
     m_message = std::string("error code = ") + std::to_string(errorCode);

@@ -23,7 +23,7 @@ public:
     ErrCodeType Error() override;
 
 private:
-    int m_fd { INVALID_HANDLE_VALUE };
+    HANDLE m_handle { INVALID_HANDLE_VALUE };
     int m_flag { 0 };
     uint64_t m_shiftOffset { 0 };
 };
@@ -39,7 +39,7 @@ public:
     ErrCodeType Error() override;
 
 private:
-    int m_fd { INVALID_HANDLE_VALUE };
+    HANDLE m_handle { INVALID_HANDLE_VALUE };
     int m_flag { 0 };
     uint64_t m_shiftOffset { 0 };
 };
@@ -57,7 +57,7 @@ public:
     ErrCodeType Error() override;
 
 private:
-    int m_hVolume { INVALID_HANDLE_VALUE };     // handle to the volume device
+    HANDLE m_hVolume { INVALID_HANDLE_VALUE };     // handle to the volume device
     bool autoDetach { true };
 };
 
@@ -75,24 +75,24 @@ public:
     ErrCodeType Error() override;
 
 private:
-    int m_hVolume { INVALID_HANDLE_VALUE };     // handle to the volume device
+    HANDLE m_hVolume { INVALID_HANDLE_VALUE };     // handle to the volume device
     bool autoDetach { true };
 };
 
-static bool CreateFixedVHDFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateFixedVHDFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
 
-static bool CreateFixedVHDXFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateFixedVHDXFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
 
-static bool CreateDynamicVHDFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateDynamicVHDFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
 
-static bool CreateDynamicVHDXFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateDynamicVHDXFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
 
-static bool InitVirtualDiskGPT(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool InitVirtualDiskGPT(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
 
-static bool AttachVirtualDisk(
+bool AttachVirtualDisk(
     const std::string&  virtualDiskFilePath,
     std::string&        mountedDevicePath,
-    ErrorCodeType&      errorCode);
+    ErrCodeType&      errorCode);
 
 }
 }

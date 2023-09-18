@@ -43,18 +43,18 @@ struct SessionCopyRawIOParam {
     uint64_t            length;
 };
 
-static bool PrepareBackupCopy(const VolumeBackupConfig& config, uint64_t volumeSize);
+bool PrepareBackupCopy(const VolumeBackupConfig& config, uint64_t volumeSize);
     
-static std::shared_ptr<RawDataReader> OpenRawDataCopyReader(const SessionCopyRawIOParam& param);
+std::shared_ptr<RawDataReader> OpenRawDataCopyReader(const SessionCopyRawIOParam& param);
 
-static std::shared_ptr<RawDataWriter> OpenRawDataCopyWriter(const SessionCopyRawIOParam& param);
+std::shared_ptr<RawDataWriter> OpenRawDataCopyWriter(const SessionCopyRawIOParam& param);
 
-static std::shared_ptr<RawDataReader> OpenRawDataVolumeReader(const std::string& volumePath);
+std::shared_ptr<RawDataReader> OpenRawDataVolumeReader(const std::string& volumePath);
 
-static std::shared_ptr<RawDataWriter> OpenRawDataVolumeWriter(const std::string& volumePath);
+std::shared_ptr<RawDataWriter> OpenRawDataVolumeWriter(const std::string& volumePath);
 
 // implementation depend on OS platform
-static bool TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode);
+bool TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode);
 
 }
 };
