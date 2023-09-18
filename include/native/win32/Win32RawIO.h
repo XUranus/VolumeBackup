@@ -96,12 +96,16 @@ bool CreateDynamicVHDFile(const std::string& filePath, uint64_t volumeSize, ErrC
 
 bool CreateDynamicVHDXFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
 
-bool InitVirtualDiskGPT(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
-
-bool AttachVirtualDisk(
+bool AttachVirtualDiskCopy(
     const std::string&  virtualDiskFilePath,
-    std::string&        mountedDevicePath,
-    ErrCodeType&      errorCode);
+    std::string&        physicalDrivePath,
+    ErrCodeType&        errorCode);
+
+bool DetachVirtualDiskCopy(
+    const std::string&  virtualDiskFilePath,
+    ErrCodeType&        errorCode);
+
+bool InitVirtualDiskGPT(const std::string& physicalDrivePath, uint64_t volumeSize, ErrCodeType& errorCode);
 
 }
 }
