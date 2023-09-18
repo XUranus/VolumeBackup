@@ -77,13 +77,27 @@ TARGET_COMPILE_DEFINITIONS(
     PRIVATE -DLIBRARY_EXPORT
 )
 # link again dynamic libs
-TARGET_LINK_LIBRARIES(
-    ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
-    minijson
-    minilogger
-    # third part dependency
-    uuid
-)
+IF(${CMAKE_HOST_WIN32})
+    TARGET_LINK_LIBRARIES(
+        ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
+        minijson
+        minilogger
+        # third part win32 dependency (win32 msvc)
+        virtDisk
+        setupapi
+        uuid
+        Rpcrt4
+    )
+ELSE()
+    TARGET_LINK_LIBRARIES(
+        ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
+        minijson
+        minilogger
+        # third part dependency (linux gcc)
+        uuid
+    )
+ENDIF()
+
 
 # build a static library
 MESSAGE("Build libvolumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
@@ -98,13 +112,26 @@ SET_PROPERTY(
     PROPERTY CXX_STANDARD 11
 )
 # link againt static libs
-TARGET_LINK_LIBRARIES(
-    ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
-    minijson_static
-    minilogger_static
-    # third part dependency
-    uuid
-)
+IF(${CMAKE_HOST_WIN32})
+    TARGET_LINK_LIBRARIES(
+        ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
+        minijson_static
+        minilogger_static
+        # third part win32 dependency (win32 msvc)
+        virtDisk
+        setupapi
+        uuid
+        Rpcrt4
+    )
+ELSE()
+    TARGET_LINK_LIBRARIES(
+        ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
+        minijson_static
+        minilogger_static
+        # third part dependency (linux gcc)
+        uuid
+    )
+ENDIF()
 
 # set -DCMAKE_BUILD_TYPE=Debug to enable LLT, set -DCOVERAGE=ON to enable code coverage
 IF (CMAKE_BUILD_TYPE STREQUAL "Debug")

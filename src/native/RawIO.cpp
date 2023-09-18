@@ -42,7 +42,6 @@ static bool PrepareFragmentBinaryBackupCopy(
             sessionSize = volumeSize - sessionOffset;
         }
         sessionOffset += sessionSize;
-        ++sessionIndex;
         std::string fragmentFilePath = util::GetCopyDataFilePath(
             copyDataDirPath, copyName, CopyFormat::BIN, sessionIndex);
         if (!rawio::TruncateCreateFile(fragmentFilePath, sessionSize, errorCode)) {
@@ -50,6 +49,7 @@ static bool PrepareFragmentBinaryBackupCopy(
                 fragmentFilePath.c_str(), sessionSize, errorCode);
             return false;
         }
+        ++sessionIndex;
     }
     return true;
 }
@@ -78,25 +78,25 @@ bool rawio::PrepareBackupCopy(const VolumeBackupConfig& backupConfig, uint64_t v
         case static_cast<int>(CopyFormat::VHD_FIXED): {
             std::string virtualDiskPath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = CreateFixedVHDFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateFixedVHDFile(virtualDiskPath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHD_DYNAMIC): {
             std::string virtualDiskPath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = CreateDynamicVHDFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateDynamicVHDFile(virtualDiskPath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHDX_FIXED): {
             std::string virtualDiskPath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = CreateFixedVHDXFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateFixedVHDXFile(virtualDiskPath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC): {
             std::string virtualDiskPath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = CreateDynamicVHDXFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateDynamicVHDXFile(virtualDiskPath, volumeSize, errorCode);
             break;
         }
 #endif

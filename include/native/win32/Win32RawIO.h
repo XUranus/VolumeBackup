@@ -3,9 +3,18 @@
 #ifndef VOLUMEBACKUP_NATIVE_Win32_RAW_IO_HEADER
 #define VOLUMEBACKUP_NATIVE_Win32_RAW_IO_HEADER
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN 1
+#define UNICODE /* foring using WCHAR on windows */
+#define NOGDI
+#include <locale>
+#include <codecvt>
+#include <Windows.h>
+#include <winioctl.h>
+#endif
+
 #include "VolumeProtectMacros.h"
 #include "RawIO.h"
-#include <cstdint>
 
 // Raw I/O Reader/Writer for win32 subsystem using WIN32 API
 

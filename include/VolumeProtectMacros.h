@@ -23,7 +23,8 @@
 #include <unordered_map>
 
 #ifdef _WIN32
-using ErrCodeType = DWORD;
+// TODO
+using ErrCodeType = int;
 #endif
 
 #ifdef __linux__

@@ -66,6 +66,11 @@ bool VolumeBackupTask::Prepare()
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
     volumeCopyMeta.volumePath = volumePath;
 
+    if (rawio::PrepareBackupCopy(*m_backupConfig, m_volumeSize)) {
+        ERRLOG("failed to prepare backup copy");
+        return false;
+    }
+
     // validate increment backup
     if (IsIncrementBackup() && !ValidateIncrementBackup()) {
         ERRLOG("failed to validate increment backup");

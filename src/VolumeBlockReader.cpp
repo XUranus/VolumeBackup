@@ -44,7 +44,6 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
-    uint64_t offset = 0; // read copy file from beginning
 
     SessionCopyRawIOParam sessionIOParam {};
     sessionIOParam.copyFormat = sharedConfig->copyFormat;
@@ -65,7 +64,7 @@ std::shared_ptr<VolumeBlockReader> VolumeBlockReader::BuildCopyReader(
     VolumeBlockReaderParam param {
         SourceType::COPYFILE,
         copyFilePath,
-        offset,
+        sharedConfig->sessionOffset,
         dataReader,
         sharedConfig,
         sharedContext

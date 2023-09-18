@@ -12,6 +12,7 @@ namespace {
     constexpr auto SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX = ".sha256.meta.bin";
     constexpr auto COPY_DATA_BIN_FILENAME_SUFFIX = ".copydata.bin";
     constexpr auto COPY_DATA_BIN_PARTED_FILENAME_SUFFIX = ".copydata.bin.part";
+    constexpr auto COPY_DATA_IMAGE_FILENAME_SUFFIX = ".copydata.img";
     constexpr auto COPY_DATA_VHD_FILENAME_SUFFIX = ".copydata.vhd";
     constexpr auto COPY_DATA_VHDX_FILENAME_SUFFIX = ".copydata.vhdx";
     constexpr auto WRITER_BITMAP_FILENAME_SUFFIX = ".checkpoint.bin";
@@ -37,7 +38,9 @@ std::string util::GetCopyDataFilePath(
     std::string suffix = COPY_DATA_BIN_FILENAME_SUFFIX;
     std::string filename;
     if (copyFormat == CopyFormat::BIN && sessionIndex == 0) {
-        filename = copyName + COPY_DATA_BIN_FILENAME_SUFFIX;        
+        filename = copyName + COPY_DATA_BIN_FILENAME_SUFFIX;
+    } else if (copyFormat == CopyFormat::IMAGE) {
+        filename = copyName + COPY_DATA_IMAGE_FILENAME_SUFFIX;
     } else if (copyFormat == CopyFormat::BIN && sessionIndex != 0) {
         filename = copyName + COPY_DATA_BIN_PARTED_FILENAME_SUFFIX + std::to_string(sessionIndex);
     } else if (copyFormat == CopyFormat::VHD_FIXED || copyFormat == CopyFormat::VHD_DYNAMIC) {

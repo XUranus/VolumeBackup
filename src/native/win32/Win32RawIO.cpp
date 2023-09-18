@@ -11,9 +11,29 @@
 
 #include "win32/Win32RawIO.h"
 
+#include <Windows.h>
+#include <VirtDisk.h>
+#include <winioctl.h>
+#include <sddl.h>
+
+#include <setupapi.h>
+#include <devguid.h>
+#include <initguid.h>
+#include <strsafe.h>
+
+DEFINE_GUID(GUID_NULL,
+    0x00000000, 0x0000, 0x0000, 0x0000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+
+DEFINE_GUID(VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN,
+    0x00000000, 0x0000, 0x0000, 0x0000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+
 using namespace volumeprotect;
-using namespace volumeprotect::rawio;
-using namespace volumeprotect::rawio::win32;
+using namespace rawio;
+using namespace rawio::win32;
+
+namespace {
+    constexpr auto VIRTUAL_DISK_COPY_SPARE_SIZE = 16 * 512; // sparse size for reserved GPT
+}
 
 // Implement common WIN32 API utils
 static std::wstring Utf8ToUtf16(const std::string& str)
@@ -43,15 +63,32 @@ Win32RawDataReader::Win32RawDataReader(const std::string& path, int flag, uint64
     : m_flag(flag), m_shiftOffset(shiftOffset)
 {
     std::wstring wpath = Utf8ToUtf16(path);
+    DWORD bytesReturn = 0;
     m_handle = ::CreateFileW(
         wpath.c_str(),
         GENERIC_READ,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr,
+        NULL,
         OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS,
-        nullptr
+        NULL
     );
+    if (m_handle == INVALID_HANDLE_VALUE) {
+        return;
+    } 
+    if (!::DeviceIoControl(
+        m_handle,
+        FSCTL_ALLOW_EXTENDED_DASD_IO,
+        NULL,
+        0,
+        NULL,
+        0,
+        &bytesReturn,
+        NULL)) {
+        ::CloseHandle(m_handle);
+        m_handle = INVALID_HANDLE_VALUE;
+        return;
+    }
 }
 
 bool Win32RawDataReader::Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
@@ -95,15 +132,32 @@ Win32RawDataWriter::Win32RawDataWriter(const std::string& path, int flag, uint64
     : m_flag(flag), m_shiftOffset(shiftOffset)
 {
     std::wstring wpath = Utf8ToUtf16(path);
+    DWORD bytesReturn = 0;
     m_handle = ::CreateFileW(
         wpath.c_str(),
         GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr,
+        NULL,
         OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS,
-        nullptr
+        NULL
     );
+    if (m_handle == INVALID_HANDLE_VALUE) {
+        return;
+    } 
+    if (!::DeviceIoControl(
+        m_handle,
+        FSCTL_ALLOW_EXTENDED_DASD_IO,
+        NULL,
+        0,
+        NULL,
+        0,
+        &bytesReturn,
+        NULL)) {
+        ::CloseHandle(m_handle);
+        m_handle = INVALID_HANDLE_VALUE;
+        return;
+    }
 }
 
 bool Win32RawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
@@ -223,10 +277,10 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
         wPath.c_str(),
         GENERIC_READ | GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr,
+        NULL,
         CREATE_ALWAYS,
         FILE_FLAG_BACKUP_SEMANTICS,
-        nullptr
+        NULL
     );
     if (hFile == INVALID_HANDLE_VALUE) {
         errorCode = static_cast<ErrCodeType>(::GetLastError());
@@ -235,17 +289,17 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
 
     // check if filesystem support sparse file
     DWORD fileSystemFlags = 0;
-    if (::GetVolumeInformationByHandleW(hFile, nullptr, 0, nullptr, nullptr, &fileSystemFlags, nullptr, 0) &&
+    if (::GetVolumeInformationByHandleW(hFile, NULL, 0, NULL, NULL, &fileSystemFlags, NULL, 0) &&
         (fileSystemFlags & FILE_SUPPORTS_SPARSE_FILES) != 0) {
         // Set the file size to the desired size using DeviceIoControl
         DWORD dwDummy;
-        ::DeviceIoControl(hFile, FSCTL_SET_SPARSE, nullptr, 0, nullptr, 0, &dwDummy, nullptr);
+        ::DeviceIoControl(hFile, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &dwDummy, NULL);
         // if truncate sparse file failed, fallback to truncate common file
     }
 
     LARGE_INTEGER li {};
     li.QuadPart = size;
-    if (!::SetFilePointerEx(hFile, li, nullptr, FILE_BEGIN)) {
+    if (!::SetFilePointerEx(hFile, li, NULL, FILE_BEGIN)) {
         errorCode = static_cast<ErrCodeType>(::GetLastError());
         ::CloseHandle(hFile);
         return false;
@@ -259,7 +313,108 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
     return true;
 }
 
-bool volumeprotect::rawio::win32::CreateFixedVHDFile(
+static DWORD CreateVirtualDiskFile(const std::string& filePath, uint64_t maxinumSize, DWORD deviceID, bool dynamic)
+{
+    VIRTUAL_STORAGE_TYPE virtualStorageType;
+    virtualStorageType.DeviceId = deviceID;;
+    virtualStorageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN;
+
+    // Specify the VHD parameters
+    CREATE_VIRTUAL_DISK_PARAMETERS createParams = { 0 };
+    createParams.Version = CREATE_VIRTUAL_DISK_VERSION_1;
+    createParams.Version1.UniqueId = GUID_NULL;
+    createParams.Version1.MaximumSize = maxinumSize;
+    createParams.Version1.BlockSizeInBytes = CREATE_VIRTUAL_DISK_PARAMETERS_DEFAULT_BLOCK_SIZE;
+    createParams.Version1.SectorSizeInBytes = CREATE_VIRTUAL_DISK_PARAMETERS_DEFAULT_SECTOR_SIZE;
+    createParams.Version1.ParentPath = nullptr;
+    createParams.Version1.SourcePath = nullptr;
+    /*
+     * Specify the desired VHD type (fixed or dynamic)
+     * for dynamic VHD, it and can be created at once
+     * for fixed VHD, it and may take a lot of time to response
+     */
+    CREATE_VIRTUAL_DISK_FLAG createVirtualDiskFlags = dynamic ? CREATE_VIRTUAL_DISK_FLAG_NONE
+        : CREATE_VIRTUAL_DISK_FLAG_FULL_PHYSICAL_ALLOCATION;
+    VIRTUAL_DISK_ACCESS_MASK accessMask = VIRTUAL_DISK_ACCESS_ALL;
+
+    std::wstring wVhdPath = Utf8ToUtf16(filePath);
+    HANDLE hVhdFile = INVALID_HANDLE_VALUE;
+    // Create the VHD
+    DWORD result = ::CreateVirtualDisk(
+        &virtualStorageType,
+        wVhdPath.c_str(),
+        accessMask,
+        nullptr,
+        createVirtualDiskFlags,
+        0,
+        &createParams,
+        nullptr,
+        &hVhdFile
+    );
+    if (hVhdFile != INVALID_HANDLE_VALUE) {
+        ::CloseHandle(hVhdFile);
+    }
+    return result;
+}
+
+bool rawio::win32::CreateFixedVHDFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    DWORD result = CreateVirtualDiskFile(
+        filePath,
+        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VIRTUAL_STORAGE_TYPE_DEVICE_VHD,
+        false);
+    errorCode = result;
+    return errorCode == ERROR_SUCCESS;
+}
+
+
+bool rawio::win32::CreateFixedVHDXFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    DWORD result = CreateVirtualDiskFile(
+        filePath,
+        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VIRTUAL_STORAGE_TYPE_DEVICE_VHDX,
+        false);
+    errorCode = result;
+    return errorCode == ERROR_SUCCESS;
+}
+
+bool rawio::win32::CreateDynamicVHDFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    DWORD result = CreateVirtualDiskFile(
+        filePath,
+        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VIRTUAL_STORAGE_TYPE_DEVICE_VHD,
+        true);
+    errorCode = result;
+    return errorCode == ERROR_SUCCESS;
+}
+
+bool rawio::win32::CreateDynamicVHDXFile(
+    const std::string&  filePath,
+    uint64_t            volumeSize,
+    ErrCodeType&        errorCode)
+{
+    DWORD result = CreateVirtualDiskFile(
+        filePath,
+        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VIRTUAL_STORAGE_TYPE_DEVICE_VHDX,
+        true);
+    errorCode = result;
+    return errorCode == ERROR_SUCCESS;
+}
+
+bool rawio::win32::InitVirtualDiskGPT(
     const std::string&  filePath,
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
@@ -268,46 +423,10 @@ bool volumeprotect::rawio::win32::CreateFixedVHDFile(
     return false;
 }
 
-bool volumeprotect::rawio::win32::CreateFixedVHDXFile(
-    const std::string&  filePath,
-    uint64_t            volumeSize,
-    ErrCodeType&        errorCode)
-{
-    // TODO
-    return false;
-}
-
-bool volumeprotect::rawio::win32::CreateDynamicVHDFile(
-    const std::string&  filePath,
-    uint64_t            volumeSize,
-    ErrCodeType&        errorCode)
-{
-    // TODO
-    return false;
-}
-
-bool volumeprotect::rawio::win32::CreateDynamicVHDXFile(
-    const std::string&  filePath,
-    uint64_t            volumeSize,
-    ErrCodeType&        errorCode)
-{
-    // TODO
-    return false;
-}
-
-bool volumeprotect::rawio::win32::InitVirtualDiskGPT(
-    const std::string&  filePath,
-    uint64_t            volumeSize,
-    ErrCodeType&        errorCode)
-{
-    // TODO
-    return false;
-}
-
-bool volumeprotect::rawio::win32::AttachVirtualDisk(
+bool rawio::win32::AttachVirtualDisk(
     const std::string&  virtualDiskFilePath,
     std::string&        mountedDevicePath,
-    ErrCodeType&      errorCode)
+    ErrCodeType&        errorCode)
 {
     // TODO
     return false;
