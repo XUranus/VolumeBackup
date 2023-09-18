@@ -4,6 +4,7 @@
 #include "VolumeBlockReader.h"
 
 using namespace volumeprotect;
+using namespace volumeprotect::rawio;
 
 namespace {
     constexpr auto FETCH_BLOCK_BUFFER_SLEEP_INTERVAL = std::chrono::milliseconds(100);
@@ -245,7 +246,7 @@ uint8_t* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
 
 bool VolumeBlockReader::ReadBlock(uint8_t* buffer, uint32_t& nBytesToRead)
 {
-    fsapi::ErrCodeType errorCode = 0;
+    ErrCodeType errorCode = 0;
     uint32_t blockSize = m_sharedConfig->blockSize;
     uint64_t currentOffset = m_baseOffset + m_currentIndex * m_sharedConfig->blockSize;
     uint64_t bytesRemain = m_sharedConfig->sessionSize - m_currentIndex * blockSize;

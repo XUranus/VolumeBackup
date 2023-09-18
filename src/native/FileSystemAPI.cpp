@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include "Logger.h"
+#include "native/FileSystemAPI.h"
 #include "native/RawIO.h"
 
 using namespace volumeprotect;
@@ -31,13 +32,6 @@ using namespace volumeprotect::fsapi;
 namespace {
     constexpr auto DEFAULT_PROCESSORS_NUM = 4;
     constexpr auto DEFAULT_MKDIR_MASK = 0755;
-#ifdef _WIN32
-    constexpr auto SEPARATOR = "\\";
-    const IOHandle SYSTEM_IO_INVALID_HANDLE = INVALID_HANDLE_VALUE;
-#else
-    constexpr auto SEPARATOR = "/";
-    const IOHandle SYSTEM_IO_INVALID_HANDLE = -1;
-#endif
 }
 
 SystemApiException::SystemApiException(ErrCodeType errorCode)

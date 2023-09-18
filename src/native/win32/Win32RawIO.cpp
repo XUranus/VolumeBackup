@@ -9,6 +9,8 @@
 #include <Windows.h>
 #include <winioctl.h>
 
+#include "win32/Win32RawIO.h"
+
 using namespace volumeprotect;
 using namespace volumeprotect::rawio;
 using namespace volumeprotect::rawio::win32;

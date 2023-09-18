@@ -77,7 +77,7 @@ bool VolumeRestoreTask::Prepare()
             m_restoreConfig->copyDataDirPath, volumeCopyMeta.copyName, copyFormat, sessionIndex);
         VolumeTaskSession session {};
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
-        session.sharedConfig->copyFormat = volumeCopyMeta.copyFormat;
+        session.sharedConfig->copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
         session.sharedConfig->volumePath = volumePath;
         session.sharedConfig->hasherEnabled = false;
         session.sharedConfig->blockSize = volumeCopyMeta.blockSize;
@@ -103,7 +103,7 @@ bool VolumeRestoreTask::ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta
     uint64_t volumeSize = 0;
     try {
         volumeSize = fsapi::ReadVolumeSize(m_restoreConfig->volumePath);
-    } catch (const fsapi::SystemApiException& e) {
+    } catch (const SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return false;
     }

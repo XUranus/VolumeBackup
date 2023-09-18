@@ -337,7 +337,7 @@ bool LinuxMountProvider::CreateReadOnlyDmDevice(
         uint64_t sectorSize = 0LLU;
         try {
             sectorSize = fsapi::ReadSectorSizeLinux(blockDevicePath);
-        } catch (const fsapi::SystemApiException& e) {
+        } catch (const SystemApiException& e) {
             RECORD_ERROR(e.what());
             return false;
         }

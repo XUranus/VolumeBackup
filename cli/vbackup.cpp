@@ -13,6 +13,7 @@
 #endif
 
 #include "GetOption.h"
+#include "native/FileSystemAPI.h"
 #include "VolumeProtector.h"
 #include "Logger.h"
 

@@ -6,21 +6,27 @@
 #include <fstream>
 #include <memory>
 #include "Logger.h"
-
-#ifdef _WIN32
-#include "native/win32"
-using OsPlatformRawDataReader = Win32RawDataReader;
-using OsPlatformRawDataWriter = Win32RawDataWriter;
-#endif
-
-#ifdef  __linux__
-#include "native/linux"
-using OsPlatformRawDataReader = PosixRawDataReader;
-using OsPlatformRawDataWriter = PosixRawDataWriter;
-#endif
+#include "VolumeUtils.h"
+#include "native/RawIO.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::rawio;
+
+#ifdef _WIN32
+#include "win32/Win32RawIO.h"
+using OsPlatformRawDataReader = rawio::win32::Win32RawDataReader;
+using OsPlatformRawDataWriter = rawio::win32::Win32RawDataWriter;
+#endif
+
+#ifdef  __linux__
+#include "linux/PosixRawIO.h"
+using OsPlatformRawDataReader = rawio::posix::PosixRawDataReader;
+using OsPlatformRawDataWriter = rawio::posix::PosixRawDataWriter;
+#endif
+
+namespace {
+    constexpr auto DUMMY_SESSION_INDEX = 999;
+}
 
 static bool PrepareFragmentBinaryBackupCopy(
     const std::string&  copyName,
@@ -50,7 +56,7 @@ static bool PrepareFragmentBinaryBackupCopy(
 
 bool rawio::PrepareBackupCopy(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
 {
-    CopyFormat copyFormat = backupConfig.copyFormat,
+    CopyFormat copyFormat = backupConfig.copyFormat;
     std::string copyDataDirPath = backupConfig.outputCopyDataDirPath;
     std::string copyName = backupConfig.copyName;
     bool result = false;
@@ -101,17 +107,17 @@ bool rawio::PrepareBackupCopy(const VolumeBackupConfig& backupConfig, uint64_t v
     return result;
 }
 
-std::unique_ptr<RawDataReader> rawio::OpenRawDataCopyReader(const SessionCopyRawIOParam& param)
+std::shared_ptr<rawio::RawDataReader> rawio::OpenRawDataCopyReader(const SessionCopyRawIOParam& param)
 {
     CopyFormat copyFormat = param.copyFormat;
     std::string copyFilePath = param.copyFilePath;
 
     switch (static_cast<int>(copyFormat)) {
         case static_cast<int>(CopyFormat::BIN): {
-            return std::make_unique<OsPlatformRawDataReader>(copyFilePath, -1, param.volumeOffset);
+            return std::make_shared<OsPlatformRawDataReader>(copyFilePath, -1, param.volumeOffset);
         }
         case static_cast<int>(CopyFormat::IMAGE): {
-            return std::make_unique<OsPlatformRawDataReader>(copyFilePath, 0, 0);
+            return std::make_shared<OsPlatformRawDataReader>(copyFilePath, 0, 0);
         }
 #ifdef _WIN32
         case static_cast<int>(CopyFormat::VHD_FIXED):
@@ -127,17 +133,17 @@ std::unique_ptr<RawDataReader> rawio::OpenRawDataCopyReader(const SessionCopyRaw
     return nullptr;
 }
 
-std::unique_ptr<RawDataWriter> rawio::OpenRawDataCopyWriter(const SessionCopyRawIOParam& param)
+std::shared_ptr<RawDataWriter> rawio::OpenRawDataCopyWriter(const SessionCopyRawIOParam& param)
 {
     CopyFormat copyFormat = param.copyFormat;
     std::string copyFilePath = param.copyFilePath;
 
     switch (static_cast<int>(copyFormat)) {
         case static_cast<int>(CopyFormat::BIN): {
-            return std::make_unique<OsPlatformRawDataWriter>(copyFilePath, -1, param.volumeOffset);
+            return std::make_shared<OsPlatformRawDataWriter>(copyFilePath, -1, param.volumeOffset);
         }
         case static_cast<int>(CopyFormat::IMAGE): {
-            return std::make_unique<OsPlatformRawDataWriter>(copyFilePath, 0, 0);
+            return std::make_shared<OsPlatformRawDataWriter>(copyFilePath, 0, 0);
         }
 #ifdef _WIN32
         case static_cast<int>(CopyFormat::VHD_FIXED):
@@ -153,12 +159,12 @@ std::unique_ptr<RawDataWriter> rawio::OpenRawDataCopyWriter(const SessionCopyRaw
     return nullptr;
 }
 
-static std::unique_ptr<RawDataReader> OpenRawDataVolumeReader(const std::string& volumePath)
+std::shared_ptr<RawDataReader> rawio::OpenRawDataVolumeReader(const std::string& volumePath)
 {
-    return std::make_unique<OsPlatformRawDataReader>(volumePath, 0, 0);
+    return std::make_shared<OsPlatformRawDataReader>(volumePath, 0, 0);
 }
 
-static std::unique_ptr<RawDataWriter> OpenRawDataVolumeWriter(const std::string& volumePath)
+std::shared_ptr<RawDataWriter> rawio::OpenRawDataVolumeWriter(const std::string& volumePath)
 {
-    return std::make_unique<OsPlatformRawDataWriter>(volumePath, 0, 0);
+    return std::make_shared<OsPlatformRawDataWriter>(volumePath, 0, 0);
 }

@@ -1,6 +1,6 @@
 #include "Logger.h"
 #include "VolumeProtectTaskContext.h"
-
+#include "native/FileSystemAPI.h"
 #include "VolumeBlockReader.h"
 #include "VolumeBlockWriter.h"
 #include "VolumeBlockHasher.h"

@@ -67,12 +67,12 @@ private:
     SourceType  m_sourceType;
     std::string m_sourcePath;
     uint64_t    m_baseOffset;     // base offset
-    std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig;
+    std::shared_ptr<VolumeTaskSharedConfig>                 m_sharedConfig;
 
     // mutable fields
-    std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext;
-    std::thread                                         m_readerThread;
-    std::shared_ptr<volumeprotect::rawio::RawDataReader>  m_dataReader;
+    std::shared_ptr<VolumeTaskSharedContext>                m_sharedContext;
+    std::thread                                             m_readerThread;
+    std::shared_ptr<volumeprotect::rawio::RawDataReader>    m_dataReader;
 
     uint64_t    m_maxIndex      { 0 };
     uint64_t    m_currentIndex  { 0 };

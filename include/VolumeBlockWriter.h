@@ -52,12 +52,12 @@ private:
     // immutable fields
     TargetType      m_targetType;
     std::string     m_targetPath;
-    std::shared_ptr<VolumeTaskSharedConfig>             m_sharedConfig  { nullptr };
+    std::shared_ptr<VolumeTaskSharedConfig>                 m_sharedConfig  { nullptr };
 
     // mutable fields
-    std::shared_ptr<VolumeTaskSharedContext>            m_sharedContext { nullptr };
-    std::thread                                         m_writerThread;
-    std::shared_ptr<volumeprotect::rawio::RawDataWriter>  m_dataWriter    { nullptr };
+    std::shared_ptr<VolumeTaskSharedContext>                m_sharedContext { nullptr };
+    std::thread                                             m_writerThread;
+    std::shared_ptr<volumeprotect::rawio::RawDataWriter>    m_dataWriter    { nullptr };
 };
 
 }

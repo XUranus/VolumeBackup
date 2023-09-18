@@ -55,17 +55,17 @@ protected:
 
 class DataReaderMock : public rawio::RawDataReader {
 public:
-    MOCK_METHOD(bool, Read, (uint64_t offset, uint8_t* buffer, int length, fsapi::ErrCodeType& errorCode), (override));
+    MOCK_METHOD(bool, Read, (uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode), (override));
     MOCK_METHOD(bool, Ok, (), (override));
-    MOCK_METHOD(fsapi::ErrCodeType, Error, (), (override));
+    MOCK_METHOD(ErrCodeType, Error, (), (override));
 };
 
 class DataWriterMock : public rawio::RawDataWriter {
 public:
-    MOCK_METHOD(bool, Write, (uint64_t offset, uint8_t* buffer, int length, fsapi::ErrCodeType& errorCode), (override));
+    MOCK_METHOD(bool, Write, (uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode), (override));
     MOCK_METHOD(bool, Ok, (), (override));
     MOCK_METHOD(bool, Flush, (), (override));
-    MOCK_METHOD(fsapi::ErrCodeType, Error, (), (override));
+    MOCK_METHOD(ErrCodeType, Error, (), (override));
 };
 
 static void InitSessionSharedConfig(std::shared_ptr<VolumeTaskSession> session)
@@ -220,7 +220,7 @@ bool VolumeBackupTaskMock::InitBackupSessionTaskExecutor(std::shared_ptr<VolumeT
     EXPECT_CALL(*dataReaderMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataReaderMock, Error())
-        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<ErrCodeType>(0)));
 
     auto dataWriterMock = std::make_shared<DataWriterMock>();
     EXPECT_CALL(*dataWriterMock, Write(_, _, _, _))
@@ -228,7 +228,7 @@ bool VolumeBackupTaskMock::InitBackupSessionTaskExecutor(std::shared_ptr<VolumeT
     EXPECT_CALL(*dataWriterMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataWriterMock, Error())
-        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<ErrCodeType>(0)));
     EXPECT_CALL(*dataWriterMock, Flush())
         .WillRepeatedly(Return(true));
 
@@ -482,7 +482,7 @@ bool VolumeRestoreTaskMock::InitRestoreSessionTaskExecutor(std::shared_ptr<Volum
     EXPECT_CALL(*dataReaderMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataReaderMock, Error())
-        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<ErrCodeType>(0)));
 
     auto dataWriterMock = std::make_shared<DataWriterMock>();
     EXPECT_CALL(*dataWriterMock, Write(_, _, _, _))
@@ -490,7 +490,7 @@ bool VolumeRestoreTaskMock::InitRestoreSessionTaskExecutor(std::shared_ptr<Volum
     EXPECT_CALL(*dataWriterMock, Ok())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*dataWriterMock, Error())
-        .WillRepeatedly(Return(static_cast<fsapi::ErrCodeType>(0)));
+        .WillRepeatedly(Return(static_cast<ErrCodeType>(0)));
     EXPECT_CALL(*dataWriterMock, Flush())
         .WillRepeatedly(Return(true));
 

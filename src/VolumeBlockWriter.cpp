@@ -1,9 +1,11 @@
 #include "Logger.h"
 #include "VolumeProtector.h"
 #include "native/RawIO.h"
+#include "native/FileSystemAPI.h"
 #include "VolumeBlockWriter.h"
 
 using namespace volumeprotect;
+using namespace volumeprotect::rawio;
 
 // build a writer writing to copy file
 std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
@@ -11,25 +13,35 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
-    std::shared_ptr<rawio::RawDataWriter> dataWriter = nullptr;
     if (fsapi::IsFileExists(copyFilePath) && fsapi::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
         // should be full copy file, this task should be forever increment backup
         INFOLOG("copy file already exists, using %s", copyFilePath.c_str());
     } else {
         // truncate copy file to session size
         DBGLOG("truncate new target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
-        fsapi::ErrCodeType errorCode = 0;
-        if (!fsapi::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
-            ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
-                copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
-            return nullptr;
-        }
+        ErrCodeType errorCode = 0;
+        // TODO :: create file before session start using PrepareBackupCopy
+        // if (!fsapi::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
+        //     ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
+        //         copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
+        //     return nullptr;
+        // }
     }
     // init data writer
-    dataWriter = std::dynamic_pointer_cast<rawio::RawDataWriter>(
-        std::make_shared<fsapi::FileDataWriter>(copyFilePath));
-    if (dataWriter == nullptr || !dataWriter->Ok()) {
-        ERRLOG("failed to init FileDataWriter, path = %s, error = %u", copyFilePath.c_str(), dataWriter->Error());
+    SessionCopyRawIOParam sessionIOParam {};
+    sessionIOParam.copyFormat = sharedConfig->copyFormat;
+    sessionIOParam.volumeOffset = sharedConfig->sessionOffset;
+    sessionIOParam.length = sharedConfig->sessionSize;
+    sessionIOParam.copyFilePath = sharedConfig->copyFilePath;
+
+    std::shared_ptr<RawDataWriter> dataWriter = rawio::OpenRawDataCopyWriter(sessionIOParam);
+    if (dataWriter == nullptr) {
+        ERRLOG("failed to build copy data writer");
+        return nullptr;
+    }
+    if (!dataWriter->Ok()) {
+        ERRLOG("failed to init copy data writer, format = %d, copyfile = %s, error = %u",
+            sharedConfig->copyFormat, sharedConfig->copyFilePath.c_str(), dataWriter->Error());
         return nullptr;
     }
     VolumeBlockWriterParam param {
@@ -49,10 +61,14 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildVolumeWriter(
 {
     std::string volumePath = sharedConfig->volumePath;
     // check target block device valid to write
-    auto dataWriter = std::dynamic_pointer_cast<rawio::RawDataWriter>(
-        std::make_shared<fsapi::VolumeDataWriter>(volumePath));
+    std::shared_ptr<RawDataWriter> dataWriter = rawio::OpenRawDataVolumeWriter(volumePath);
+    if (dataWriter == nullptr) {
+        ERRLOG("failed to build volume data reader");
+        return nullptr;
+    }
     if (!dataWriter->Ok()) {
-        ERRLOG("failed to init VolumeDataWriter, path = %s, error = %u", volumePath.c_str(), dataWriter->Error());
+        ERRLOG("failed to init VolumeDataWriter, path = %s, error = %u",
+            volumePath.c_str(), dataWriter->Error());
         return nullptr;
     }
     VolumeBlockWriterParam param {
@@ -104,7 +120,7 @@ VolumeBlockWriter::VolumeBlockWriter(const VolumeBlockWriterParam& param)
 void VolumeBlockWriter::MainThread()
 {
     VolumeConsumeBlock consumeBlock {};
-    fsapi::ErrCodeType errorCode = 0;
+    ErrCodeType errorCode = 0;
     DBGLOG("writer thread start");
 
     while (true) {

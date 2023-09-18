@@ -40,7 +40,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
     uint64_t volumeSize = 0;
     try {
         volumeSize = fsapi::ReadVolumeSize(backupConfig.volumePath);
-    } catch (const fsapi::SystemApiException& e) {
+    } catch (const SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return nullptr;
     }
@@ -66,7 +66,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
     uint64_t volumeSize = 0;
     try {
         volumeSize = fsapi::ReadVolumeSize(restoreConfig.volumePath);
-    } catch (const fsapi::SystemApiException& e) {
+    } catch (const SystemApiException& e) {
         ERRLOG("retrive volume size got exception: %s", e.what());
         return nullptr;
     }

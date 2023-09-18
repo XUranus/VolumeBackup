@@ -2,6 +2,7 @@
 #define VOLUMEBACKUP_NATIVE_RAW_IO_HEADER
 
 #include "VolumeProtectMacros.h"
+#include "VolumeProtector.h"
 #include <string>
 
 /**
@@ -21,16 +22,16 @@ public:
     virtual bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) = 0;
     virtual bool Ok() = 0;
     virtual ErrCodeType Error() = 0;
-    virtual ~DataReader() = default;
+    virtual ~RawDataReader() = default;
 };
 
-class DataWriter {
+class RawDataWriter {
 public:
     virtual bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) = 0;
     virtual bool Ok() = 0;
     virtual bool Flush() = 0;
     virtual ErrCodeType Error() = 0;
-    virtual ~DataWriter() = default;
+    virtual ~RawDataWriter() = default;
 };
 
 // param struct to build RawDataReader/RawDataWriter for each backup restore session
@@ -42,19 +43,15 @@ struct SessionCopyRawIOParam {
     uint64_t            length;
 };
 
-static bool PrepareBackupCopy(
-    CopyFormat          copyFormat,
-    uint64_t            volumeSize,
-    const std::string&  copyDataDirPath,
-    const std::string&  copyName);
+static bool PrepareBackupCopy(const VolumeBackupConfig& config, uint64_t volumeSize);
     
-static std::unique_ptr<RawDataReader> OpenRawDataCopyReader(const SessionCopyRawIOParam& param);
+static std::shared_ptr<RawDataReader> OpenRawDataCopyReader(const SessionCopyRawIOParam& param);
 
-static std::unique_ptr<RawDataWriter> OpenRawDataCopyWriter(const SessionCopyRawIOParam& param);
+static std::shared_ptr<RawDataWriter> OpenRawDataCopyWriter(const SessionCopyRawIOParam& param);
 
-static std::unique_ptr<RawDataReader> OpenRawDataVolumeReader(const std::string& volumePath);
+static std::shared_ptr<RawDataReader> OpenRawDataVolumeReader(const std::string& volumePath);
 
-static std::unique_ptr<RawDataWriter> OpenRawDataVolumeWriter(const std::string& volumePath);
+static std::shared_ptr<RawDataWriter> OpenRawDataVolumeWriter(const std::string& volumePath);
 
 // implementation depend on OS platform
 static bool TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeType& errorCode);
