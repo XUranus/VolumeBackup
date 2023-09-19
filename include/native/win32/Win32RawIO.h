@@ -66,8 +66,9 @@ public:
     ErrCodeType Error() override;
 
 private:
-    HANDLE m_hVolume { INVALID_HANDLE_VALUE };     // handle to the volume device
-    bool autoDetach { true };
+    std::shared_ptr<Win32RawDataReader> m_volumeReader { nullptr };
+    std::string m_virtualDiskFilePath;
+    bool m_autoDetach { true };
 };
 
 /*
@@ -84,8 +85,9 @@ public:
     ErrCodeType Error() override;
 
 private:
-    HANDLE m_hVolume { INVALID_HANDLE_VALUE };     // handle to the volume device
-    bool autoDetach { true };
+    std::shared_ptr<Win32RawDataWriter> m_volumeWriter { nullptr };
+    std::string m_virtualDiskFilePath;
+    bool m_autoDetach { true };
 };
 
 bool CreateFixedVHDFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
@@ -106,6 +108,12 @@ bool DetachVirtualDiskCopy(
     ErrCodeType&        errorCode);
 
 bool InitVirtualDiskGPT(const std::string& physicalDrivePath, uint64_t volumeSize, ErrCodeType& errorCode);
+
+// Get volume path (\\.\HarddiskVolumeX) of the first partition in physicalDrivePath of attached virtual disk
+bool GetCopyVolumeDevicePath(
+    const std::string& physicalDrivePath,
+    std::string& volumeDevicePath,
+    ErrCodeType& errorCode);
 
 }
 }

@@ -1,22 +1,22 @@
 #ifdef _WIN32
 
-#define WIN32_LEAN_AND_MEAN 1
 #define UNICODE /* foring using WCHAR on windows */
 #define NOGDI
 
 #include <locale>
 #include <codecvt>
-#include "win32/Win32RawIO.h"
 
 #include <Windows.h>
 #include <VirtDisk.h>
 #include <winioctl.h>
 #include <sddl.h>
-
 #include <setupapi.h>
 #include <devguid.h>
 #include <initguid.h>
 #include <strsafe.h>
+
+#include "Logger.h"
+#include "win32/Win32RawIO.h"
 
 DEFINE_GUID(GUID_NULL,
     0x00000000, 0x0000, 0x0000, 0x0000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
@@ -32,8 +32,12 @@ using namespace rawio;
 using namespace rawio::win32;
 
 namespace {
-    constexpr auto VIRTUAL_DISK_COPY_SPARE_SIZE = 16 * 512; // sparse size for reserved GPT
+    constexpr auto VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED = 34 * 512;
+    constexpr auto VIRTUAL_DISK_COPY_SPARE_SIZE = VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED; // sparse size for reserved GPT
     constexpr auto VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT = 128; // This is in compliance with the EFI specification
+    constexpr wchar_t* VIRTUAL_DISK_GPT_PARTITION_NAMEW = L"Win32VolumeBackupCopy";
+    constexpr auto NUM0 = 0;
+    constexpr auto NUM1 = 1;
 }
 
 // Implement common WIN32 API utils
@@ -207,67 +211,113 @@ Win32RawDataWriter::~Win32RawDataWriter()
 
 
 // implement Win32VirtualDiskVolumeRawDataReader methods...
-Win32VirtualDiskVolumeRawDataReader::Win32VirtualDiskVolumeRawDataReader(const std::string& virtualDiskFilePath, bool autoDetach)
+static bool AttachVirtualDiskAndGetVolumeDevicePath(
+    const std::string& virtualDiskFilePath,
+    std::string& volumeDevicePath)
 {
-    // TODO
+    std::string physicalDrivePath;
+    ErrCodeType errorCode = ERROR_SUCCESS;
+    if (!rawio::win32::AttachVirtualDiskCopy(
+        virtualDiskFilePath,
+        physicalDrivePath,
+        errorCode)) {
+        ::SetLastError(errorCode);
+        return false;
+    }
+    if (!rawio::win32::GetCopyVolumeDevicePath(
+        physicalDrivePath,
+        volumeDevicePath,
+        errorCode)) {
+        ::SetLastError(errorCode);
+        return false;
+    }
+    return true;
+}
+
+Win32VirtualDiskVolumeRawDataReader::Win32VirtualDiskVolumeRawDataReader(
+    const std::string& virtualDiskFilePath,
+    bool autoDetach)
+    : m_volumeReader(nullptr), m_virtualDiskFilePath(virtualDiskFilePath), m_autoDetach(autoDetach)
+{
+    std::string volumeDevicePath;
+    if (!AttachVirtualDiskAndGetVolumeDevicePath(virtualDiskFilePath, volumeDevicePath) || volumeDevicePath.empty()) {
+        return;
+    }
+    m_volumeReader = std::make_shared<Win32RawDataReader>(volumeDevicePath, 0, 0);
 }
 
 Win32VirtualDiskVolumeRawDataReader::~Win32VirtualDiskVolumeRawDataReader()
 {
-    // TODO
+    m_volumeReader.reset();
+    if (!m_autoDetach) {
+        return;
+    }
+    // detach copy when reader is no more used
+    ErrCodeType errorCode = ERROR_SUCCESS;
+    if (!rawio::win32::DetachVirtualDiskCopy(m_virtualDiskFilePath, errorCode)) {
+        ERRLOG("failed to detach virtual disk copy, error %d", errorCode);
+    }
 }
 
 bool Win32VirtualDiskVolumeRawDataReader::Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
 {
-    // TODO
-    return true;
+    return (m_volumeReader == nullptr) ? false : m_volumeReader->Read(offset, buffer, length, errorCode);
 }
 
 bool Win32VirtualDiskVolumeRawDataReader::Ok()
 {
-    // TODO
-    return true;
+    return (m_volumeReader == nullptr) ? false : m_volumeReader->Ok();
 }
 
 ErrCodeType Win32VirtualDiskVolumeRawDataReader::Error()
 {
-    // TODO
-    return 0;
+    return (m_volumeReader == nullptr) ? ::GetLastError() : m_volumeReader->Error();
 }
 
 // implement Win32VirtualDiskVolumeRawDataWriter methods...
-Win32VirtualDiskVolumeRawDataWriter::Win32VirtualDiskVolumeRawDataWriter(const std::string& path, bool autoDetach)
+Win32VirtualDiskVolumeRawDataWriter::Win32VirtualDiskVolumeRawDataWriter(
+    const std::string& virtualDiskFilePath,
+    bool autoDetach)
+    : m_volumeWriter(nullptr), m_virtualDiskFilePath(virtualDiskFilePath), m_autoDetach(autoDetach)
 {
-    // TODO
+    std::string volumeDevicePath;
+    if (!AttachVirtualDiskAndGetVolumeDevicePath(virtualDiskFilePath, volumeDevicePath) || volumeDevicePath.empty()) {
+        return;
+    }
+    m_volumeWriter = std::make_shared<Win32RawDataWriter>(volumeDevicePath, 0, 0);
 }
 
 Win32VirtualDiskVolumeRawDataWriter::~Win32VirtualDiskVolumeRawDataWriter()
 {
-    // TODO
+    m_volumeWriter.reset();
+    if (!m_autoDetach) {
+        return;
+    }
+    // detach copy when reader is no more used
+    ErrCodeType errorCode = ERROR_SUCCESS;
+    if (!rawio::win32::DetachVirtualDiskCopy(m_virtualDiskFilePath, errorCode)) {
+        ERRLOG("failed to detach virtual disk copy, error %d", errorCode);
+    }
 }
 
 bool Win32VirtualDiskVolumeRawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
 {
-    // TODO
-    return true;
+    return (m_volumeWriter == nullptr) ? false : m_volumeWriter->Write(offset, buffer, length, errorCode);
 }
 
 bool Win32VirtualDiskVolumeRawDataWriter::Ok()
 {
-    // TODO
-    return true;
+    return (m_volumeWriter == nullptr) ? false : m_volumeWriter->Ok();
 }
 
 bool Win32VirtualDiskVolumeRawDataWriter::Flush()
 {
-    // TODO
-    return true;
+    return (m_volumeWriter == nullptr) ? false : m_volumeWriter->Flush();
 }
 
 ErrCodeType Win32VirtualDiskVolumeRawDataWriter::Error()
 {
-    // TODO
-    return 0;
+    return (m_volumeWriter == nullptr) ? ::GetLastError() : m_volumeWriter->Error();
 }
 
 // implement static functions...
@@ -513,7 +563,7 @@ bool rawio::win32::AttachVirtualDiskCopy(
         &attachParameters,
         NULL);
 
-    if (opStatus != ERROR_SUCCESS) {
+    if (opStatus != ERROR_SUCCESS && opStatus != ERROR_SHARING_VIOLATION) {
         errorCode = opStatus;
         ::LocalFree(pSecurityDescriptor);
         ::CloseHandle(hVirtualDiskFile);
@@ -659,21 +709,21 @@ bool rawio::win32::InitVirtualDiskGPT(
     DRIVE_LAYOUT_INFORMATION_EX layout = { 0 };
     ZeroMemory(&layout, sizeof(DRIVE_LAYOUT_INFORMATION_EX));
     layout.PartitionStyle = PARTITION_STYLE_GPT;
-    layout.PartitionCount = 1; // Create only one NTFS/FAT32/ExFAT GPT partition
+    layout.PartitionCount = NUM1; // Create only one NTFS/FAT32/ExFAT GPT partition
     layout.Gpt.DiskId = diskIdentifier;
     layout.Gpt.StartingUsableOffset.QuadPart = 0;
-    layout.Gpt.UsableLength.QuadPart = 250 * 1024 * 1024;
+    layout.Gpt.UsableLength.QuadPart = VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED + volumeSize;
     layout.Gpt.MaxPartitionCount = VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT;
     layout.PartitionEntry[0].PartitionStyle = PARTITION_STYLE_GPT;
-    layout.PartitionEntry[0].StartingOffset.QuadPart = 34 * 512;
-    layout.PartitionEntry[0].PartitionLength.QuadPart = 200 * 1024 * 1024;
-    layout.PartitionEntry[0].PartitionNumber = 1; // 1st partition
+    layout.PartitionEntry[0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED;
+    layout.PartitionEntry[0].PartitionLength.QuadPart = volumeSize;
+    layout.PartitionEntry[0].PartitionNumber = NUM1; // 1st partition
     layout.PartitionEntry[0].RewritePartition = FALSE; // do not allow rewrite partition
     layout.PartitionEntry[0].IsServicePartition = FALSE;
     layout.PartitionEntry[0].Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;
     layout.PartitionEntry[0].Gpt.PartitionId = partitionGUID;
     layout.PartitionEntry[0].Gpt.Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER;
-    wcscpy_s(layout.PartitionEntry[0].Gpt.Name, L"xuranus-partition");
+    wcscpy_s(layout.PartitionEntry[0].Gpt.Name, VIRTUAL_DISK_GPT_PARTITION_NAMEW);
 
     if (!DeviceIoControl(
         hDevice,
@@ -712,6 +762,15 @@ bool rawio::win32::InitVirtualDiskGPT(
 
     ::CloseHandle(hDevice);
     return true;
+}
+
+bool rawio::win32::GetCopyVolumeDevicePath(
+    const std::string& physicalDrivePath,
+    std::string& volumeDevicePath,
+    ErrCodeType& errorCode)
+{
+    // TODO
+    return false;
 }
 
 #endif
