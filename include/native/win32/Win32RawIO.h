@@ -77,7 +77,7 @@ private:
  */
 class Win32VirtualDiskVolumeRawDataWriter : public RawDataWriter {
 public:
-    explicit Win32VirtualDiskVolumeRawDataWriter(const std::string& path, bool autoDetach = true);
+    explicit Win32VirtualDiskVolumeRawDataWriter(const std::string& virtualDiskFilePath, bool autoDetach = true);
     ~Win32VirtualDiskVolumeRawDataWriter();
     bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
