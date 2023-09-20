@@ -32,12 +32,21 @@ using namespace rawio;
 using namespace rawio::win32;
 
 namespace {
-    constexpr auto VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED = 34 * 512;
-    constexpr auto VIRTUAL_DISK_COPY_SPARE_SIZE = VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED; // sparse size for reserved GPT
-    constexpr auto VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT = 128; // This is in compliance with the EFI specification
+    constexpr uint64_t ONE_MB = 1024LLU * 1024LLU;
+    constexpr uint64_t VIRTUAL_DISK_BLOCK_SIZE_PADDING = 2 * ONE_MB;
+    // windows GPT partition header take at least 17KB for at both header and footer
+    constexpr uint64_t VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM = 34 * 512;
+    // reserved 32MB for latter use
+    constexpr uint64_t VIRTUAL_DISK_RESERVED_PARTITION_SIZE = 32 * ONE_MB;
+    // sparse size for reserved GPT (2 GPT partition table header and footer, 1 reserved 32MB for latter use)
+    constexpr uint64_t VIRTUAL_DISK_COPY_RESERVED_SIZE =
+        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM * 2 + VIRTUAL_DISK_RESERVED_PARTITION_SIZE;
+    // This is in compliance with the EFI specification
+    constexpr int VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT = 128;
+
     constexpr wchar_t* VIRTUAL_DISK_GPT_PARTITION_NAMEW = L"Win32VolumeBackupCopy";
-    constexpr auto NUM0 = 0;
-    constexpr auto NUM1 = 1;
+    constexpr int NUM0 = 0;
+    constexpr int NUM1 = 1;
 }
 
 // Implement common WIN32 API utils
@@ -54,6 +63,14 @@ static std::string Utf16ToUtf8(const std::wstring& wstr)
     using ConvertTypeX = std::codecvt_utf8_utf16<wchar_t>;
     std::wstring_convert<ConvertTypeX> converterX;
     return converterX.to_bytes(wstr);
+}
+
+inline uint64_t VirtualDiskSizePadding2MB(uint64_t lengthInBytes)
+{
+    if (lengthInBytes % VIRTUAL_DISK_BLOCK_SIZE_PADDING == 0) {
+        return lengthInBytes;
+    }
+    return (lengthInBytes / VIRTUAL_DISK_BLOCK_SIZE_PADDING + (uint64_t)NUM1) * VIRTUAL_DISK_BLOCK_SIZE_PADDING;
 }
 
 inline void SetOverlappedStructOffset(OVERLAPPED& ov, uint64_t offset)
@@ -449,7 +466,7 @@ bool rawio::win32::CreateFixedVHDFile(
 {
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHD,
         false);
     errorCode = result;
@@ -464,7 +481,7 @@ bool rawio::win32::CreateFixedVHDXFile(
 {
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHDX,
         false);
     errorCode = result;
@@ -478,7 +495,7 @@ bool rawio::win32::CreateDynamicVHDFile(
 {
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHD,
         true);
     errorCode = result;
@@ -492,7 +509,7 @@ bool rawio::win32::CreateDynamicVHDXFile(
 {
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        volumeSize + VIRTUAL_DISK_COPY_SPARE_SIZE,
+        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHDX,
         true);
     errorCode = result;
@@ -712,10 +729,11 @@ bool rawio::win32::InitVirtualDiskGPT(
     layout.PartitionCount = NUM1; // Create only one NTFS/FAT32/ExFAT GPT partition
     layout.Gpt.DiskId = diskIdentifier;
     layout.Gpt.StartingUsableOffset.QuadPart = 0;
-    layout.Gpt.UsableLength.QuadPart = VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED + volumeSize;
+    layout.Gpt.UsableLength.QuadPart =
+        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_RESERVED_PARTITION_SIZE + volumeSize;
     layout.Gpt.MaxPartitionCount = VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT;
     layout.PartitionEntry[0].PartitionStyle = PARTITION_STYLE_GPT;
-    layout.PartitionEntry[0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_SIZE_RESERVED;
+    layout.PartitionEntry[0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM;
     layout.PartitionEntry[0].PartitionLength.QuadPart = volumeSize;
     layout.PartitionEntry[0].PartitionNumber = NUM1; // 1st partition
     layout.PartitionEntry[0].RewritePartition = FALSE; // do not allow rewrite partition
@@ -739,6 +757,29 @@ bool rawio::win32::InitVirtualDiskGPT(
         return false;
     }
 
+    ::CloseHandle(hDevice);
+    return true;
+}
+
+bool rawio::win32::GetCopyVolumeDevicePath(
+    const std::string& physicalDrivePath,
+    std::string& volumeDevicePath,
+    ErrCodeType& errorCode)
+{
+    std::wstring wPhysicalDrivePath = Utf8ToUtf16(physicalDrivePath);
+    DWORD bytesReturned = 0;
+    HANDLE hDevice = ::CreateFileW(
+        wPhysicalDrivePath.c_str(),
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL);
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        // failed to open physical drive
+        return false;
+    }
     // Get created volume device
     VOLUME_DISK_EXTENTS volumeExtents;
     // Get volume disk extents
@@ -759,17 +800,6 @@ bool rawio::win32::InitVirtualDiskGPT(
     } else {
         std::cerr << "Failed to get volume disk extents. Error code: " << GetLastError() << std::endl;
     }
-
-    ::CloseHandle(hDevice);
-    return true;
-}
-
-bool rawio::win32::GetCopyVolumeDevicePath(
-    const std::string& physicalDrivePath,
-    std::string& volumeDevicePath,
-    ErrCodeType& errorCode)
-{
-    // TODO
     return false;
 }
 
