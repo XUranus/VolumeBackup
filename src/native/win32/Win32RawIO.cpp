@@ -761,46 +761,56 @@ bool rawio::win32::InitVirtualDiskGPT(
     return true;
 }
 
+
+// list all win32 volume paths and convert from kernel path to user path : "\Device\HarddiskVolume1"  => \\.\HarddiskVolume1
+static bool ListWin32LocalVolumePathW(std::vector<std::wstring>& wVolumePaths)
+{
+    WCHAR wVolumeNameBuffer[MAX_PATH] = L"";
+    HANDLE handle = ::FindFirstVolumeW(wVolumeNameBuffer, MAX_PATH);
+    if (handle == INVALID_HANDLE_VALUE) {
+        ::FindVolumeClose(handle);
+        /* find failed */
+        return false;
+    }
+    wVolumePaths.push_back(std::wstring(wVolumeNameBuffer));
+    while (::FindNextVolumeW(handle, wVolumeNameBuffer, MAX_PATH)) {
+        wVolumePaths.push_back(std::wstring(wVolumeNameBuffer));
+    }
+    ::FindVolumeClose(handle);
+    handle = INVALID_HANDLE_VALUE;
+    return true;
+}
+
 bool rawio::win32::GetCopyVolumeDevicePath(
     const std::string& physicalDrivePath,
     std::string& volumeDevicePath,
     ErrCodeType& errorCode)
 {
-    std::wstring wPhysicalDrivePath = Utf8ToUtf16(physicalDrivePath);
-    DWORD bytesReturned = 0;
-    HANDLE hDevice = ::CreateFileW(
-        wPhysicalDrivePath.c_str(),
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        0,
-        NULL);
-    if (hDevice == INVALID_HANDLE_VALUE) {
-        // failed to open physical drive
-        return false;
+    // std::wstring wPhysicalDrivePath = Utf8ToUtf16(physicalDrivePath);
+    // DWORD bytesReturned = 0;
+    // HANDLE hDevice = ::CreateFileW(
+    //     wPhysicalDrivePath.c_str(),
+    //     GENERIC_READ | GENERIC_WRITE,
+    //     FILE_SHARE_READ | FILE_SHARE_WRITE,
+    //     NULL,
+    //     OPEN_EXISTING,
+    //     0,
+    //     NULL);
+    // if (hDevice == INVALID_HANDLE_VALUE) {
+    //     // failed to open physical drive
+    //     return false;
+    // }
+    std::wstring wPhysicalDrivePath;
+    //GetPhysicalDrivePathFromVolumePathW(LR"(\\.\HarddiskVolume3)", wPhysicalDrivePath);
+
+    std::vector<std::wstring> wVolumePaths;
+    ListWin32LocalVolumePathW(wVolumePaths);
+    for (auto v : wVolumePaths) {
+        std::wcout << L"dddd " << v << std::endl;
     }
-    // Get created volume device
-    VOLUME_DISK_EXTENTS volumeExtents;
-    // Get volume disk extents
-    if (::DeviceIoControl(
-        hDevice,
-        IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
-        NULL,
-        0,
-        &volumeExtents,
-        sizeof(volumeExtents),
-        &bytesReturned,
-        NULL))
-    {
-        // Extract the volume path
-        for (DWORD i = 0; i < volumeExtents.NumberOfDiskExtents; i++) {
-            std::wcout << L"Volume Path: " << volumeExtents.Extents[i].DiskNumber << std::endl;
-        }
-    } else {
-        std::cerr << "Failed to get volume disk extents. Error code: " << GetLastError() << std::endl;
-    }
-    return false;
+
+
+    return true;
 }
 
 #endif
