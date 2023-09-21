@@ -46,8 +46,9 @@ namespace {
 
     // NT kernel space device path starts with "\Device" while user space device path starts with "\\."
     constexpr auto WKERNEL_SPACE_DEVICE_PATH_PREFIX = LR"(\Device)";
-    constexpr auto WUSER_SPACE_DEVICE_PATH_PREFIX = LR"(\.)";
-    constexpr auto WDEVICE_HARDDISK_VOLUME_PREFIX = LR"(\.\HarddiskVolume)";
+    constexpr auto WUSER_SPACE_DEVICE_PATH_PREFIX = LR"(\\.)";
+    constexpr auto WDEVICE_PHYSICAL_DRIVE_PREFIX = LR"(\\.\PhysicalDrive)";
+    constexpr auto WDEVICE_HARDDISK_VOLUME_PREFIX = LR"(\\.\HarddiskVolume)";
 
     constexpr wchar_t* VIRTUAL_DISK_GPT_PARTITION_NAMEW = L"Win32VolumeBackupCopy";
     constexpr int NUM0 = 0;
@@ -788,7 +789,6 @@ static bool ListWin32LocalVolumePathW(std::vector<std::wstring>& wVolumeDevicePa
 static bool GetPhysicalDrivePathFromVolumePathW(const std::wstring& wVolumePath, std::wstring& wPhysicalDrivePath)
 {
     DWORD bytesReturned = 0;
-    std::wcout << wVolumePath << std::endl;
     HANDLE hDevice = ::CreateFileW(
         wVolumePath.c_str(),
         GENERIC_READ | GENERIC_WRITE,
@@ -813,7 +813,7 @@ static bool GetPhysicalDrivePathFromVolumePathW(const std::wstring& wVolumePath,
         // failed to execute IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS
         return false;
     }
-    wPhysicalDrivePath = std::wstring(LR"(\\.\PhysicalDrive)") + std::to_wstring(deviceNumber.DeviceNumber);
+    wPhysicalDrivePath = std::wstring(WDEVICE_PHYSICAL_DRIVE_PREFIX) + std::to_wstring(deviceNumber.DeviceNumber);
     return true;
 }
 
@@ -839,34 +839,8 @@ bool rawio::win32::GetCopyVolumeDevicePath(
     ErrCodeType& errorCode)
 {
     std::vector<std::wstring> wVolumePathList;
-
-    wVolumePathList.clear();
-    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive0)", wVolumePathList)) {
-        for (const std::wstring& wVolumePath : wVolumePathList) {
-            std::wcout << wVolumePath << std::endl;
-        }
-    }
-    std::cout << std::endl;
-
-
     wVolumePathList.clear();
     if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive1)", wVolumePathList)) {
-        for (const std::wstring& wVolumePath : wVolumePathList) {
-            std::wcout << wVolumePath << std::endl;
-        }
-    }
-    std::cout << std::endl;
-
-    wVolumePathList.clear();
-    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive2)", wVolumePathList)) {
-        for (const std::wstring& wVolumePath : wVolumePathList) {
-            std::wcout << wVolumePath << std::endl;
-        }
-    }
-    std::cout << std::endl;
-
-    wVolumePathList.clear();
-    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive3)", wVolumePathList)) {
         for (const std::wstring& wVolumePath : wVolumePathList) {
             std::wcout << wVolumePath << std::endl;
         }
