@@ -14,6 +14,7 @@
 
 #include "GetOption.h"
 #include "native/FileSystemAPI.h"
+#include "native/win32/Win32RawIO.h"
 #include "VolumeProtector.h"
 #include "Logger.h"
 
@@ -108,8 +109,18 @@ int ExecVolumeBackup(
     return 0;
 }
 
+
+int play()
+{
+    std::string str;
+    ErrCodeType err;
+    rawio::win32::GetCopyVolumeDevicePath("",str,err);
+    return 0;
+}
+
 int main(int argc, const char** argv)
 {
+    return play();
     std::cout << "=== vbkup ===" << std::endl;
     std::string volumePath = "";
     std::string copyDataDirPath = "";

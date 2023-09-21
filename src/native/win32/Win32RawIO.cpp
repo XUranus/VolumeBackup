@@ -44,9 +44,17 @@ namespace {
     // This is in compliance with the EFI specification
     constexpr int VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT = 128;
 
+    // NT kernel space device path starts with "\Device" while user space device path starts with "\\."
+    constexpr auto WKERNEL_SPACE_DEVICE_PATH_PREFIX = LR"(\Device)";
+    constexpr auto WUSER_SPACE_DEVICE_PATH_PREFIX = LR"(\.)";
+    constexpr auto WDEVICE_HARDDISK_VOLUME_PREFIX = LR"(\.\HarddiskVolume)";
+
     constexpr wchar_t* VIRTUAL_DISK_GPT_PARTITION_NAMEW = L"Win32VolumeBackupCopy";
     constexpr int NUM0 = 0;
     constexpr int NUM1 = 1;
+    constexpr int NUM2 = 2;
+    constexpr int NUM3 = 3;
+    constexpr int NUM4 = 4;
 }
 
 // Implement common WIN32 API utils
@@ -381,40 +389,6 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
     return true;
 }
 
-
-// Get path like \\.\PhysicalDriveX from \\.\HarddiskVolumeX
-static bool GetPhysicalDrivePathFromVolumePathW(const std::wstring& wVolumePath, std::wstring& wPhysicalDrivePath)
-{
-    DWORD bytesReturned = 0;
-    std::wcout << wVolumePath << std::endl;
-    HANDLE hDevice = ::CreateFileW(
-        wVolumePath.c_str(),
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        0,
-        NULL);
-    if (hDevice == INVALID_HANDLE_VALUE) {
-        return false;
-    }
-    STORAGE_DEVICE_NUMBER deviceNumber;
-    if (!::DeviceIoControl(
-        hDevice,
-        IOCTL_STORAGE_GET_DEVICE_NUMBER,
-        NULL,
-        0,
-        &deviceNumber,
-        sizeof(deviceNumber),
-        &bytesReturned,
-        NULL)) {
-        // failed to execute IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS
-        return false;
-    }
-    wPhysicalDrivePath = std::wstring(LR"(\\.\PhysicalDrive)") + std::to_wstring(deviceNumber.DeviceNumber);
-    return true;
-}
-
 static DWORD CreateVirtualDiskFile(const std::string& filePath, uint64_t maxinumSize, DWORD deviceID, bool dynamic)
 {
     VIRTUAL_STORAGE_TYPE virtualStorageType;
@@ -715,6 +689,9 @@ bool rawio::win32::InitVirtualDiskGPT(
         return false;
     }
 
+    // TODO:: hack, wait for MSR partition arrival
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
 
     GUID partitionGUID = GUID_NULL;
     if (!::UuidCreate(&partitionGUID) == RPC_S_OK) {
@@ -761,23 +738,98 @@ bool rawio::win32::InitVirtualDiskGPT(
     return true;
 }
 
-
 // list all win32 volume paths and convert from kernel path to user path : "\Device\HarddiskVolume1"  => \\.\HarddiskVolume1
-static bool ListWin32LocalVolumePathW(std::vector<std::wstring>& wVolumePaths)
+static bool ListWin32LocalVolumePathW(std::vector<std::wstring>& wVolumeDevicePaths)
 {
     WCHAR wVolumeNameBuffer[MAX_PATH] = L"";
+    std::vector<std::wstring> wVolumesNames;
     HANDLE handle = ::FindFirstVolumeW(wVolumeNameBuffer, MAX_PATH);
     if (handle == INVALID_HANDLE_VALUE) {
         ::FindVolumeClose(handle);
         /* find failed */
         return false;
     }
-    wVolumePaths.push_back(std::wstring(wVolumeNameBuffer));
+    wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
     while (::FindNextVolumeW(handle, wVolumeNameBuffer, MAX_PATH)) {
-        wVolumePaths.push_back(std::wstring(wVolumeNameBuffer));
+        wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));        
     }
     ::FindVolumeClose(handle);
     handle = INVALID_HANDLE_VALUE;
+
+    for (const std::wstring& wVolumeName : wVolumesNames) {
+        if (wVolumeName.size() < NUM4 ||
+            wVolumeName[NUM0] != L'\\' ||
+            wVolumeName[NUM1] != L'\\' ||
+            wVolumeName[NUM2] != L'?' ||
+            wVolumeName[NUM3] != L'\\' ||
+            wVolumeName.back() != L'\\') { // illegal volume name
+            continue;
+        }
+        std::wstring wVolumeParam = wVolumeName;
+        wVolumeParam.pop_back(); // QueryDosDeviceW does not allow a trailing backslash
+        wVolumeParam = wVolumeParam.substr(NUM4);
+        WCHAR wDeviceNameBuffer[MAX_PATH] = L"";
+        DWORD charCount = ::QueryDosDeviceW(wVolumeParam.c_str(), wDeviceNameBuffer, ARRAYSIZE(wDeviceNameBuffer));
+        if (charCount == 0) {
+            continue;
+        }
+        // convert kernel path to user path
+        std::wstring wVolumeDevicePath = wDeviceNameBuffer;
+        auto pos = wVolumeDevicePath.find(WKERNEL_SPACE_DEVICE_PATH_PREFIX);
+        if (pos == 0) {
+            wVolumeDevicePath = WUSER_SPACE_DEVICE_PATH_PREFIX + wVolumeDevicePath.substr(std::wstring(WKERNEL_SPACE_DEVICE_PATH_PREFIX).length());
+        }
+        wVolumeDevicePaths.emplace_back(wVolumeDevicePath);
+    }
+    return true;
+}
+
+// Get path like \\.\PhysicalDriveX from \\.\HarddiskVolumeX
+static bool GetPhysicalDrivePathFromVolumePathW(const std::wstring& wVolumePath, std::wstring& wPhysicalDrivePath)
+{
+    DWORD bytesReturned = 0;
+    std::wcout << wVolumePath << std::endl;
+    HANDLE hDevice = ::CreateFileW(
+        wVolumePath.c_str(),
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL);
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+    STORAGE_DEVICE_NUMBER deviceNumber;
+    if (!::DeviceIoControl(
+        hDevice,
+        IOCTL_STORAGE_GET_DEVICE_NUMBER,
+        NULL,
+        0,
+        &deviceNumber,
+        sizeof(deviceNumber),
+        &bytesReturned,
+        NULL)) {
+        // failed to execute IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS
+        return false;
+    }
+    wPhysicalDrivePath = std::wstring(LR"(\\.\PhysicalDrive)") + std::to_wstring(deviceNumber.DeviceNumber);
+    return true;
+}
+
+// Get path like \\.\HarddiskVolumeX from \\.\PhysicalDriveX 
+static bool GetVolumePathsFromPhysicalDrivePathW(const std::wstring& wPhysicalDrive, std::vector<std::wstring>& wVolumePathList)
+{
+    std::vector<std::wstring> wAllVolumePaths;
+    if (!ListWin32LocalVolumePathW(wAllVolumePaths)) {
+        return false;
+    }
+    for (const std::wstring wVolumePathTmp: wAllVolumePaths) {
+        std::wstring wPhysicalDriveTmp;
+        if (GetPhysicalDrivePathFromVolumePathW(wVolumePathTmp, wPhysicalDriveTmp) && wPhysicalDriveTmp == wPhysicalDrive) {
+            wVolumePathList.emplace_back(wVolumePathTmp);
+        }
+    }
     return true;
 }
 
@@ -786,29 +838,40 @@ bool rawio::win32::GetCopyVolumeDevicePath(
     std::string& volumeDevicePath,
     ErrCodeType& errorCode)
 {
-    // std::wstring wPhysicalDrivePath = Utf8ToUtf16(physicalDrivePath);
-    // DWORD bytesReturned = 0;
-    // HANDLE hDevice = ::CreateFileW(
-    //     wPhysicalDrivePath.c_str(),
-    //     GENERIC_READ | GENERIC_WRITE,
-    //     FILE_SHARE_READ | FILE_SHARE_WRITE,
-    //     NULL,
-    //     OPEN_EXISTING,
-    //     0,
-    //     NULL);
-    // if (hDevice == INVALID_HANDLE_VALUE) {
-    //     // failed to open physical drive
-    //     return false;
-    // }
-    std::wstring wPhysicalDrivePath;
-    //GetPhysicalDrivePathFromVolumePathW(LR"(\\.\HarddiskVolume3)", wPhysicalDrivePath);
+    std::vector<std::wstring> wVolumePathList;
 
-    std::vector<std::wstring> wVolumePaths;
-    ListWin32LocalVolumePathW(wVolumePaths);
-    for (auto v : wVolumePaths) {
-        std::wcout << L"dddd " << v << std::endl;
+    wVolumePathList.clear();
+    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive0)", wVolumePathList)) {
+        for (const std::wstring& wVolumePath : wVolumePathList) {
+            std::wcout << wVolumePath << std::endl;
+        }
     }
+    std::cout << std::endl;
 
+
+    wVolumePathList.clear();
+    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive1)", wVolumePathList)) {
+        for (const std::wstring& wVolumePath : wVolumePathList) {
+            std::wcout << wVolumePath << std::endl;
+        }
+    }
+    std::cout << std::endl;
+
+    wVolumePathList.clear();
+    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive2)", wVolumePathList)) {
+        for (const std::wstring& wVolumePath : wVolumePathList) {
+            std::wcout << wVolumePath << std::endl;
+        }
+    }
+    std::cout << std::endl;
+
+    wVolumePathList.clear();
+    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive3)", wVolumePathList)) {
+        for (const std::wstring& wVolumePath : wVolumePathList) {
+            std::wcout << wVolumePath << std::endl;
+        }
+    }
+    std::cout << std::endl;
 
     return true;
 }
