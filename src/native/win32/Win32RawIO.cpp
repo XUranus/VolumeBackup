@@ -840,14 +840,12 @@ bool rawio::win32::GetCopyVolumeDevicePath(
 {
     std::vector<std::wstring> wVolumePathList;
     wVolumePathList.clear();
-    if (GetVolumePathsFromPhysicalDrivePathW(LR"(\\.\PhysicalDrive1)", wVolumePathList)) {
-        for (const std::wstring& wVolumePath : wVolumePathList) {
-            std::wcout << wVolumePath << std::endl;
-        }
+    if (GetVolumePathsFromPhysicalDrivePathW(Utf8ToUtf16(physicalDrivePath), wVolumePathList)
+        && !wVolumePathList.empty()) {
+        volumeDevicePath = Utf16ToUtf8(wVolumePathList.front());
+        return true;
     }
-    std::cout << std::endl;
-
-    return true;
+    return false;
 }
 
 #endif
