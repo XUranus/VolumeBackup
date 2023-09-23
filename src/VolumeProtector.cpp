@@ -3,7 +3,12 @@
 #include "VolumeRestoreTask.h"
 #include "native/RawIO.h"
 #include "native/FileSystemAPI.h"
+
 using namespace volumeprotect;
+
+namespace {
+    constexpr auto VOLUME_NAME_LEN_MAX = 32;
+}
 
 static std::unordered_map<int, std::string> g_statusStringTable {
     { static_cast<int>(TaskStatus::INIT), "INIT" },
@@ -15,28 +20,54 @@ static std::unordered_map<int, std::string> g_statusStringTable {
 };
 
 /*
- * backup copy folder herichical
- * Example of session size 1024 bytes, volume size 3072 bytes
- * Full/Synethetic Copy:
+ * Backup copy folder hierarchy (Full/Synethetic Copy):
+ * Example1: a copy with format "CopyFormat::BIN" and copyName "backupvolume" with 3 session
+ *  It should have fragment copy data files and corresponding checksum meta files with same nums of sessions
  *  ${CopyID}
  *       |
  *      ${Volume UUID}
  *          |------data
- *          |       |------0.1024.data.full.bin
- *          |       |------1024.1024.copydata.bin
- *          |       |------2048.1024.copydata.bin
+ *          |       |------backupvolume.copydata.bin.part1
+ *          |       |------backupvolume.copydata.bin.part2
+ *          |       |------backupvolume.copydata.bin.part3
  *          |
  *          |------meta
  *                  |------volumecopy.meta.json
- *                  |------0.1024.sha256.meta.bin
- *                  |------1024.1024.sha256.meta.bin
- *                  |------2048.1024.sha256.meta.bin
+ *                  |------backupvolume.1.meta.bin
+ *                  |------backupvolume.2.sha256.meta.bin
+ *                  |------backupvolume.3.sha256.meta.bin
  *
+ * Example2: a copy with format "CopyFormat::IMAGE" and copyName "raspberry" with 2 session
+ *  It should have only one data file and 2 checksum files
+ *  ${CopyID}
+ *       |
+ *      ${Volume UUID}
+ *          |------data
+ *          |       |------raspberry.copydata.img
+ *          |
+ *          |------meta
+ *                  |------volumecopy.meta.json
+ *                  |------raspberry.1.meta.bin
+ *                  |------raspberry.2.sha256.meta.bin
+ * 
+ * For Windows OS, *.vhd, *.vhdx are also supported and it's handled similar to image format
+ * volumecopy.meta.json saves meta data (format, sessions) of the copy and it's critical for the copy to mount or restore
  */
 
 std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)
 {
-    // 1. check volume size
+    // fill missing BackupConfig fields
+    VolumeBackupConfig finalBackupConfig = backupConfig;
+    if (finalBackupConfig.copyName.empty() || VOLUME_NAME_LEN_MAX < finalBackupConfig.copyName.length()) {
+        namespace chrono = std::chrono;
+        using clock = std::chrono::system_clock;
+        auto timestamp = std::chrono::duration_cast<chrono::microseconds>(clock::now().time_since_epoch()).count();
+        finalBackupConfig.copyName = std::to_string(timestamp);
+        WARNLOG("invalid copy name %s, generate new copyname %s",
+            backupConfig.copyName.c_str(), finalBackupConfig.copyName.c_str());
+    }
+
+    // 2. check volume size
     uint64_t volumeSize = 0;
     try {
         volumeSize = fsapi::ReadVolumeSize(backupConfig.volumePath);
@@ -48,7 +79,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
         return nullptr;
     }
 
-    // 2. check dir existence
+    // 3. check dir existence
     if (!fsapi::IsDirectoryExists(backupConfig.outputCopyDataDirPath) ||
         !fsapi::IsDirectoryExists(backupConfig.outputCopyMetaDirPath) ||
         (backupConfig.copyType == CopyType::INCREMENT &&
@@ -57,7 +88,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
         return nullptr;
     }
 
-    return std::unique_ptr<VolumeProtectTask>(new VolumeBackupTask(backupConfig, volumeSize));
+    return std::unique_ptr<VolumeProtectTask>(new VolumeBackupTask(finalBackupConfig, volumeSize));
 }
 
 std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const VolumeRestoreConfig& restoreConfig)

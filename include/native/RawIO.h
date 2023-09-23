@@ -43,8 +43,6 @@ struct SessionCopyRawIOParam {
     uint64_t            length;
 };
 
-bool PrepareBackupCopy(const VolumeBackupConfig& config, uint64_t volumeSize);
-    
 std::shared_ptr<RawDataReader> OpenRawDataCopyReader(const SessionCopyRawIOParam& param);
 
 std::shared_ptr<RawDataWriter> OpenRawDataCopyWriter(const SessionCopyRawIOParam& param);

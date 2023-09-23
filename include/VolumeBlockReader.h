@@ -16,7 +16,7 @@ enum class SourceType
 /**
  * @brief param to build a block reader
  */
-struct VOLUMEPROTECT_API VolumeBlockReaderParam {
+struct VolumeBlockReaderParam {
     SourceType  sourceType;
     std::string sourcePath;
     uint64_t    sourceOffset;
@@ -27,7 +27,7 @@ struct VOLUMEPROTECT_API VolumeBlockReaderParam {
 };
 
 // read m_sourceLength bytes from block device/copy from m_baseOffset
-class VOLUMEPROTECT_API VolumeBlockReader : public StatefulTask {
+class VolumeBlockReader : public StatefulTask {
 public:
     // build a reader reading from volume (block device)
     static std::shared_ptr<VolumeBlockReader> BuildVolumeReader(

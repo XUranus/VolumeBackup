@@ -10,12 +10,13 @@ namespace volumeprotect {
 
 /**
  * TaskResourceManager is used to prepare resource for Backup/Restore tasks, including:
- *  Create copy file for backup
- *  Init virtual disk partition info for Backup
- *  Attach virtual disk for Backup & Restore
- *  Detach virtual disk for Backup & Restore (when destroyed)
+ *  1. Create copy file on disk for backup
+ *  2. Init virtual disk partition info for Backup
+ *  3. Attach virtual disk for Backup & Restore
+ *  4. Detach virtual disk for Backup & Restore (when destroyed)
  **/
 
+// params to build BackupTaskResourceManager
 struct BackupTaskResourceManagerParams {
     CopyFormat          copyFormat;
     std::string         copyDataDirPath;
@@ -24,12 +25,18 @@ struct BackupTaskResourceManagerParams {
     uint64_t            maxSessionSize;     // only used to create fragment copy for CopyFormat::BIN
 };
 
+// params to build RestoreTaskResourceManager
 struct RestoreTaskResourceManagerParams {
     CopyFormat          copyFormat;
     std::string         copyDataDirPath;
     std::string         copyName;
 };
 
+/**
+ * Base class for BackupTaskResourceManager and RestoreTaskResourceManager.
+ * Provide TaskResourceManager builder and RAII resource management.
+ * PrepareCopyResource() need to be invoked before backup/restore task start. 
+ */
 class TaskResourceManager {
 public:
     static std::unique_ptr<TaskResourceManager> BuildBackupTaskResourceManager(
@@ -45,7 +52,7 @@ public:
 
     virtual ~TaskResourceManager() = default;
 
-    virtual bool PrepareResource();
+    virtual bool PrepareCopyResource() = 0;
 
 protected:
     virtual bool AttachCopyResource();
@@ -60,13 +67,14 @@ protected:
     std::string         m_physicalDrivePath;
 };
 
+// BackupTaskResourceManager is inited before backup task start
 class BackupTaskResourceManager : public TaskResourceManager {
 public:
     BackupTaskResourceManager(const BackupTaskResourceManagerParams& param);
 
     ~BackupTaskResourceManager();
 
-    bool PrepareResource() override;
+    bool PrepareCopyResource() override;
 private:
     // Create and Init operation is only need for backup
     bool CreateBackupCopyResource();
@@ -78,14 +86,14 @@ private:
     uint64_t            m_maxSessionSize;     // only used to create fragment copy for CopyFormat::BIN
 };
 
-
+// RestoreTaskResourceManager is inited before restore task start
 class RestoreTaskResourceManager : public TaskResourceManager {
 public:
     RestoreTaskResourceManager(const RestoreTaskResourceManagerParams& param);
 
     ~RestoreTaskResourceManager();
 
-    bool PrepareResource() override;
+    bool PrepareCopyResource() override;
 };
 
  

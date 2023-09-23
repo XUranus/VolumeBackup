@@ -4,11 +4,12 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
+#include "TaskResourceManager.h"
 #include "VolumeUtils.h"
 
 namespace volumeprotect {
 
-class VOLUMEPROTECT_API VolumeBackupTask
+class VolumeBackupTask
     : public VolumeProtectTask, public TaskStatisticTrait, public VolumeTaskCheckpointTrait {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
@@ -35,8 +36,9 @@ private:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeBackupConfig>     m_backupConfig;
 
-    std::thread     m_thread;
-    SessionQueue    m_sessionQueue;
+    std::thread         m_thread;
+    SessionQueue        m_sessionQueue;
+    std::shared_ptr<TaskResourceManager> m_resourceManager;
 };
 
 }

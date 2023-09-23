@@ -18,15 +18,25 @@ namespace {
 
 VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
     : m_volumeSize(volumeSize),
-    m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig))
+    m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig)),
+    m_resourceManager(TaskResourceManager::BuildBackupTaskResourceManager(BackupTaskResourceManagerParams {
+        backupConfig.copyFormat,
+        backupConfig.outputCopyDataDirPath,
+        backupConfig.copyName,
+        volumeSize,
+        backupConfig.sessionSize
+    }))
 {}
 
 VolumeBackupTask::~VolumeBackupTask()
 {
-    DBGLOG("destroy VolumeBackupTask");
+    DBGLOG("destroy volume backup task, wait main thread to join");
     if (m_thread.joinable()) {
         m_thread.join();
     }
+    DBGLOG("reset backup resource manager");
+    m_resourceManager.reset();
+    DBGLOG("volume backup task destroyed");
 }
 
 bool VolumeBackupTask::Start()
@@ -59,15 +69,16 @@ bool VolumeBackupTask::Prepare()
     std::string volumePath = m_backupConfig->volumePath;
     // 1. fill volume meta info
     VolumeCopyMeta volumeCopyMeta {};
-    volumeCopyMeta.copyName = m_backupConfig->copyName; // TODO:: check empty
+    volumeCopyMeta.copyName = m_backupConfig->copyName;
     volumeCopyMeta.copyType = static_cast<int>(m_backupConfig->copyType);
     volumeCopyMeta.copyFormat = static_cast<int>(m_backupConfig->copyFormat);
     volumeCopyMeta.volumeSize = m_volumeSize;
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;
     volumeCopyMeta.volumePath = volumePath;
 
-    if (rawio::PrepareBackupCopy(*m_backupConfig, m_volumeSize)) {
-        ERRLOG("failed to prepare backup copy");
+    // prepare backup resource
+    if (!m_resourceManager->PrepareCopyResource()) {
+        ERRLOG("failed to prepare copy resource for backup task");
         return false;
     }
 
@@ -84,7 +95,6 @@ bool VolumeBackupTask::Prepare()
         if (sessionOffset + m_backupConfig->sessionSize >= m_volumeSize) {
             sessionSize = m_volumeSize - sessionOffset;
         }
-        
         volumeCopyMeta.segments.emplace_back(CopySegment {
             util::GetFileName(util::GetCopyDataFilePath(
                 m_backupConfig->outputCopyDataDirPath, m_backupConfig->copyName, m_backupConfig->copyFormat, sessionIndex

@@ -11,7 +11,7 @@ namespace devicemapper {
  * reference url:
  * https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/include/libdm/dm_target.h
  */
-class VOLUMEPROTECT_API DmTarget {
+class DmTarget {
 public:
     DmTarget(uint64_t startSector, uint64_t sectorsCount);
 
@@ -43,7 +43,7 @@ private:
     uint64_t        m_sectorsCount;
 };
 
-class VOLUMEPROTECT_API DmTargetLinear final : public DmTarget {
+class DmTargetLinear final : public DmTarget {
 public:
     DmTargetLinear(
         const std::string& blockDevicePath,
@@ -60,7 +60,7 @@ private:
     uint64_t        m_physicalSector;
 };
 
-class VOLUMEPROTECT_API DmTable {
+class DmTable {
 public:
     bool    AddTarget(std::shared_ptr<DmTarget> target);
     
@@ -104,17 +104,17 @@ enum class DmDeviceStatus {
  */
 
 // create dm device and activate with specified dm table and name, return dm device path
-VOLUMEPROTECT_API bool CreateDevice(const std::string& name, const DmTable& dmTable, std::string& path);
+bool CreateDevice(const std::string& name, const DmTable& dmTable, std::string& path);
 
-VOLUMEPROTECT_API bool RemoveDeviceIfExists(const std::string& name);
+bool RemoveDeviceIfExists(const std::string& name);
 
-VOLUMEPROTECT_API bool RemoveDevice(const std::string& name);
+bool RemoveDevice(const std::string& name);
 
-VOLUMEPROTECT_API DmDeviceStatus GetDeviceStatus(const std::string& name);
+DmDeviceStatus GetDeviceStatus(const std::string& name);
 
-VOLUMEPROTECT_API bool GetDeviceStatusUniquePath(const std::string& name, std::string& uniquePath);
+bool GetDeviceStatusUniquePath(const std::string& name, std::string& uniquePath);
 
-VOLUMEPROTECT_API bool GetDevicePathByName(const std::string& name, std::string& dmDevicePath);
+bool GetDevicePathByName(const std::string& name, std::string& dmDevicePath);
 
 }
 }

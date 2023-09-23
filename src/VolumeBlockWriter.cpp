@@ -13,22 +13,6 @@ std::shared_ptr<VolumeBlockWriter> VolumeBlockWriter::BuildCopyWriter(
     std::shared_ptr<VolumeTaskSharedContext> sharedContext)
 {
     std::string copyFilePath = sharedConfig->copyFilePath;
-    // if (fsapi::IsFileExists(copyFilePath) && fsapi::GetFileSize(copyFilePath) == sharedConfig->sessionSize) {
-    //     // should be full copy file, this task should be forever increment backup
-    //     INFOLOG("copy file already exists, using %s", copyFilePath.c_str());
-    // } 
-    
-    // else {
-    //     // truncate copy file to session size
-    //     DBGLOG("truncate new target copy file %s to size %llu", copyFilePath.c_str(), sharedConfig->sessionSize);
-    //     ErrCodeType errorCode = 0;
-    //     // TODO :: create file before session start using PrepareBackupCopy
-    //     // if (!fsapi::TruncateCreateFile(copyFilePath, sharedConfig->sessionSize, errorCode)) {
-    //     //     ERRLOG("failed to truncate create file %s with size %llu, error code = %u",
-    //     //         copyFilePath.c_str(), sharedConfig->sessionSize, errorCode);
-    //     //     return nullptr;
-    //     // }
-    // }
     // init data writer
     SessionCopyRawIOParam sessionIOParam {};
     sessionIOParam.copyFormat = sharedConfig->copyFormat;

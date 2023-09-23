@@ -15,7 +15,7 @@ enum class TargetType {
 /**
  * @brief param to build a block reader
  */
-struct VOLUMEPROTECT_API VolumeBlockWriterParam {
+struct VolumeBlockWriterParam {
     TargetType      targetType;
     std::string     targetPath;
     std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig;
@@ -23,7 +23,7 @@ struct VOLUMEPROTECT_API VolumeBlockWriterParam {
     std::shared_ptr<rawio::RawDataWriter>         dataWriter;
 };
 
-class VOLUMEPROTECT_API VolumeBlockWriter : public StatefulTask {
+class VolumeBlockWriter : public StatefulTask {
 public:
     // build a writer writing to copy file
     static std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(

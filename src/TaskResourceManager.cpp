@@ -124,14 +124,13 @@ bool TaskResourceManager::AttachCopyResource()
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
             std::string virtualDiskPath = util::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
-            std::string physicalDrivePath;
             ErrCodeType errorCode = 0;
-            if (!rawio::win32::AttachVirtualDiskCopy(virtualDiskPath, physicalDrivePath, errorCode)) {
+            if (!rawio::win32::AttachVirtualDiskCopy(virtualDiskPath, m_physicalDrivePath, errorCode)) {
                 ERRLOG("failed to attach win32 virtual disk %s, error %d", virtualDiskPath.c_str(), errorCode);
                 return false;
             }
             INFOLOG("win32 virtual disk %s attached, physical driver path: %s",
-                virtualDiskPath.c_str(), physicalDrivePath.c_str());
+                virtualDiskPath.c_str(), m_physicalDrivePath.c_str());
             return true;
         }
 #endif
@@ -160,6 +159,7 @@ bool TaskResourceManager::DetachCopyResource()
                 ERRLOG("failed to detach virtual disk copy, error %d", errorCode);
             }
             INFOLOG("win32 virtual disk %s detached, physical driver path: %s", virtualDiskPath.c_str());
+            return true;
         }
 #endif
     }
@@ -182,7 +182,7 @@ BackupTaskResourceManager::~BackupTaskResourceManager()
     }
 }
 
-bool BackupTaskResourceManager::PrepareResource()
+bool BackupTaskResourceManager::PrepareCopyResource()
 {
     // TODO::check file exists for checkpoint
     if (!CreateBackupCopyResource()) {
@@ -197,6 +197,7 @@ bool BackupTaskResourceManager::PrepareResource()
         ERRLOG("failed to attach & init copy resource");
         return false;
     }
+    return true;
 }
 
 bool BackupTaskResourceManager::CreateBackupCopyResource()
@@ -246,6 +247,8 @@ bool BackupTaskResourceManager::InitBackupCopyResource()
                 ERRLOG("failed to init GPT partition for %s, error %d", m_physicalDrivePath.c_str(), errorCode);
                 return false;
             }
+            INFOLOG("init GPT partition table to %s success", m_physicalDrivePath.c_str());
+            return true;
         }
 #endif
     }
@@ -266,12 +269,13 @@ RestoreTaskResourceManager::~RestoreTaskResourceManager()
     }
 }
 
-bool RestoreTaskResourceManager::PrepareResource()
+bool RestoreTaskResourceManager::PrepareCopyResource()
 {
     if (!AttachCopyResource()) {
         ERRLOG("failed to attach restore resource");
         return false;
     }
+    return true;
 }
 
 

@@ -18,6 +18,9 @@
 #include "VolumeProtector.h"
 #include "Logger.h"
 
+
+#include "TaskResourceManager.h"
+
 using namespace volumeprotect;
 using namespace xuranus::getopt;
 using namespace xuranus::minilogger;
@@ -110,11 +113,37 @@ int ExecVolumeBackup(
 }
 
 
+// struct BackupTaskResourceManagerParams {
+//     CopyFormat          copyFormat;
+//     std::string         copyDataDirPath;
+//     std::string         copyName;
+//     uint64_t            volumeSize;
+//     uint64_t            maxSessionSize;     // only used to create fragment copy for CopyFormat::BIN
+// };
+
+// // params to build RestoreTaskResourceManager
+// struct RestoreTaskResourceManagerParams {
+//     CopyFormat          copyFormat;
+//     std::string         copyDataDirPath;
+//     std::string         copyName;
+// };
+
 int play()
 {
-    std::string str;
-    ErrCodeType err;
-    rawio::win32::GetCopyVolumeDevicePath("",str,err);
+    
+    std::unique_ptr<TaskResourceManager> resourceManager = TaskResourceManager::BuildBackupTaskResourceManager(BackupTaskResourceManagerParams {
+        CopyFormat::VHD_FIXED,
+        R"(C:\LoggerTest)",
+        "xuranuscopy",
+        1024 * 1024 * 300,
+        1024 * 1024 * 50
+    });
+    if (resourceManager->PrepareCopyResource()) {
+        std::cout << "PrepareCopyResource success" << std::endl;
+    } else {
+        std::cout << "PrepareCopyResource failed" << std::endl;
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(10));
     return 0;
 }
 

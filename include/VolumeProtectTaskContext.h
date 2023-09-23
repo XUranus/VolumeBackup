@@ -12,7 +12,7 @@ class VolumeBlockWriter;
 class VolumeBlockHasher;
 
 // commpound struct used for hash/writer consuming
-struct VOLUMEPROTECT_API VolumeConsumeBlock {
+struct VolumeConsumeBlock {
     uint8_t*        ptr;
     uint64_t        index;
     uint64_t        volumeOffset;
@@ -20,7 +20,7 @@ struct VOLUMEPROTECT_API VolumeConsumeBlock {
 };
 
 // a fixed block allocator
-class VOLUMEPROTECT_API VolumeBlockAllocator {
+class VolumeBlockAllocator {
 public:
     VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum);
     ~VolumeBlockAllocator();
@@ -35,7 +35,7 @@ private:
     std::mutex  m_mutex;
 };
 
-struct VOLUMEPROTECT_API SessionCounter {
+struct SessionCounter {
     std::atomic<uint64_t>   bytesToRead             { 0 };
     std::atomic<uint64_t>   bytesRead               { 0 };
     std::atomic<uint64_t>   blocksToHash            { 0 };
@@ -46,7 +46,7 @@ struct VOLUMEPROTECT_API SessionCounter {
 };
 
 // store the checksum table of previous/latest hashing checksum
-struct VOLUMEPROTECT_API BlockHashingContext {
+struct BlockHashingContext {
     uint64_t    lastestSize     { 0 }; // size in bytes
     uint64_t    previousSize    { 0 };
     uint8_t*    lastestTable    { nullptr };
@@ -89,7 +89,7 @@ private:
  * 0         sessionOffset   sessionOffset + sessionSize
  */
 
-struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
+struct VolumeTaskSharedConfig {
     // immutable fields (common)
     uint64_t        sessionOffset;
     uint64_t        sessionSize;
@@ -111,7 +111,7 @@ struct VOLUMEPROTECT_API VolumeTaskSharedConfig {
 /**
  * @brief snapshot of bitmap of a task
  */
-struct VOLUMEPROTECT_API CheckpointSnapshot {
+struct CheckpointSnapshot {
     uint64_t    bitmapBufferBytesLength;     // mark single buffer length in bytes, all bitmap buffer share same length
     // buffer that only needed during backup/restore (all padding to zero during restore)
     uint8_t*    processedBitmapBuffer;      // mark blocks need to be written
@@ -123,7 +123,7 @@ struct VOLUMEPROTECT_API CheckpointSnapshot {
     bool SaveTo(const std::string& filepath) const;
 };
 
-struct VOLUMEPROTECT_API VolumeTaskSharedContext {
+struct VolumeTaskSharedContext {
     // bitmap to implement checkpoint
     std::shared_ptr<Bitmap>                             processedBitmap         { nullptr };
     std::shared_ptr<Bitmap>                             writtenBitmap           { nullptr };
@@ -135,7 +135,7 @@ struct VOLUMEPROTECT_API VolumeTaskSharedContext {
     std::shared_ptr<BlockHashingContext>                hashingContext          { nullptr };
 };
 
-struct VOLUMEPROTECT_API VolumeTaskSession {
+struct VolumeTaskSession {
     // stateful task component
     std::shared_ptr<VolumeBlockReader>          readerTask { nullptr };
     std::shared_ptr<VolumeBlockHasher>          hasherTask { nullptr };

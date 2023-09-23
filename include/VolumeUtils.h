@@ -11,7 +11,7 @@
 namespace volumeprotect {
 
 // volume data in [offset, offset + length) store in the file
-struct VOLUMEPROTECT_API CopySegment {
+struct CopySegment {
     std::string                 copyDataFile;           // name of the copy file
     std::string                 checksumBinFile;        // name of checksum binary file
     int                         index;                  // session index
@@ -27,7 +27,7 @@ struct VOLUMEPROTECT_API CopySegment {
     SERIALIZE_SECTION_END
 };
 
-struct VOLUMEPROTECT_API VolumeCopyMeta {
+struct VolumeCopyMeta {
     std::string                 copyName;
     int                         copyType;       // cast CopyType to int
     int                         copyFormat;     // cast CopyFormat to int
@@ -47,30 +47,30 @@ struct VOLUMEPROTECT_API VolumeCopyMeta {
 
 namespace util {
 
-VOLUMEPROTECT_API std::string GetChecksumBinPath(
+std::string GetChecksumBinPath(
     const std::string&  copyMetaDirPath,
     const std::string&  copyName,
     int                 sessionIndex
 );
 
-VOLUMEPROTECT_API std::string GetCopyDataFilePath(
+std::string GetCopyDataFilePath(
     const std::string&  copyDataDirPath,
     const std::string&  copyName,
     CopyFormat          copyFormat,
     int                 sessionIndex
 );
 
-VOLUMEPROTECT_API std::string GetWriterBitmapFilePath(
+std::string GetWriterBitmapFilePath(
     const std::string&  copyMetaDirPath,
     const std::string&  copyName,
     int                 sessionIndex
 );
 
-VOLUMEPROTECT_API std::string GetFileName(const std::string& fullpath);
+std::string GetFileName(const std::string& fullpath);
 
-VOLUMEPROTECT_API bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
+bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
 
-VOLUMEPROTECT_API bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
+bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 
 }
 }

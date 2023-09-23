@@ -9,7 +9,7 @@
 #include "Logger.h"
 
 template<typename T>
-class VOLUMEPROTECT_API BlockingQueue {
+class BlockingQueue {
 public:
     BlockingQueue(std::size_t maxSize);
 

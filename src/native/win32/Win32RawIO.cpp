@@ -14,6 +14,7 @@
 #include <devguid.h>
 #include <initguid.h>
 #include <strsafe.h>
+#include <wchar.h>
 
 #include "Logger.h"
 #include "win32/Win32RawIO.h"
@@ -21,8 +22,15 @@
 DEFINE_GUID(GUID_NULL,
     0x00000000, 0x0000, 0x0000, 0x0000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 
+/** according to MSDN, VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN can make Windows deduce vendor type,
+ * from filename suffix automatically, but on older system version like Windows Server 2012R2,
+ * VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT cannot be recognized and error code will be returned.
+ **/
 DEFINE_GUID(VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN,
     0x00000000, 0x0000, 0x0000, 0x0000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+
+DEFINE_GUID(VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT,
+    0xEC984AEC, 0xA0F9, 0x47e9, 0x90, 0x1F, 0x71, 0x41, 0x5A, 0x66, 0x34, 0x5B);
 
 DEFINE_GUID(PARTITION_BASIC_DATA_GUID,
     0xebd0a0a2, 0xb9e5, 0x4433, 0x87, 0xc0, 0x68, 0xb6, 0xb7, 0x26, 0x99, 0xc7);
@@ -32,17 +40,40 @@ using namespace rawio;
 using namespace rawio::win32;
 
 namespace {
+    // basic data size unit
     constexpr uint64_t ONE_MB = 1024LLU * 1024LLU;
+    constexpr uint64_t ONE_GB = 1024LLU * ONE_MB;
+    constexpr uint64_t ONE_TB = 1024LLU * ONE_GB;
+
+    // idiot defines just to bypass cleancode
+    constexpr int NUM0 = 0;
+    constexpr int NUM1 = 1;
+    constexpr int NUM2 = 2;
+    constexpr int NUM3 = 3;
+    constexpr int NUM4 = 4;
+
     constexpr uint64_t VIRTUAL_DISK_BLOCK_SIZE_PADDING = 2 * ONE_MB;
+    
+    constexpr uint64_t VIRTUAL_DISK_FOOTER_RESERVE = 2 * ONE_MB;
     // windows GPT partition header take at least 17KB for at both header and footer
-    constexpr uint64_t VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM = 34 * 512;
-    // reserved 32MB for latter use
-    constexpr uint64_t VIRTUAL_DISK_RESERVED_PARTITION_SIZE = 32 * ONE_MB;
-    // sparse size for reserved GPT (2 GPT partition table header and footer, 1 reserved 32MB for latter use)
-    constexpr uint64_t VIRTUAL_DISK_COPY_RESERVED_SIZE =
-        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM * 2 + VIRTUAL_DISK_RESERVED_PARTITION_SIZE;
+    constexpr uint64_t VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM = 17 * 512;
+    // MSR partition is invisible GPT partition with guid PARTITION_MSFT_RESERVED_GUID, need at least 16MB
+    constexpr uint64_t VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM = 16 * ONE_MB;
+    // reserved for virtual disk (GPT_Header + MSR + Partition_1 + GPT_Footer + VHD_Footer) are actual size
+    // need to reserve GPT_Header * 2 + MSR + VHD_Footer
+    constexpr uint64_t VIRTUAL_DISK_RESERVED_PARTITION_SIZE
+        = 2 * VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + VIRTUAL_DISK_FOOTER_RESERVE;
+    // size that is needed for virtual disk logical size excluding the copy volume size
+    constexpr uint64_t VIRTUAL_DISK_COPY_ADDITIONAL_SIZE
+        = 2 * VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + VIRTUAL_DISK_FOOTER_RESERVE;
     // This is in compliance with the EFI specification
     constexpr int VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT = 128;
+
+    // maximum disk size suuported by win32 virtual disk
+    constexpr uint64_t VIRTUAL_DISK_MAX_SIZE_VHD_FIXED = 100 * ONE_TB; // usually only limited by the filesystem
+    constexpr uint64_t VIRTUAL_DISK_MAX_SIZE_VHD_DYNAMIC = 2040LLU * ONE_GB; // dynamic VHD support up to 2040GB
+    constexpr uint64_t VIRTUAL_DISK_MAX_SIZE_VHDX_FIXED = 64 * ONE_TB; // VHDX support up to 64TB
+    constexpr uint64_t VIRTUAL_DISK_MAX_SIZE_VHDX_DYNAMIC = 64 * ONE_TB;
 
     // NT kernel space device path starts with "\Device" while user space device path starts with "\\."
     constexpr auto WKERNEL_SPACE_DEVICE_PATH_PREFIX = LR"(\Device)";
@@ -51,11 +82,6 @@ namespace {
     constexpr auto WDEVICE_HARDDISK_VOLUME_PREFIX = LR"(\\.\HarddiskVolume)";
 
     constexpr wchar_t* VIRTUAL_DISK_GPT_PARTITION_NAMEW = L"Win32VolumeBackupCopy";
-    constexpr int NUM0 = 0;
-    constexpr int NUM1 = 1;
-    constexpr int NUM2 = 2;
-    constexpr int NUM3 = 3;
-    constexpr int NUM4 = 4;
 }
 
 // Implement common WIN32 API utils
@@ -394,7 +420,7 @@ static DWORD CreateVirtualDiskFile(const std::string& filePath, uint64_t maxinum
 {
     VIRTUAL_STORAGE_TYPE virtualStorageType;
     virtualStorageType.DeviceId = deviceID;;
-    virtualStorageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN;
+    virtualStorageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
 
     // Specify the VHD parameters
     CREATE_VIRTUAL_DISK_PARAMETERS createParams = { 0 };
@@ -439,9 +465,15 @@ bool rawio::win32::CreateFixedVHDFile(
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
 {
+    // check volume size
+    uint64_t finalSize = volumeSize + VIRTUAL_DISK_COPY_ADDITIONAL_SIZE;
+    if (finalSize >= VIRTUAL_DISK_MAX_SIZE_VHD_FIXED) {
+        errorCode = ERROR_VOLUMEBBACKUP_TOO_LARGE_VOLUME;
+        return false;
+    }
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
+        VirtualDiskSizePadding2MB(finalSize),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHD,
         false);
     errorCode = result;
@@ -454,9 +486,15 @@ bool rawio::win32::CreateFixedVHDXFile(
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
 {
+    // check volume size
+    uint64_t finalSize = volumeSize + VIRTUAL_DISK_COPY_ADDITIONAL_SIZE;
+    if (finalSize >= VIRTUAL_DISK_MAX_SIZE_VHDX_FIXED) {
+        errorCode = ERROR_VOLUMEBBACKUP_TOO_LARGE_VOLUME;
+        return false;
+    }
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
+        VirtualDiskSizePadding2MB(finalSize),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHDX,
         false);
     errorCode = result;
@@ -468,9 +506,15 @@ bool rawio::win32::CreateDynamicVHDFile(
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
 {
+    // check volume size
+    uint64_t finalSize = volumeSize + VIRTUAL_DISK_COPY_ADDITIONAL_SIZE;
+    if (finalSize >= VIRTUAL_DISK_MAX_SIZE_VHD_DYNAMIC) {
+        errorCode = ERROR_VOLUMEBBACKUP_TOO_LARGE_VOLUME;
+        return false;
+    }
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
+        VirtualDiskSizePadding2MB(finalSize),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHD,
         true);
     errorCode = result;
@@ -482,12 +526,62 @@ bool rawio::win32::CreateDynamicVHDXFile(
     uint64_t            volumeSize,
     ErrCodeType&        errorCode)
 {
+    // check volume size
+    uint64_t finalSize = volumeSize + VIRTUAL_DISK_COPY_ADDITIONAL_SIZE;
+    if (finalSize >= VIRTUAL_DISK_MAX_SIZE_VHDX_DYNAMIC) {
+        errorCode = ERROR_VOLUMEBBACKUP_TOO_LARGE_VOLUME;
+        return false;
+    }
     DWORD result = CreateVirtualDiskFile(
         filePath,
-        VirtualDiskSizePadding2MB(volumeSize + VIRTUAL_DISK_COPY_RESERVED_SIZE),
+        VirtualDiskSizePadding2MB(finalSize),
         VIRTUAL_STORAGE_TYPE_DEVICE_VHDX,
         true);
     errorCode = result;
+    return errorCode == ERROR_SUCCESS;
+}
+
+// util function, to open *.vhd or *.vhdx file to obtain handle
+static bool OpenWin32VirtualDiskW(const std::wstring& wVirtualDiskFilePath, HANDLE& hVirtualDiskFile, ErrCodeType& errorCode)
+{
+    // check extension *.vhd or *.vhdx
+    const wchar_t* lastDot = ::wcsrchr(wVirtualDiskFilePath.c_str(), L'.');
+    std::wstring wFileExtension = lastDot == nullptr ? L"" : std::wstring(lastDot);
+    std::wstring wVhdExtension = L".vhd";
+    std::wstring wVhdxExtension = L".vhdx";
+    auto caseInsensitiveEqualCheck = [](wchar_t a, wchar_t b) { return std::tolower(a) == std::tolower(b); };
+    bool isVhd = std::equal(wVhdExtension.begin(), wVhdExtension.end(),
+        wFileExtension.begin(), wFileExtension.end(), caseInsensitiveEqualCheck);
+    bool isVhdx = std::equal(wVhdxExtension.begin(), wVhdxExtension.end(),
+        wFileExtension.begin(), wFileExtension.end(), caseInsensitiveEqualCheck);
+    if (!isVhd && !isVhdx) {
+        // invalid filename extension found
+        errorCode = ERROR_INVALID_PARAMETER;
+        return false;
+    }
+
+    // Specify UNKNOWN for both device and vendor so the system will use the
+    // file extension to determine the correct VHD format.
+    VIRTUAL_STORAGE_TYPE storageType;
+    storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_UNKNOWN;
+    storageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
+
+    OPEN_VIRTUAL_DISK_PARAMETERS openParameters;
+    ::ZeroMemory(&openParameters, sizeof(OPEN_VIRTUAL_DISK_PARAMETERS));
+    openParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+    openParameters.Version1.RWDepth = 1024;
+    // VIRTUAL_DISK_ACCESS_NONE is the only acceptable access mask for V2 handle opens.
+    VIRTUAL_DISK_ACCESS_MASK accessMask = VIRTUAL_DISK_ACCESS_ALL;
+
+    errorCode = ::OpenVirtualDisk(
+        &storageType,
+        wVirtualDiskFilePath.c_str(),
+        accessMask,
+        OPEN_VIRTUAL_DISK_FLAG_NONE,
+        &openParameters,
+        &hVirtualDiskFile
+    );
+
     return errorCode == ERROR_SUCCESS;
 }
 
@@ -497,42 +591,19 @@ bool rawio::win32::AttachVirtualDiskCopy(
     std::string&        physicalDrivePath,
     ErrCodeType&        errorCode)
 {
-    // TODO:: check extension *.vhd or *.vhdx
     HANDLE hVirtualDiskFile = INVALID_HANDLE_VALUE;
-
-    // Specify UNKNOWN for both device and vendor so the system will use the
-    // file extension to determine the correct VHD format.
-    VIRTUAL_STORAGE_TYPE storageType;
-    storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_UNKNOWN;
-    storageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN;
-
-    OPEN_VIRTUAL_DISK_PARAMETERS openParameters = { 0 };
-    openParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
-    openParameters.Version1.RWDepth = 1024;
-    // VIRTUAL_DISK_ACCESS_NONE is the only acceptable access mask for V2 handle opens.
-    VIRTUAL_DISK_ACCESS_MASK accessMask = VIRTUAL_DISK_ACCESS_ALL;
+    PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
 
     ATTACH_VIRTUAL_DISK_PARAMETERS attachParameters = { 0 };
     attachParameters.Version = ATTACH_VIRTUAL_DISK_VERSION_1;
-
     ATTACH_VIRTUAL_DISK_FLAG attachFlags = ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME | ATTACH_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER;
 
-    DWORD opStatus = ERROR_SUCCESS;
+    std::shared_ptr<void> defer(nullptr, [&](...) {
+        pSecurityDescriptor != NULL ? ::LocalFree(pSecurityDescriptor) : (void)NULL;
+        hVirtualDiskFile != INVALID_HANDLE_VALUE ? ::CloseHandle(hVirtualDiskFile) : (void)NULL;
+    });
 
-    PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
-
-    std::wstring wVirtualDiskFilePath = Utf8ToUtf16(virtualDiskFilePath);
-    opStatus = ::OpenVirtualDisk(
-        &storageType,
-        wVirtualDiskFilePath.c_str(),
-        accessMask,
-        OPEN_VIRTUAL_DISK_FLAG_NONE,
-        &openParameters,
-        &hVirtualDiskFile
-    );
-
-    if (opStatus != ERROR_SUCCESS) {
-        errorCode = opStatus;
+    if (!OpenWin32VirtualDiskW(Utf8ToUtf16(virtualDiskFilePath), hVirtualDiskFile, errorCode)) {
         return false;
     }
 
@@ -543,13 +614,12 @@ bool rawio::win32::AttachVirtualDiskCopy(
         &pSecurityDescriptor,
         NULL)) {
         errorCode = ::GetLastError();
-        ::CloseHandle(hVirtualDiskFile);
         return false;
     }
 
-    opStatus = ::AttachVirtualDisk(
+    DWORD opStatus = ::AttachVirtualDisk(
         hVirtualDiskFile,
-        pSecurityDescriptor,//sd
+        pSecurityDescriptor,
         attachFlags,
         0,
         &attachParameters,
@@ -557,67 +627,31 @@ bool rawio::win32::AttachVirtualDiskCopy(
 
     if (opStatus != ERROR_SUCCESS && opStatus != ERROR_SHARING_VIOLATION) {
         errorCode = opStatus;
-        ::LocalFree(pSecurityDescriptor);
-        ::CloseHandle(hVirtualDiskFile);
         return false;
     }
 
-    // Now we need to grab the device name \\.\PhysicalDrive#
+    // Now we need to grab the device name \\.\PhysicalDriveX
     WCHAR wPhysicalDriveName[MAX_PATH];
     ::ZeroMemory(wPhysicalDriveName, sizeof(wPhysicalDriveName));
     DWORD wPhysicalDriveNameLength = sizeof(wPhysicalDriveName) / sizeof(WCHAR);
 
     opStatus = ::GetVirtualDiskPhysicalPath(hVirtualDiskFile, &wPhysicalDriveNameLength, wPhysicalDriveName);
-    if(opStatus != ERROR_SUCCESS) {
-        // Unable to retrieve virtual disk path
-        ::LocalFree(pSecurityDescriptor);
-        ::CloseHandle(hVirtualDiskFile);
+    if(opStatus != ERROR_SUCCESS) { // Unable to retrieve virtual disk path
+        errorCode = opStatus;
         return false;
     }
     physicalDrivePath = Utf16ToUtf8(wPhysicalDriveName);
-
-    ::LocalFree(pSecurityDescriptor);
-    ::CloseHandle(hVirtualDiskFile);
     return true;
 }
 
 bool rawio::win32::DetachVirtualDiskCopy(const std::string& virtualDiskFilePath, ErrCodeType& errorCode)
 {
-    // TODO:: check extension *.vhd or *.vhdx
     HANDLE hVirtualDiskFile = INVALID_HANDLE_VALUE;
-
-    // Specify UNKNOWN for both device and vendor so the system will use the
-    // file extension to determine the correct VHD format.
-    VIRTUAL_STORAGE_TYPE storageType;
-    storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_UNKNOWN;
-    storageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN;
-
-    OPEN_VIRTUAL_DISK_PARAMETERS openParameters = { 0 };
-    openParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
-    openParameters.Version1.RWDepth = 1024;
-    // VIRTUAL_DISK_ACCESS_NONE is the only acceptable access mask for V2 handle opens.
-    VIRTUAL_DISK_ACCESS_MASK accessMask = VIRTUAL_DISK_ACCESS_ALL;
-
-    ATTACH_VIRTUAL_DISK_FLAG attachFlags = ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME | ATTACH_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER;
-
-    DWORD opStatus = ERROR_SUCCESS;
-
     std::wstring wVirtualDiskFilePath = Utf8ToUtf16(virtualDiskFilePath);
-    opStatus = ::OpenVirtualDisk(
-        &storageType,
-        wVirtualDiskFilePath.c_str(),
-        accessMask,
-        OPEN_VIRTUAL_DISK_FLAG_NONE,
-        &openParameters,
-        &hVirtualDiskFile
-    );
-
-    if (opStatus != ERROR_SUCCESS) {
-        errorCode = opStatus;
+    if (!OpenWin32VirtualDiskW(wVirtualDiskFilePath, hVirtualDiskFile, errorCode)) {
         return false;
     }
-
-    opStatus = ::DetachVirtualDisk(
+    DWORD opStatus = ::DetachVirtualDisk(
         hVirtualDiskFile,
         DETACH_VIRTUAL_DISK_FLAG_NONE,
         0
@@ -628,6 +662,7 @@ bool rawio::win32::DetachVirtualDiskCopy(const std::string& virtualDiskFilePath,
         ::CloseHandle(hVirtualDiskFile);
         return false;
     }
+    ::CloseHandle(hVirtualDiskFile);
     return true;
 }
 
@@ -658,11 +693,6 @@ bool rawio::win32::InitVirtualDiskGPT(
 
     GUID diskIdentifier = GUID_NULL;
     if (!::UuidCreate(&diskIdentifier) == RPC_S_OK) {
-        std::cerr << "Failed to generate Disk GUID." << std::endl;
-    }
-
-    if (opStatus != ERROR_SUCCESS) {
-        std::cerr << "failed to get vhd GUID identifier " << opStatus << std::endl;
         return false;
     }
 
@@ -706,14 +736,14 @@ bool rawio::win32::InitVirtualDiskGPT(
     layout.PartitionStyle = PARTITION_STYLE_GPT;
     layout.PartitionCount = NUM1; // Create only one NTFS/FAT32/ExFAT GPT partition
     layout.Gpt.DiskId = diskIdentifier;
-    layout.Gpt.StartingUsableOffset.QuadPart = 0;
+    layout.Gpt.StartingUsableOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM;
     layout.Gpt.UsableLength.QuadPart =
-        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_RESERVED_PARTITION_SIZE + volumeSize;
+        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM * NUM2 + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + volumeSize;
     layout.Gpt.MaxPartitionCount = VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT;
     layout.PartitionEntry[0].PartitionStyle = PARTITION_STYLE_GPT;
-    layout.PartitionEntry[0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM;
+    layout.PartitionEntry[0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
     layout.PartitionEntry[0].PartitionLength.QuadPart = volumeSize;
-    layout.PartitionEntry[0].PartitionNumber = NUM1; // 1st partition
+    layout.PartitionEntry[0].PartitionNumber = NUM1; // 1st partition, number start from 1
     layout.PartitionEntry[0].RewritePartition = FALSE; // do not allow rewrite partition
     layout.PartitionEntry[0].IsServicePartition = FALSE;
     layout.PartitionEntry[0].Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;

@@ -16,8 +16,10 @@
 #include "VolumeProtectMacros.h"
 #include "RawIO.h"
 
-// Raw I/O Reader/Writer for win32 subsystem using WIN32 API
+// define customed win32 error codes, starts from 0x80600000
+#define ERROR_VOLUMEBBACKUP_TOO_LARGE_VOLUME ((DWORD)0x80600000 | 0x114514)
 
+// Raw I/O Reader/Writer for win32 subsystem using WIN32 API
 namespace volumeprotect {
 namespace rawio {
 namespace win32 {
@@ -90,13 +92,25 @@ private:
     bool m_autoDetach { true };
 };
 
-bool CreateFixedVHDFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateFixedVHDFile(
+    const std::string& filePath,
+    uint64_t volumeSize,
+    ErrCodeType& errorCode);
 
-bool CreateFixedVHDXFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateFixedVHDXFile(
+    const std::string& filePath,
+    uint64_t volumeSize,
+    ErrCodeType& errorCode);
 
-bool CreateDynamicVHDFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateDynamicVHDFile(
+    const std::string& filePath,
+    uint64_t volumeSize,
+    ErrCodeType& errorCode);
 
-bool CreateDynamicVHDXFile(const std::string& filePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool CreateDynamicVHDXFile(
+    const std::string& filePath,
+    uint64_t volumeSize,
+    ErrCodeType& errorCode);
 
 bool AttachVirtualDiskCopy(
     const std::string&  virtualDiskFilePath,
@@ -107,7 +121,10 @@ bool DetachVirtualDiskCopy(
     const std::string&  virtualDiskFilePath,
     ErrCodeType&        errorCode);
 
-bool InitVirtualDiskGPT(const std::string& physicalDrivePath, uint64_t volumeSize, ErrCodeType& errorCode);
+bool InitVirtualDiskGPT(
+    const std::string& physicalDrivePath,
+    uint64_t volumeSize,
+    ErrCodeType& errorCode);
 
 // Get volume path (\\.\HarddiskVolumeX) of the first partition in physicalDrivePath of attached virtual disk
 bool GetCopyVolumeDevicePath(

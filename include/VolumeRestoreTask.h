@@ -4,11 +4,12 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
+#include "TaskResourceManager.h"
 #include "VolumeUtils.h"
 
 namespace volumeprotect {
 
-class VOLUMEPROTECT_API VolumeRestoreTask
+class VolumeRestoreTask
     : public VolumeProtectTask, public TaskStatisticTrait, public VolumeTaskCheckpointTrait {
 public:
     using SessionQueue = std::queue<VolumeTaskSession>;
@@ -32,6 +33,7 @@ private:
 
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;
+    std::shared_ptr<TaskResourceManager> m_resourceManager;
 };
 
 }

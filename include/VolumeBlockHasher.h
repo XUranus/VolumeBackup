@@ -6,7 +6,7 @@
 
 namespace volumeprotect {
 
-enum class VOLUMEPROTECT_API  HasherForwardMode {
+enum class  HasherForwardMode {
     // direct move block to write queue after block checksum is computed
     DIRECT,
     // diff the checksum computed with the corresponding previous one and move block forward only it's cheksum changed
@@ -16,7 +16,7 @@ enum class VOLUMEPROTECT_API  HasherForwardMode {
 /**
  * @brief param struct to build a hasher
  */
-struct VOLUMEPROTECT_API VolumeBlockHasherParam {
+struct VolumeBlockHasherParam {
     std::shared_ptr<VolumeTaskSharedConfig>     sharedConfig    { nullptr };
     std::shared_ptr<VolumeTaskSharedContext>    sharedContext   { nullptr };
     uint32_t                    workerThreadNum                 { DEFAULT_HASHER_NUM };
@@ -24,7 +24,7 @@ struct VOLUMEPROTECT_API VolumeBlockHasherParam {
     uint32_t                    singleChecksumSize              { 0 };
 };
 
-class VOLUMEPROTECT_API VolumeBlockHasher : public StatefulTask {
+class VolumeBlockHasher : public StatefulTask {
 public:
     ~VolumeBlockHasher();
 

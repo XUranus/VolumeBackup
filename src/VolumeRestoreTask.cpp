@@ -16,15 +16,24 @@ namespace {
 }
 
 VolumeRestoreTask::VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig)
- : m_restoreConfig(std::make_shared<VolumeRestoreConfig>(restoreConfig))
+    : m_restoreConfig(std::make_shared<VolumeRestoreConfig>(restoreConfig))
+    // TODO::
+    // m_resourceManager(TaskResourceManager::BuildRestoreTaskResourceManager(RestoreTaskResourceManagerParams {
+    //     backupConfig.copyFormat,
+    //     backupConfig.outputCopyDataDirPath,
+    //     backupConfig.copyName
+    // }))
 {}
 
 VolumeRestoreTask::~VolumeRestoreTask()
 {
-    DBGLOG("destroy VolumeRestoreTask");
+    DBGLOG("destroy volume restore task, wait main thread to join");
     if (m_thread.joinable()) {
         m_thread.join();
     }
+    DBGLOG("reset restore resource manager");
+    m_resourceManager.reset();
+    DBGLOG("volume restore task destroyed");
 }
 
 bool VolumeRestoreTask::Start()
@@ -58,13 +67,19 @@ bool VolumeRestoreTask::Prepare()
         return false;
     }
 
-    // 2. read volume info and validate
+    // 2. prepare restore resource
+    if (!m_resourceManager->PrepareCopyResource()) {
+        ERRLOG("failed to prepare copy resource for restore task");
+        return false;
+    }
+
+    // 3. read volume info and validate
     if (!ValidateRestoreTask(volumeCopyMeta)) {
         ERRLOG("failed to validate restore task!");
         return false;
     }
 
-    // 3. split session
+    // 4. split session
     uint64_t volumeSize = volumeCopyMeta.volumeSize;
     CopyType copyType = static_cast<CopyType>(volumeCopyMeta.copyType);
     CopyFormat copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
