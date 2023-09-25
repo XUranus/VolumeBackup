@@ -31,11 +31,14 @@ public:
     static std::unique_ptr<Win32VolumeCopyMountProvider> BuildWin32MountProvider(
         const Win32CopyMountConfig& mountConfig);
 
-    Win32VolumeCopyMountProvider();
+    Win32VolumeCopyMountProvider(
+        std::string copyMetaDirPath,
+        std::string copyDataDirPath,
+        std::string mountTargetPath);
 
     ~Win32VolumeCopyMountProvider();
 
-    bool UmountCopy();
+    bool MountCopy();
 
     bool UmountCopy();
 

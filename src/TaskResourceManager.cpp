@@ -206,7 +206,8 @@ bool TaskResourceManager::DetachCopyResource()
 BackupTaskResourceManager::BackupTaskResourceManager(const BackupTaskResourceManagerParams& param)
     : TaskResourceManager(param.copyFormat, param.copyDataDirPath, param.copyName),
     m_volumeSize(param.volumeSize),
-    m_maxSessionSize(param.maxSessionSize)
+    m_maxSessionSize(param.maxSessionSize),
+    m_backupType(param.backupType)
 {};
 
 BackupTaskResourceManager::~BackupTaskResourceManager()

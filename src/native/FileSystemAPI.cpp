@@ -76,7 +76,7 @@ bool fsapi::IsFileExists(const std::string& path)
 #ifdef _WIN32
     std::wstring wpath = Utf8ToUtf16(path);
     DWORD attributes = ::GetFileAttributesW(wpath.c_str());
-    return (attributes != INVALID_FILE_ATTRIBUTES) && ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0);
+    return (attributes != INVALID_FILE_ATTRIBUTES) && ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0);
 #endif
 }
 
