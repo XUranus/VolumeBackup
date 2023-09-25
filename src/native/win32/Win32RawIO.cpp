@@ -35,16 +35,26 @@ DEFINE_GUID(VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT,
 DEFINE_GUID(PARTITION_BASIC_DATA_GUID,
     0xebd0a0a2, 0xb9e5, 0x4433, 0x87, 0xc0, 0x68, 0xb6, 0xb7, 0x26, 0x99, 0xc7);
 
+DEFINE_GUID(PARTITION_MSFT_RESERVED_GUID,
+    0xe3c9e316, 0x0b5c, 0x4db8, 0x81, 0x7d, 0xf9, 0x2d, 0xf0, 0x02, 0x15, 0xae);
+
+/**
+ * Structure of a virtual disk copy with GPT partition table looks like:
+ * |----GPT Header----|----MSR Partition(1)----|----VolumeData Partition(2)----|----GPT Footer----|----Disk Footer----|
+ * |<===== 17KB =====>|<======== 16MB ========>|<======= ${volume size} ======>|<===== 17KB =====>|<====== 2MB ======>|
+ * |                  |                                                                                               |
+ * |<-----------------|------------------------  Gpt.UsableLength  -------------------------------------------------->|
+ *                    | 
+ *                    |
+ *          Gpt.StartingUsableOffset
+ */
+
+
 using namespace volumeprotect;
 using namespace rawio;
 using namespace rawio::win32;
 
 namespace {
-    // basic data size unit
-    constexpr uint64_t ONE_MB = 1024LLU * 1024LLU;
-    constexpr uint64_t ONE_GB = 1024LLU * ONE_MB;
-    constexpr uint64_t ONE_TB = 1024LLU * ONE_GB;
-
     // idiot defines just to bypass cleancode
     constexpr int NUM0 = 0;
     constexpr int NUM1 = 1;
@@ -56,7 +66,7 @@ namespace {
     
     constexpr uint64_t VIRTUAL_DISK_FOOTER_RESERVE = 2 * ONE_MB;
     // windows GPT partition header take at least 17KB for at both header and footer
-    constexpr uint64_t VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM = 17 * 512;
+    constexpr uint64_t VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM = 17 * ONE_KB;
     // MSR partition is invisible GPT partition with guid PARTITION_MSFT_RESERVED_GUID, need at least 16MB
     constexpr uint64_t VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM = 16 * ONE_MB;
     // reserved for virtual disk (GPT_Header + MSR + Partition_1 + GPT_Footer + VHD_Footer) are actual size
@@ -81,7 +91,12 @@ namespace {
     constexpr auto WDEVICE_PHYSICAL_DRIVE_PREFIX = LR"(\\.\PhysicalDrive)";
     constexpr auto WDEVICE_HARDDISK_VOLUME_PREFIX = LR"(\\.\HarddiskVolume)";
 
-    constexpr wchar_t* VIRTUAL_DISK_GPT_PARTITION_NAMEW = L"Win32VolumeBackupCopy";
+    constexpr wchar_t* VIRTUAL_DISK_GPT_MSR_PARTITION_NAMEW = L"Win32VolumeBackupCopyMSR";
+    constexpr wchar_t* VIRTUAL_DISK_GPT_DATA_PARTITION_NAMEW = L"Win32VolumeBackupCopyDara";
+
+    // According to MSDN: an application should wait for the MSR partition arrival
+    // before sending the IOCTL_DISK_SET_DRIVE_LAYOUT_EX control code.
+    constexpr auto WAIT_FOR_MSR_PARTITION_DURATION_SEC = 2;
 }
 
 // Implement common WIN32 API utils
@@ -666,6 +681,63 @@ bool rawio::win32::DetachVirtualDiskCopy(const std::string& virtualDiskFilePath,
     return true;
 }
 
+static bool InitMsrPartitionAndDataPartition(
+    HANDLE hDevice, const GUID& diskIdentifier, uint64_t volumeSize, ErrCodeType& errorCode)
+{
+    GUID msrPartitionGUID = GUID_NULL;
+    GUID dataPartitionGUID = GUID_NULL;
+    if (::UuidCreate(&msrPartitionGUID) != RPC_S_OK || ::UuidCreate(&dataPartitionGUID) != RPC_S_OK) {
+        // Failed to generate partition uuid
+        return false;
+    }
+
+    // Start init GPT partitions, total 2 partitions (MSR + data)
+    int layoutStructSize = sizeof(DRIVE_LAYOUT_INFORMATION_EX) + sizeof(PARTITION_INFORMATION_EX) * NUM1;
+    DRIVE_LAYOUT_INFORMATION_EX* layout = reinterpret_cast<DRIVE_LAYOUT_INFORMATION_EX*>(new char[layoutStructSize]);
+    ZeroMemory(layout, layoutStructSize);
+    DWORD bytesReturned = 0;
+
+    layout->PartitionStyle = PARTITION_STYLE_GPT;
+    layout->PartitionCount = NUM2; // Create only one NTFS/FAT32/ExFAT GPT partition
+    layout->Gpt.DiskId = diskIdentifier;
+    layout->Gpt.StartingUsableOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM;
+    layout->Gpt.UsableLength.QuadPart =
+        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM * NUM2 + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + volumeSize;
+    layout->Gpt.MaxPartitionCount = VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT;
+    
+    layout->PartitionEntry[NUM0].PartitionStyle = PARTITION_STYLE_GPT;
+    layout->PartitionEntry[NUM0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM;
+    layout->PartitionEntry[NUM0].PartitionLength.QuadPart = VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
+    layout->PartitionEntry[NUM0].PartitionNumber = NUM1; // 1st partition, number start from 1
+    layout->PartitionEntry[NUM0].RewritePartition = FALSE; // do not allow rewrite partition
+    layout->PartitionEntry[NUM0].IsServicePartition = FALSE;
+    layout->PartitionEntry[NUM0].Gpt.PartitionType = PARTITION_MSFT_RESERVED_GUID;
+    layout->PartitionEntry[NUM0].Gpt.PartitionId = msrPartitionGUID;
+    layout->PartitionEntry[NUM0].Gpt.Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER; //0;
+    wcscpy_s(layout->PartitionEntry[NUM0].Gpt.Name, VIRTUAL_DISK_GPT_MSR_PARTITION_NAMEW);
+    
+    layout->PartitionEntry[NUM1].PartitionStyle = PARTITION_STYLE_GPT;
+    layout->PartitionEntry[NUM1].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
+    layout->PartitionEntry[NUM1].PartitionLength.QuadPart = volumeSize;
+    layout->PartitionEntry[NUM1].PartitionNumber = NUM2; // 2nd partition
+    layout->PartitionEntry[NUM1].RewritePartition = FALSE; // do not allow rewrite partition
+    layout->PartitionEntry[NUM1].IsServicePartition = FALSE;
+    layout->PartitionEntry[NUM1].Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;
+    layout->PartitionEntry[NUM1].Gpt.PartitionId = dataPartitionGUID;
+    layout->PartitionEntry[NUM1].Gpt.Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER;
+    wcscpy_s(layout->PartitionEntry[NUM1].Gpt.Name, VIRTUAL_DISK_GPT_DATA_PARTITION_NAMEW);
+
+    if (!::DeviceIoControl(
+        hDevice, IOCTL_DISK_SET_DRIVE_LAYOUT_EX, layout, layoutStructSize, NULL, 0, &bytesReturned, NULL)) {
+        std::cerr << "Error: IOCTL_DISK_SET_DRIVE_LAYOUT_EX failed" << ::GetLastError() << std::endl;
+        errorCode = ::GetLastError();
+        delete[] layout;
+        return false;
+    }
+    delete[] layout;
+    return true;
+}
+
 // init partition table GPT create create single GPT partition for the VHD/VHDX copy
 bool rawio::win32::InitVirtualDiskGPT(
     const std::string&  physicalDrivePath,
@@ -692,7 +764,7 @@ bool rawio::win32::InitVirtualDiskGPT(
     ULONG diskInfoSize = sizeof(GET_VIRTUAL_DISK_INFO);
 
     GUID diskIdentifier = GUID_NULL;
-    if (!::UuidCreate(&diskIdentifier) == RPC_S_OK) {
+    if (::UuidCreate(&diskIdentifier) != RPC_S_OK) {
         return false;
     }
 
@@ -721,46 +793,10 @@ bool rawio::win32::InitVirtualDiskGPT(
     }
 
     // TODO:: hack, wait for MSR partition arrival
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-
-
-    GUID partitionGUID = GUID_NULL;
-    if (!::UuidCreate(&partitionGUID) == RPC_S_OK) {
-        // Failed to generate partitionGUID
-        return false;
-    }
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT_FOR_MSR_PARTITION_DURATION_SEC));
 
     // Start init GPT partition
-    DRIVE_LAYOUT_INFORMATION_EX layout = { 0 };
-    ZeroMemory(&layout, sizeof(DRIVE_LAYOUT_INFORMATION_EX));
-    layout.PartitionStyle = PARTITION_STYLE_GPT;
-    layout.PartitionCount = NUM1; // Create only one NTFS/FAT32/ExFAT GPT partition
-    layout.Gpt.DiskId = diskIdentifier;
-    layout.Gpt.StartingUsableOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM;
-    layout.Gpt.UsableLength.QuadPart =
-        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM * NUM2 + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + volumeSize;
-    layout.Gpt.MaxPartitionCount = VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT;
-    layout.PartitionEntry[0].PartitionStyle = PARTITION_STYLE_GPT;
-    layout.PartitionEntry[0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
-    layout.PartitionEntry[0].PartitionLength.QuadPart = volumeSize;
-    layout.PartitionEntry[0].PartitionNumber = NUM1; // 1st partition, number start from 1
-    layout.PartitionEntry[0].RewritePartition = FALSE; // do not allow rewrite partition
-    layout.PartitionEntry[0].IsServicePartition = FALSE;
-    layout.PartitionEntry[0].Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;
-    layout.PartitionEntry[0].Gpt.PartitionId = partitionGUID;
-    layout.PartitionEntry[0].Gpt.Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER;
-    wcscpy_s(layout.PartitionEntry[0].Gpt.Name, VIRTUAL_DISK_GPT_PARTITION_NAMEW);
-
-    if (!DeviceIoControl(
-        hDevice,
-        IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
-        &layout,
-        sizeof(layout),
-        NULL,
-        0,
-        &bytesReturned,
-        NULL)) {
-        // Error: IOCTL_DISK_SET_DRIVE_LAYOUT_EX failed
+    if (!InitMsrPartitionAndDataPartition(hDevice, diskIdentifier, volumeSize, errorCode)) {
         ::CloseHandle(hDevice);
         return false;
     }

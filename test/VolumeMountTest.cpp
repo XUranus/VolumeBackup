@@ -16,7 +16,7 @@
 #include <string>
 #include <thread>
 
-#include "CopyMountProvider.h"
+#include "LinuxVolumeCopyMountProvider.h"
 #include "Logger.h"
 
 using namespace ::testing;
@@ -61,7 +61,7 @@ protected:
         mountConfig.mountOptions = "noatime";
 
         // mock copyMetaSingleSliceMock, test mount single slice
-        copyMetaSingleSliceMock.copyType = 0;
+        copyMetaSingleSliceMock.backupType = 0;
         copyMetaSingleSliceMock.volumeSize = ONE_GB * 4LLU; // 4GB
         copyMetaSingleSliceMock.blockSize = ONE_MB * 4LLU; // 4MB
         copyMetaSingleSliceMock.volumePath = "/dev/mapper/volumeprotect_dm_dummy_name";
@@ -70,7 +70,7 @@ protected:
         };
 
         // mock copyMutipleSlicesMock, test mount multiple slices
-        copyMutipleSlicesMock.copyType = 0;
+        copyMutipleSlicesMock.backupType = 0;
         copyMutipleSlicesMock.volumeSize = ONE_GB * 10LLU; // 10GB
         copyMutipleSlicesMock.blockSize = ONE_MB * 4LLU; // 4MB
         copyMutipleSlicesMock.volumePath = "/dev/mapper/volumeprotect_dm_dummy_name";

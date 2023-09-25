@@ -29,7 +29,7 @@ struct CopySegment {
 
 struct VolumeCopyMeta {
     std::string                 copyName;
-    int                         copyType;       // cast CopyType to int
+    int                         backupType;       // cast BackupType to int
     int                         copyFormat;     // cast CopyFormat to int
     uint64_t                    volumeSize;     // volume size in bytes
     uint32_t                    blockSize;      // block size in bytes
@@ -37,7 +37,7 @@ struct VolumeCopyMeta {
     std::vector<CopySegment>    segments;
 
     SERIALIZE_SECTION_BEGIN
-    SERIALIZE_FIELD(copyType, copyType);
+    SERIALIZE_FIELD(backupType, backupType);
     SERIALIZE_FIELD(volumeSize, volumeSize);
     SERIALIZE_FIELD(volumePath, volumePath);
     SERIALIZE_FIELD(blockSize, blockSize);

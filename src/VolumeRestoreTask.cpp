@@ -15,14 +15,24 @@ namespace {
     constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
 }
 
-VolumeRestoreTask::VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig)
-    : m_restoreConfig(std::make_shared<VolumeRestoreConfig>(restoreConfig))
-    // TODO::
-    // m_resourceManager(TaskResourceManager::BuildRestoreTaskResourceManager(RestoreTaskResourceManagerParams {
-    //     backupConfig.copyFormat,
-    //     backupConfig.outputCopyDataDirPath,
-    //     backupConfig.copyName
-    // }))
+static std::vector<std::string> GetCopyFilesFromCopyMeta(const VolumeCopyMeta& volumeCopyMeta)
+{
+    std::vector<std::string> files;
+    for (const auto& segment : volumeCopyMeta.segments) {
+        files.push_back(segment.copyDataFile);
+    }
+    return files;
+}
+
+VolumeRestoreTask::VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig, const VolumeCopyMeta& volumeCopyMeta)
+    : m_restoreConfig(std::make_shared<VolumeRestoreConfig>(restoreConfig)),
+    m_volumeCopyMeta(std::make_shared<VolumeCopyMeta>(volumeCopyMeta)),
+    m_resourceManager(TaskResourceManager::BuildRestoreTaskResourceManager(RestoreTaskResourceManagerParams {
+        static_cast<CopyFormat>(volumeCopyMeta.copyFormat),
+        restoreConfig.copyDataDirPath,
+        volumeCopyMeta.copyName,
+        GetCopyFilesFromCopyMeta(volumeCopyMeta)
+    }))
 {}
 
 VolumeRestoreTask::~VolumeRestoreTask()
@@ -60,42 +70,29 @@ bool VolumeRestoreTask::Prepare()
 {
     std::string volumePath = m_restoreConfig->volumePath;
 
-    // 1. read copy meta json and validate volume
-    VolumeCopyMeta volumeCopyMeta {};
-    if (!ReadVolumeCopyMeta(m_restoreConfig->copyMetaDirPath, volumeCopyMeta)) {
-        ERRLOG("failed to write copy meta to dir: %s", m_restoreConfig->copyMetaDirPath.c_str());
-        return false;
-    }
-
     // 2. prepare restore resource
     if (!m_resourceManager->PrepareCopyResource()) {
         ERRLOG("failed to prepare copy resource for restore task");
         return false;
     }
 
-    // 3. read volume info and validate
-    if (!ValidateRestoreTask(volumeCopyMeta)) {
-        ERRLOG("failed to validate restore task!");
-        return false;
-    }
-
     // 4. split session
-    uint64_t volumeSize = volumeCopyMeta.volumeSize;
-    CopyType copyType = static_cast<CopyType>(volumeCopyMeta.copyType);
-    CopyFormat copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
-    for (const CopySegment& segment: volumeCopyMeta.segments) {
+    uint64_t volumeSize = m_volumeCopyMeta->volumeSize;
+    BackupType backupType = static_cast<BackupType>(m_volumeCopyMeta->backupType);
+    CopyFormat copyFormat = static_cast<CopyFormat>(m_volumeCopyMeta->copyFormat);
+    for (const CopySegment& segment: m_volumeCopyMeta->segments) {
         uint64_t sessionOffset = segment.offset;
         uint64_t sessionSize = segment.length;
         int sessionIndex = segment.index;
         INFOLOG("Size = %llu sessionOffset %d sessionSize %d", volumeSize, sessionOffset, sessionSize);
         std::string copyFilePath = util::GetCopyDataFilePath(
-            m_restoreConfig->copyDataDirPath, volumeCopyMeta.copyName, copyFormat, sessionIndex);
+            m_restoreConfig->copyDataDirPath, m_volumeCopyMeta->copyName, copyFormat, sessionIndex);
         VolumeTaskSession session {};
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
-        session.sharedConfig->copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
+        session.sharedConfig->copyFormat = static_cast<CopyFormat>(m_volumeCopyMeta->copyFormat);
         session.sharedConfig->volumePath = volumePath;
         session.sharedConfig->hasherEnabled = false;
-        session.sharedConfig->blockSize = volumeCopyMeta.blockSize;
+        session.sharedConfig->blockSize = m_volumeCopyMeta->blockSize;
         session.sharedConfig->sessionOffset = sessionOffset;
         session.sharedConfig->sessionSize = sessionSize;
         session.sharedConfig->copyFilePath = copyFilePath;
@@ -104,27 +101,6 @@ bool VolumeRestoreTask::Prepare()
         m_sessionQueue.push(session);
     }
 
-    return true;
-}
-
-bool VolumeRestoreTask::ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const
-{
-    if (!fsapi::IsDirectoryExists(m_restoreConfig->copyDataDirPath)
-        || !fsapi::IsDirectoryExists(m_restoreConfig->copyMetaDirPath)) {
-        ERRLOG("data directory %s or meta directory %s not exists!",
-            m_restoreConfig->copyDataDirPath.c_str(), m_restoreConfig->copyMetaDirPath.c_str());
-        return false;
-    }
-    uint64_t volumeSize = 0;
-    try {
-        volumeSize = fsapi::ReadVolumeSize(m_restoreConfig->volumePath);
-    } catch (const SystemApiException& e) {
-        ERRLOG("retrive volume size got exception: %s", e.what());
-        return false;
-    }
-    if (volumeSize != volumeCopyMeta.volumeSize) {
-        ERRLOG("restore volume size mismatch ! (copy : %llu, target: %llu)", volumeCopyMeta.volumeSize, volumeSize);
-    }
     return true;
 }
 
@@ -166,11 +142,6 @@ bool VolumeRestoreTask::InitRestoreSessionContext(std::shared_ptr<VolumeTaskSess
     RestoreSessionCheckpoint(session);
     // 3. check and init task executor
     return InitRestoreSessionTaskExecutor(session);
-}
-
-bool VolumeRestoreTask::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
-{
-    return util::ReadVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta);
 }
 
 bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const

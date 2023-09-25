@@ -489,7 +489,7 @@ void VolumeTaskCheckpointTrait::RestoreSessionCounter(std::shared_ptr<VolumeTask
     uint64_t writtenCount = session->sharedContext->writtenBitmap->TotalSetCount();
     uint64_t bytesProcessed = (processedCount == sessionBlocksCount) ? sessionSize : (processedCount * blockSize);
     uint64_t bytesWritten = (writtenCount == sessionBlocksCount) ? sessionSize : (writtenCount * blockSize);
-\
+
     counter->bytesToRead = sessionSize;
     counter->bytesRead = bytesProcessed;
     counter->bytesToWrite = bytesWritten;

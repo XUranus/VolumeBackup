@@ -2,9 +2,11 @@
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
 #include "native/RawIO.h"
+#include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
 
 using namespace volumeprotect;
+using namespace volumeprotect::util;
 
 namespace {
     constexpr auto VOLUME_NAME_LEN_MAX = 32;
@@ -82,7 +84,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
     // 3. check dir existence
     if (!fsapi::IsDirectoryExists(backupConfig.outputCopyDataDirPath) ||
         !fsapi::IsDirectoryExists(backupConfig.outputCopyMetaDirPath) ||
-        (backupConfig.copyType == CopyType::INCREMENT &&
+        (backupConfig.backupType == BackupType::FOREVER_INC &&
         !fsapi::IsDirectoryExists(backupConfig.prevCopyMetaDirPath))) {
         ERRLOG("failed to prepare copy directory");
         return nullptr;
@@ -108,11 +110,22 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
     // 2. check dir existence
     if (!fsapi::IsDirectoryExists(restoreConfig.copyDataDirPath) ||
         !fsapi::IsDirectoryExists(restoreConfig.copyMetaDirPath)) {
-        ERRLOG("failed to prepare copy directory");
+        ERRLOG("restore copy directory not prepared");
+        return nullptr;
+    }
+    
+    // 3. read copy meta json and validate
+    VolumeCopyMeta volumeCopyMeta {};
+    if (!util::ReadVolumeCopyMeta(restoreConfig.copyMetaDirPath, volumeCopyMeta)) {
+        ERRLOG("failed to read copy meta json from dir: %s", restoreConfig.copyMetaDirPath.c_str());
+        return nullptr;
+    }
+    if (volumeSize != volumeCopyMeta.volumeSize) {
+        ERRLOG("restore volume size mismatch ! (copy : %llu, target: %llu)", volumeCopyMeta.volumeSize, volumeSize);
         return nullptr;
     }
 
-    return std::unique_ptr<VolumeProtectTask>(new VolumeRestoreTask(restoreConfig));
+    return std::unique_ptr<VolumeProtectTask>(new VolumeRestoreTask(restoreConfig, volumeCopyMeta));
 }
 
 void StatefulTask::Abort()
@@ -178,7 +191,7 @@ inline static std::string StringFromCStr(char* str)
 void* BuildBackupTask(VolumeBackupConf_C cBackupConf)
 {
     VolumeBackupConfig backupConfig {};
-    backupConfig.copyType = static_cast<CopyType>(cBackupConf.copyType);
+    backupConfig.backupType = static_cast<BackupType>(cBackupConf.backupType);
     backupConfig.volumePath = StringFromCStr(cBackupConf.volumePath);
     backupConfig.prevCopyMetaDirPath = StringFromCStr(cBackupConf.prevCopyMetaDirPath);
     backupConfig.outputCopyDataDirPath = StringFromCStr(cBackupConf.outputCopyDataDirPath);

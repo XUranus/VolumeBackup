@@ -19,7 +19,7 @@
 #include "GetOption.h"
 #include "Json.h"
 #include "Logger.h"
-#include "CopyMountProvider.h"
+#include "LinuxVolumeCopyMountProvider.h"
 
 using namespace xuranus;
 using namespace xuranus::getopt;

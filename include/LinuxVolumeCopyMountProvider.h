@@ -1,5 +1,5 @@
-#ifndef VOLUMEBACKUP_COPY_MOUNT_PROVIDER_HEADER
-#define VOLUMEBACKUP_COPY_MOUNT_PROVIDER_HEADER
+#ifndef VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
+#define VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
 
 #include "VolumeProtectMacros.h"
 // external logger/json library
@@ -11,7 +11,7 @@ namespace mount {
 
 #ifdef __linux
 /**
- * LinuxMountProvider provides the functionality to mount/umount volume copy from a specified data path and meta path.
+ * LinuxVolumeCopyMountProvider provides the functionality to mount/umount volume copy from a specified data path and meta path.
  * This piece of code will load copy slices from volumecopy.meta.json and create a block device from it.
  *
  * For a copy contains only one session, LinuxMountProvider will create a loopback device from the file

@@ -21,6 +21,7 @@ VolumeBackupTask::VolumeBackupTask(const VolumeBackupConfig& backupConfig, uint6
     m_backupConfig(std::make_shared<VolumeBackupConfig>(backupConfig)),
     m_resourceManager(TaskResourceManager::BuildBackupTaskResourceManager(BackupTaskResourceManagerParams {
         backupConfig.copyFormat,
+        backupConfig.backupType,
         backupConfig.outputCopyDataDirPath,
         backupConfig.copyName,
         volumeSize,
@@ -60,7 +61,7 @@ TaskStatistics VolumeBackupTask::GetStatistics() const
 
 bool VolumeBackupTask::IsIncrementBackup() const
 {
-    return m_backupConfig->copyType == CopyType::INCREMENT;
+    return m_backupConfig->backupType == BackupType::FOREVER_INC;
 }
 
 // split session and save volume meta
@@ -70,7 +71,7 @@ bool VolumeBackupTask::Prepare()
     // 1. fill volume meta info
     VolumeCopyMeta volumeCopyMeta {};
     volumeCopyMeta.copyName = m_backupConfig->copyName;
-    volumeCopyMeta.copyType = static_cast<int>(m_backupConfig->copyType);
+    volumeCopyMeta.backupType = static_cast<int>(m_backupConfig->backupType);
     volumeCopyMeta.copyFormat = static_cast<int>(m_backupConfig->copyFormat);
     volumeCopyMeta.volumeSize = m_volumeSize;
     volumeCopyMeta.blockSize = DEFAULT_BLOCK_SIZE;

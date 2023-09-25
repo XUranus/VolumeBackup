@@ -1,6 +1,7 @@
 #include "TaskResourceManager.h"
 #include "Logger.h"
 #include "native/RawIO.h"
+#include "native/FileSystemAPI.h"
 
 #ifdef __linux__
 #include "native/linux/PosixRawIO.h"
@@ -18,12 +19,16 @@ namespace {
 }
 
 // implement static util functions...
-static bool CreateFragmentBinaryBackupCopy(
+
+
+// return list of path and size
+static std::vector<std::pair<std::string, uint64_t>> SplitFragmentBinaryBackupCopy(
     const std::string&  copyName,
     const std::string&  copyDataDirPath,
     uint64_t            volumeSize,
     uint64_t            defaultSessionSize)
 {
+    std::vector<std::pair<std::string, uint64_t>> fragmentFiles;
     int sessionIndex = 0;
     for (uint64_t sessionOffset = 0; sessionOffset < volumeSize;) {
         ErrCodeType errorCode = 0;
@@ -34,18 +39,46 @@ static bool CreateFragmentBinaryBackupCopy(
         sessionOffset += sessionSize;
         std::string fragmentFilePath = util::GetCopyDataFilePath(
             copyDataDirPath, copyName, CopyFormat::BIN, sessionIndex);
-        if (!rawio::TruncateCreateFile(fragmentFilePath, sessionSize, errorCode)) {
+        fragmentFiles.emplace_back(fragmentFilePath, sessionSize);
+    }
+    return fragmentFiles;
+}
+
+static bool CreateFragmentBinaryBackupCopy(
+    const std::string&  copyName,
+    const std::string&  copyDataDirPath,
+    uint64_t            volumeSize,
+    uint64_t            defaultSessionSize)
+{
+    std::vector<std::pair<std::string, uint64_t>> fragmentFiles;
+    fragmentFiles = SplitFragmentBinaryBackupCopy(copyName, copyDataDirPath, volumeSize, defaultSessionSize);
+    for (const auto& tup : fragmentFiles) {
+        ErrCodeType errorCode = 0;
+        std::string fragmentFilePath = tup.first;
+        uint64_t filesize = tup.second;
+        if (!rawio::TruncateCreateFile(fragmentFilePath, filesize, errorCode)) {
             ERRLOG("failed to create fragment binary copy file %s, size %llu, error code %d",
-                fragmentFilePath.c_str(), sessionSize, errorCode);
+                fragmentFilePath.c_str(), filesize, errorCode);
             return false;
         }
-        ++sessionIndex;
+    }
+    return true;
+}
+
+static bool FragmentBinaryBackupCopyExists(std::vector<std::string> fragmentFiles)
+{
+    for (const std::string& fragmentFile : fragmentFiles) {
+        ErrCodeType errorCode = 0;
+        if (!fsapi::IsFileExists(fragmentFile)) {
+            ERRLOG("fragment binary file %s not exists", fragmentFile.c_str());
+            return false;
+        }
     }
     return true;
 }
 
 #ifdef _WIN32
-static bool CreateWin32VirtualDiskBackupCopy(
+static bool CreateVirtualDiskBackupCopy(
     CopyFormat copyFormat,
     const std::string& copyDataDirPath,
     const std::string& copyName,
@@ -109,6 +142,7 @@ TaskResourceManager::TaskResourceManager(
     : m_copyFormat(copyFormat), m_copyDataDirPath(copyDataDirPath), m_copyName(copyName)
 {}
 
+// AttachCopyResource need to compatible with the scenario "resource already been attached"
 bool TaskResourceManager::AttachCopyResource()
 {
     switch (static_cast<int>(m_copyFormat)) {
@@ -139,6 +173,7 @@ bool TaskResourceManager::AttachCopyResource()
     return false;
 }
 
+// DetachCopyResource need to compatible with the scenario "resource already been detached"
 bool TaskResourceManager::DetachCopyResource()
 {
     switch (static_cast<int>(m_copyFormat)) {
@@ -158,7 +193,7 @@ bool TaskResourceManager::DetachCopyResource()
             if (!rawio::win32::DetachVirtualDiskCopy(virtualDiskPath, errorCode)) {
                 ERRLOG("failed to detach virtual disk copy, error %d", errorCode);
             }
-            INFOLOG("win32 virtual disk %s detached, physical driver path: %s", virtualDiskPath.c_str());
+            INFOLOG("win32 virtual disk %s detached", virtualDiskPath.c_str());
             return true;
         }
 #endif
@@ -166,7 +201,6 @@ bool TaskResourceManager::DetachCopyResource()
     ERRLOG("unknown copy format %d", static_cast<int>(m_copyFormat));
     return false;
 }
-
 
 // implement BackupTaskResourceManager...
 BackupTaskResourceManager::BackupTaskResourceManager(const BackupTaskResourceManagerParams& param)
@@ -184,11 +218,16 @@ BackupTaskResourceManager::~BackupTaskResourceManager()
 
 bool BackupTaskResourceManager::PrepareCopyResource()
 {
-    // TODO::check file exists for checkpoint
-    if (!CreateBackupCopyResource()) {
-        ERRLOG("failed to create backup resource");
-        return false;
+    bool resourceExists = ResourceExists();
+    if (m_backupType == BackupType::FULL && !resourceExists) {
+        // only full backup need to create resource, check resource exists ahead to handle the crash-restart scenario
+        DBGLOG("full backup, resources not exists");
+        if (!CreateBackupCopyResource()) {
+            ERRLOG("failed to create backup resource");
+            return false;
+        }
     }
+
     if (!AttachCopyResource()) {
         ERRLOG("failed to attach copy resource");
         return false;
@@ -221,7 +260,7 @@ bool BackupTaskResourceManager::CreateBackupCopyResource()
         case static_cast<int>(CopyFormat::VHD_DYNAMIC) :
         case static_cast<int>(CopyFormat::VHDX_FIXED) :
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
-            return CreateWin32VirtualDiskBackupCopy(m_copyFormat, m_copyDataDirPath, m_copyName, m_volumeSize);
+            return CreateVirtualDiskBackupCopy(m_copyFormat, m_copyDataDirPath, m_copyName, m_volumeSize);
         }
 #endif
     }
@@ -256,10 +295,38 @@ bool BackupTaskResourceManager::InitBackupCopyResource()
     return false;
 }
 
+bool BackupTaskResourceManager::ResourceExists()
+{
+    switch (static_cast<int>(m_copyFormat)) {
+        case static_cast<int>(CopyFormat::BIN) : {
+            auto fragments = SplitFragmentBinaryBackupCopy(
+                m_copyName, m_copyDataDirPath, m_volumeSize, m_maxSessionSize);
+            std::vector<std::string> fragmentFiles;
+            fragmentFiles.reserve(fragments.size());
+            std::transform(fragments.begin(), fragments.end(), std::back_inserter(fragmentFiles),
+                   [](const std::pair<std::string, uint64_t>& p) { return p.first; });
+            return FragmentBinaryBackupCopyExists(fragmentFiles);
+        }
+        case static_cast<int>(CopyFormat::IMAGE):
+#ifdef _WIN32
+        case static_cast<int>(CopyFormat::VHD_FIXED) :
+        case static_cast<int>(CopyFormat::VHD_DYNAMIC) :
+        case static_cast<int>(CopyFormat::VHDX_FIXED) :
+        case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
+            std::string filePath = util::GetCopyDataFilePath(
+                m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
+            return fsapi::IsFileExists(filePath);
+        }
+#endif
+    }
+    DBGLOG("backup copy %s not exists, format %d", m_copyName.c_str(), m_copyFormat);
+    return false;
+}
 
 // implement RestoreTaskResourceManager...
 RestoreTaskResourceManager::RestoreTaskResourceManager(const RestoreTaskResourceManagerParams& param)
-    : TaskResourceManager(param.copyFormat, param.copyDataDirPath, param.copyName)
+    : TaskResourceManager(param.copyFormat, param.copyDataDirPath, param.copyName),
+    m_copyDataFiles(param.copyDataFiles)
 {};
 
 RestoreTaskResourceManager::~RestoreTaskResourceManager()
@@ -271,6 +338,10 @@ RestoreTaskResourceManager::~RestoreTaskResourceManager()
 
 bool RestoreTaskResourceManager::PrepareCopyResource()
 {
+    if (!ResourceExists()) {
+        ERRLOG("restore resource not exists!");
+        return false;
+    }
     if (!AttachCopyResource()) {
         ERRLOG("failed to attach restore resource");
         return false;
@@ -278,5 +349,13 @@ bool RestoreTaskResourceManager::PrepareCopyResource()
     return true;
 }
 
-
-
+bool RestoreTaskResourceManager::ResourceExists()
+{
+    for (const std::string& copyDataFile : m_copyDataFiles) {
+        if (!fsapi::IsFileExists(copyDataFile)) {
+            ERRLOG("restore copy %s, copy data file %s not exists", m_copyName.c_str(), copyDataFile.c_str());
+            return false;
+        }
+    }
+    return true;
+}

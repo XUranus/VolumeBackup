@@ -1,7 +1,7 @@
 #include "JLinuxVolumeCopyMountProvider.h"
 #include "jni.h"
 
-#include "CopyMountProvider.h"
+#include "LinuxVolumeCopyMountProvider.h"
 
 /* Source for class JLinuxVolumeCopyMountProvider */
 

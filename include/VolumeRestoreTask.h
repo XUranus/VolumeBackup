@@ -17,19 +17,18 @@ public:
     bool            Start() override;
     TaskStatistics  GetStatistics() const override;
 
-    VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig);
+    VolumeRestoreTask(const VolumeRestoreConfig& restoreConfig, const VolumeCopyMeta& volumeCopyMeta);
     ~VolumeRestoreTask();
 private:
     bool Prepare(); // split session and save meta
     void ThreadFunc();
     bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
-    virtual bool ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const;
     virtual bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
     virtual bool InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
-    virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 private:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeRestoreConfig>    m_restoreConfig;
+    std::shared_ptr<VolumeCopyMeta>         m_volumeCopyMeta;
 
     std::thread     m_thread;
     SessionQueue    m_sessionQueue;

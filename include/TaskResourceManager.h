@@ -19,17 +19,21 @@ namespace volumeprotect {
 // params to build BackupTaskResourceManager
 struct BackupTaskResourceManagerParams {
     CopyFormat          copyFormat;
+    BackupType          backupType;
     std::string         copyDataDirPath;
     std::string         copyName;
     uint64_t            volumeSize;
     uint64_t            maxSessionSize;     // only used to create fragment copy for CopyFormat::BIN
+
+
 };
 
 // params to build RestoreTaskResourceManager
 struct RestoreTaskResourceManagerParams {
-    CopyFormat          copyFormat;
-    std::string         copyDataDirPath;
-    std::string         copyName;
+    CopyFormat                  copyFormat;
+    std::string                 copyDataDirPath;
+    std::string                 copyName;
+    std::vector<std::string>    copyDataFiles;
 };
 
 /**
@@ -59,11 +63,13 @@ protected:
 
     virtual bool DetachCopyResource();
 
+    virtual bool ResourceExists() = 0;
+
 protected:
     CopyFormat          m_copyFormat;
     std::string         m_copyDataDirPath;
     std::string         m_copyName;
-
+    // mutable
     std::string         m_physicalDrivePath;
 };
 
@@ -81,7 +87,10 @@ private:
 
     bool InitBackupCopyResource();
 
+    bool ResourceExists() override;
+
 private:
+    BackupType          m_backupType;
     uint64_t            m_volumeSize;
     uint64_t            m_maxSessionSize;     // only used to create fragment copy for CopyFormat::BIN
 };
@@ -94,6 +103,12 @@ public:
     ~RestoreTaskResourceManager();
 
     bool PrepareCopyResource() override;
+
+protected:
+    bool ResourceExists() override;
+
+private:
+    std::vector<std::string> m_copyDataFiles;
 };
 
  

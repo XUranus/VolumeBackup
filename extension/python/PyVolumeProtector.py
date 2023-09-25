@@ -12,7 +12,7 @@ VOLUME_BACKUP_LIBRARY_PATH = "./build/libvolumebackup.so"
 
 class VolumeBackupConf_C(ctypes.Structure):
     _fields_ = [
-        ("copyType", ctypes.c_int),
+        ("backupType", ctypes.c_int),
         ("volumePath", ctypes.c_char_p),
         ("prevCopyMetaDirPath", ctypes.c_char_p),
         ("outputCopyDataDirPath", ctypes.c_char_p),
@@ -134,7 +134,7 @@ import threading
 
 def start_backup():
     backup_config = VolumeBackupConf_C(
-        copyType=0,
+        backupType=0,
         volumePath=b"/dev/loop0",
         prevCopyMetaDirPath=None,
         outputCopyDataDirPath=b"/home/xuranus/workspace/VolumeBackup/build/vol2",

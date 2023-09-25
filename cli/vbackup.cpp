@@ -71,7 +71,7 @@ int ExecVolumeRestore(
 }
 
 int ExecVolumeBackup(
-    CopyType copyType,
+    BackupType backupType,
     const std::string& volumePath,
     const std::string& prevCopyMetaDirPath,
     const std::string& outputCopyDataDirPath,
@@ -81,7 +81,7 @@ int ExecVolumeBackup(
     std::cout << "using " << hasherWorkerNum << " processing units" << std::endl;
 
     VolumeBackupConfig backupConfig {};
-    backupConfig.copyType = copyType;
+    backupConfig.backupType = backupType;
     backupConfig.volumePath = volumePath;
     backupConfig.prevCopyMetaDirPath = prevCopyMetaDirPath;
     backupConfig.outputCopyDataDirPath = outputCopyDataDirPath;
@@ -133,6 +133,7 @@ int play()
     
     std::unique_ptr<TaskResourceManager> resourceManager = TaskResourceManager::BuildBackupTaskResourceManager(BackupTaskResourceManagerParams {
         CopyFormat::VHD_FIXED,
+        BackupType::FULL,
         R"(C:\LoggerTest)",
         "xuranuscopy",
         1024 * 1024 * 300,
@@ -215,10 +216,10 @@ int main(int argc, const char** argv)
         ExecVolumeRestore(volumePath, copyDataDirPath, copyMetaDirPath);
     } else if (prevCopyMetaDirPath.empty()) {
         std::cout << "Doing full backup" << std::endl;
-        ExecVolumeBackup(CopyType::FULL, volumePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeBackup(BackupType::FULL, volumePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
     } else {
         std::cout << "Doing increment backup" << std::endl;
-        ExecVolumeBackup(CopyType::INCREMENT, volumePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeBackup(BackupType::FOREVER_INC, volumePath, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
     }
     Logger::GetInstance()->Destroy();
     return 0;
