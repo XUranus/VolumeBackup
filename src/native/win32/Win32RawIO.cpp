@@ -214,22 +214,6 @@ Win32RawDataWriter::Win32RawDataWriter(const std::string& path, int flag, uint64
         FILE_FLAG_BACKUP_SEMANTICS,
         NULL
     );
-    if (m_handle == INVALID_HANDLE_VALUE) {
-        return;
-    } 
-    if (!::DeviceIoControl(
-        m_handle,
-        FSCTL_ALLOW_EXTENDED_DASD_IO,
-        NULL,
-        0,
-        NULL,
-        0,
-        &bytesReturn,
-        NULL)) {
-        ::CloseHandle(m_handle);
-        m_handle = INVALID_HANDLE_VALUE;
-        return;
-    }
 }
 
 bool Win32RawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
@@ -278,23 +262,75 @@ Win32RawDataWriter::~Win32RawDataWriter()
 
 
 // implement Win32VirtualDiskVolumeRawDataReader methods...
+
+static bool GetAllAttachedVirtualDiskFilePathsW(std::vector<std::wstring>& wFilePaths, ErrCodeType& errorCode)
+{
+    LPWSTR  pathList = NULL;
+    LPWSTR  pathListBuffer = NULL;
+    size_t  nextPathListSize = 0;
+    DWORD   opStatus = ERROR_SUCCESS;
+    ULONG   pathListSizeInBytes = 0;
+    size_t  pathListSizeRemaining = 0;
+    HRESULT stringLengthResult = 0;
+
+    std::shared_ptr<void> defer(nullptr, [&](...) { pathListBuffer != NULL ? free(pathListBuffer) : (void)NULL; });
+    do {
+        // Determine the size actually required.
+        opStatus = ::GetAllAttachedVirtualDiskPhysicalPaths(&pathListSizeInBytes, pathListBuffer);
+        if (opStatus == ERROR_SUCCESS) {
+            break;
+        }
+        if (opStatus != ERROR_INSUFFICIENT_BUFFER) {
+            errorCode = opStatus;
+            return false;
+        }
+        if (pathListBuffer != NULL) { // ERROR_INSUFFICIENT_BUFFER returned, need to re-malloc
+            free(pathListBuffer);
+        }
+        // Allocate a large enough buffer.
+        pathListBuffer = (LPWSTR)::malloc(pathListSizeInBytes);
+        if (pathListBuffer == NULL) {
+            errorCode = ERROR_OUTOFMEMORY;
+            return false;
+        } 
+    } while (opStatus == ERROR_INSUFFICIENT_BUFFER);
+    
+    if (pathListBuffer == NULL || pathListBuffer[0] == NULL)  { // There are no loopback mounted virtual disks
+        return true;
+    }
+    // The pathList is a MULTI_SZ.  
+    pathList = pathListBuffer;
+    pathListSizeRemaining = (size_t) pathListSizeInBytes;
+    while ((pathListSizeRemaining >= sizeof(pathList[0])) && (*pathList != 0)) {
+        stringLengthResult = ::StringCbLengthW(pathList, pathListSizeRemaining, &nextPathListSize);
+        if (FAILED(stringLengthResult)) {
+            errorCode = ::GetLastError();
+            return false;
+        }
+        wFilePaths.emplace_back(std::wstring(pathList));
+        nextPathListSize += sizeof(pathList[0]);
+        pathList = pathList + (nextPathListSize / sizeof(pathList[0]));
+        pathListSizeRemaining -= nextPathListSize;
+    }
+    return true;
+}
+
+
+// if virtual disk not attached, attach it and found first non-MSR volume for it
 static bool AttachVirtualDiskAndGetVolumeDevicePath(
     const std::string& virtualDiskFilePath,
     std::string& volumeDevicePath)
 {
     std::string physicalDrivePath;
     ErrCodeType errorCode = ERROR_SUCCESS;
-    if (!rawio::win32::AttachVirtualDiskCopy(
-        virtualDiskFilePath,
-        physicalDrivePath,
-        errorCode)) {
+    if (!rawio::win32::VirtualDiskAttached(virtualDiskFilePath) &&
+        !rawio::win32::AttachVirtualDiskCopy(virtualDiskFilePath, errorCode)) {
+        ERRLOG("failed to attach virtual disk %s, error %d", virtualDiskFilePath.c_str(), errorCode);
         ::SetLastError(errorCode);
         return false;
     }
-    if (!rawio::win32::GetCopyVolumeDevicePath(
-        physicalDrivePath,
-        volumeDevicePath,
-        errorCode)) {
+    if (!rawio::win32::GetCopyVolumeDevicePath(physicalDrivePath, volumeDevicePath, errorCode)) {
+        ERRLOG("failed to find first volume for virtual disk %s, error %d", virtualDiskFilePath.c_str(), errorCode);
         ::SetLastError(errorCode);
         return false;
     }
@@ -307,7 +343,8 @@ Win32VirtualDiskVolumeRawDataReader::Win32VirtualDiskVolumeRawDataReader(
     : m_volumeReader(nullptr), m_virtualDiskFilePath(virtualDiskFilePath), m_autoDetach(autoDetach)
 {
     std::string volumeDevicePath;
-    if (!AttachVirtualDiskAndGetVolumeDevicePath(virtualDiskFilePath, volumeDevicePath) || volumeDevicePath.empty()) {
+    if (!AttachVirtualDiskAndGetVolumeDevicePath(virtualDiskFilePath, volumeDevicePath)
+        || volumeDevicePath.empty()) {
         return;
     }
     m_volumeReader = std::make_shared<Win32RawDataReader>(volumeDevicePath, 0, 0);
@@ -348,7 +385,8 @@ Win32VirtualDiskVolumeRawDataWriter::Win32VirtualDiskVolumeRawDataWriter(
     : m_volumeWriter(nullptr), m_virtualDiskFilePath(virtualDiskFilePath), m_autoDetach(autoDetach)
 {
     std::string volumeDevicePath;
-    if (!AttachVirtualDiskAndGetVolumeDevicePath(virtualDiskFilePath, volumeDevicePath) || volumeDevicePath.empty()) {
+    if (!AttachVirtualDiskAndGetVolumeDevicePath(virtualDiskFilePath, volumeDevicePath)
+        || volumeDevicePath.empty()) {
         return;
     }
     m_volumeWriter = std::make_shared<Win32RawDataWriter>(volumeDevicePath, 0, 0);
@@ -600,10 +638,55 @@ static bool OpenWin32VirtualDiskW(const std::wstring& wVirtualDiskFilePath, HAND
     return errorCode == ERROR_SUCCESS;
 }
 
-// 
-bool rawio::win32::AttachVirtualDiskCopy(
+
+bool rawio::win32::VirtualDiskAttached(const std::string& virtualDiskFilePath)
+{
+    std::wstring wVirtualDiskFilePath = Utf8ToUtf16(virtualDiskFilePath);
+    std::vector<std::wstring> wAttachedVirtualDiskFiles;
+    ErrCodeType errorCode = ERROR_SUCCESS;
+    if (!GetAllAttachedVirtualDiskFilePathsW(wAttachedVirtualDiskFiles, errorCode)) {
+        ERRLOG("failed to get all attached virtual disk file paths, error = %d", errorCode);
+        return false;
+    }
+    // get full path of wVirtualDiskFilePath;
+    WCHAR fullPathBuffer[MAX_PATH] = { 0 };
+    DWORD result = ::GetFullPathName(wVirtualDiskFilePath.c_str(), MAX_PATH, fullPathBuffer, NULL);
+    if (result != ERROR_SUCCESS) {
+        ERRLOG("GetFullPathName failed with error %d", result);
+        return false;
+    }
+    std::wstring wVirtualDiskFileFullPath = fullPathBuffer;
+    auto it = std::find(wAttachedVirtualDiskFiles.begin(), wAttachedVirtualDiskFiles.end(), wVirtualDiskFileFullPath);
+    return (it != wAttachedVirtualDiskFiles.end());
+}
+
+// obtain the \\.\PhysicalDriveX path for attached local device
+bool rawio::win32::GetVirtualDiskPhysicalDrivePath(
     const std::string&  virtualDiskFilePath,
     std::string&        physicalDrivePath,
+    ErrCodeType&        errorCode)
+{
+    WCHAR wPhysicalDriveName[MAX_PATH] = { 0 };
+    DWORD opStatus = ERROR_SUCCESS;
+    HANDLE hVirtualDiskFile = INVALID_HANDLE_VALUE;
+
+    ::ZeroMemory(wPhysicalDriveName, sizeof(wPhysicalDriveName));
+    DWORD wPhysicalDriveNameLength = sizeof(wPhysicalDriveName) / sizeof(WCHAR);
+
+    if (!OpenWin32VirtualDiskW(Utf8ToUtf16(virtualDiskFilePath), hVirtualDiskFile, errorCode)) {
+        return false;
+    }
+
+    opStatus = ::GetVirtualDiskPhysicalPath(hVirtualDiskFile, &wPhysicalDriveNameLength, wPhysicalDriveName);
+    if(opStatus != ERROR_SUCCESS) { // Unable to retrieve virtual disk path
+        errorCode = opStatus;
+        return false;
+    }
+    physicalDrivePath = Utf16ToUtf8(wPhysicalDriveName);
+}
+
+bool rawio::win32::AttachVirtualDiskCopy(
+    const std::string&  virtualDiskFilePath,
     ErrCodeType&        errorCode)
 {
     HANDLE hVirtualDiskFile = INVALID_HANDLE_VALUE;
@@ -644,18 +727,6 @@ bool rawio::win32::AttachVirtualDiskCopy(
         errorCode = opStatus;
         return false;
     }
-
-    // Now we need to grab the device name \\.\PhysicalDriveX
-    WCHAR wPhysicalDriveName[MAX_PATH];
-    ::ZeroMemory(wPhysicalDriveName, sizeof(wPhysicalDriveName));
-    DWORD wPhysicalDriveNameLength = sizeof(wPhysicalDriveName) / sizeof(WCHAR);
-
-    opStatus = ::GetVirtualDiskPhysicalPath(hVirtualDiskFile, &wPhysicalDriveNameLength, wPhysicalDriveName);
-    if(opStatus != ERROR_SUCCESS) { // Unable to retrieve virtual disk path
-        errorCode = opStatus;
-        return false;
-    }
-    physicalDrivePath = Utf16ToUtf8(wPhysicalDriveName);
     return true;
 }
 

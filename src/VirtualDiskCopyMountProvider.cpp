@@ -1,12 +1,16 @@
-#include "Win32VolumeCopyMountProvider.h"
+#if 0
+
+#include "VirtualDiskCopyMountProvider.h"
+#include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
 #include "Logger.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
 using namespace volumeprotect::fsapi;
+using namespace volumeprotect::util;
 
-std::unique_ptr<Win32VolumeCopyMountProvider> Win32VolumeCopyMountProvider::BuildWin32MountProvider(
+std::unique_ptr<VirtualDiskCopyMountProvider> VirtualDiskCopyMountProvider::BuildWin32MountProvider(
     const Win32CopyMountConfig& mountConfig)
 {
     if (!fsapi::IsDirectoryExists(mountConfig.copyDataDirPath)
@@ -15,13 +19,13 @@ std::unique_ptr<Win32VolumeCopyMountProvider> Win32VolumeCopyMountProvider::Buil
             mountConfig.copyDataDirPath.c_str(), mountConfig.copyMetaDirPath.c_str());
         return nullptr;
     }
-    return std::make_unique<Win32VolumeCopyMountProvider>(
+    return std::make_unique<VirtualDiskCopyMountProvider>(
         mountConfig.copyMetaDirPath,
         mountConfig.copyDataDirPath,
         mountConfig.mountTargetPath);
 }
 
-Win32VolumeCopyMountProvider::Win32VolumeCopyMountProvider(
+VirtualDiskCopyMountProvider::VirtualDiskCopyMountProvider(
     std::string copyMetaDirPath,
     std::string copyDataDirPath,
     std::string mountTargetPath)
@@ -30,15 +34,18 @@ Win32VolumeCopyMountProvider::Win32VolumeCopyMountProvider(
     m_mountTargetPath(mountTargetPath)
 {}
 
-Win32VolumeCopyMountProvider::~Win32VolumeCopyMountProvider()
+VirtualDiskCopyMountProvider::~VirtualDiskCopyMountProvider()
 {}
 
-bool Win32VolumeCopyMountProvider::MountCopy()
+bool VirtualDiskCopyMountProvider::MountCopy()
 {
     return false;
 }
 
-bool Win32VolumeCopyMountProvider::UmountCopy()
+bool VirtualDiskCopyMountProvider::UmountCopy()
 {
     return false;
 }
+
+
+#endif

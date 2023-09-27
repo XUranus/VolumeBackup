@@ -63,7 +63,7 @@ static bool MountCopy(
     mountConfig.mountFsType = mountFsType;
     mountConfig.mountOptions = mountOptions;
     
-    std::shared_ptr<LinuxMountProvider> mountProvider = LinuxMountProvider::BuildLinuxMountProvider(cacheDirPath);
+    std::shared_ptr<DeviceMapper> mountProvider = DeviceMapper::BuildDeviceMapper(cacheDirPath);
     if (mountProvider == nullptr) {
         std::cerr << "failed to build mount provider" << std::endl;
     }
@@ -87,7 +87,7 @@ static bool MountCopy(
 static bool UmountCopy(const std::string& cacheDirPath)
 {
     std::cout << "Umount Copy Using Cache Dir: " << cacheDirPath << std::endl;        
-    std::shared_ptr<LinuxMountProvider> umountProvider = LinuxMountProvider::BuildLinuxMountProvider(cacheDirPath);
+    std::shared_ptr<DeviceMapper> umountProvider = DeviceMapper::BuildDeviceMapper(cacheDirPath);
     if (umountProvider == nullptr) {
         std::cerr << "failed to build mount provider" << std::endl;
     }

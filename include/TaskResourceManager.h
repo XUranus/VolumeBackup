@@ -5,6 +5,7 @@
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
 #include "VolumeUtils.h"
+#include "native/RawIO.h"
 
 namespace volumeprotect {
 
@@ -81,6 +82,7 @@ public:
     ~BackupTaskResourceManager();
 
     bool PrepareCopyResource() override;
+
 private:
     // Create and Init operation is only need for backup
     bool CreateBackupCopyResource();

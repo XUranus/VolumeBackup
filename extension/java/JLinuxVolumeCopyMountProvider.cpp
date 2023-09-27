@@ -55,7 +55,7 @@ JNIEXPORT jlong JNICALL Java_JLinuxVolumeCopyMountProvider_createMountProvider
   (JNIEnv* jEnv, jobject jSelf, jstring jCacheDirPath)
 {
     std::string cacheDirPath = JString2String(jEnv, jCacheDirPath);
-    void* providerPtr = LinuxMountProvider::BuildLinuxMountProvider(cacheDirPath).release();
+    void* providerPtr = DeviceMapper::BuildDeviceMapper(cacheDirPath).release();
     std::cout << "createMountProvider " << cacheDirPath << std::endl;
     return Ptr2JLong(providerPtr);
 }
@@ -68,7 +68,7 @@ JNIEXPORT jlong JNICALL Java_JLinuxVolumeCopyMountProvider_createMountProvider
 JNIEXPORT jboolean JNICALL Java_JLinuxVolumeCopyMountProvider_mountVolumeCopy
   (JNIEnv* jEnv, jobject jSelf, jlong jProvider, jobject jMountConfObj)
 {
-    LinuxMountProvider* mountProvider = reinterpret_cast<LinuxMountProvider*>(Jlong2Ptr(jProvider));
+    DeviceMapper* mountProvider = reinterpret_cast<DeviceMapper*>(Jlong2Ptr(jProvider));
     // Get the class and field IDs
     jclass mountConfClass = jEnv->GetObjectClass(jMountConfObj);
     jfieldID copyMetaDirPathField = jEnv->GetFieldID(mountConfClass, "copyMetaDirPath", "Ljava/lang/String;");
@@ -116,7 +116,7 @@ JNIEXPORT jboolean JNICALL Java_JLinuxVolumeCopyMountProvider_mountVolumeCopy
 JNIEXPORT jboolean JNICALL Java_JLinuxVolumeCopyMountProvider_umountVolumeCopy
   (JNIEnv* jEnv, jobject jSelf, jlong jProvider)
 {
-    LinuxMountProvider* mountProvider = reinterpret_cast<LinuxMountProvider*>(Jlong2Ptr(jProvider));
+    DeviceMapper* mountProvider = reinterpret_cast<DeviceMapper*>(Jlong2Ptr(jProvider));
     std::cout << "umountVolumeCopy " << mountProvider << std::endl;
     return Bool2JBoolean(mountProvider->UmountCopy());
 }
@@ -129,7 +129,7 @@ JNIEXPORT jboolean JNICALL Java_JLinuxVolumeCopyMountProvider_umountVolumeCopy
 JNIEXPORT jboolean JNICALL Java_JLinuxVolumeCopyMountProvider_clearResidue
   (JNIEnv* jEnv, jobject jSelf, jlong jProvider)
 {
-    LinuxMountProvider* mountProvider = reinterpret_cast<LinuxMountProvider*>(Jlong2Ptr(jProvider));
+    DeviceMapper* mountProvider = reinterpret_cast<DeviceMapper*>(Jlong2Ptr(jProvider));
     std::cout << "clearResidue " << mountProvider << std::endl;
     return Bool2JBoolean(mountProvider->ClearResidue());
 }
@@ -142,7 +142,7 @@ JNIEXPORT jboolean JNICALL Java_JLinuxVolumeCopyMountProvider_clearResidue
 JNIEXPORT void JNICALL Java_JLinuxVolumeCopyMountProvider_destroyMountProvider
   (JNIEnv* jEnv, jobject jSelf, jlong jProvider)
 {
-    LinuxMountProvider* mountProvider = reinterpret_cast<LinuxMountProvider*>(Jlong2Ptr(jProvider));
+    DeviceMapper* mountProvider = reinterpret_cast<DeviceMapper*>(Jlong2Ptr(jProvider));
     std::cout << "destroyMountProvider " << mountProvider << std::endl;
     delete mountProvider;
     return;
@@ -156,7 +156,7 @@ JNIEXPORT void JNICALL Java_JLinuxVolumeCopyMountProvider_destroyMountProvider
 JNIEXPORT jstring JNICALL Java_JLinuxVolumeCopyMountProvider_getMountProviderError
   (JNIEnv* jEnv, jobject jSelf, jlong jProvider)
 {
-    LinuxMountProvider* mountProvider = reinterpret_cast<LinuxMountProvider*>(Jlong2Ptr(jProvider));
+    DeviceMapper* mountProvider = reinterpret_cast<DeviceMapper*>(Jlong2Ptr(jProvider));
     std::cout << "getMountProviderError " << mountProvider << std::endl;
     return Str2JString(jEnv, mountProvider->GetErrors());
 }

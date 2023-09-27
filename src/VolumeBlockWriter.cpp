@@ -127,11 +127,6 @@ void VolumeBlockWriter::MainThread()
         uint32_t length = consumeBlock.length;
         uint64_t index = consumeBlock.index;
 
-        // 1. volume => file   (file writer),   writerOffset = volumeOffset - sessionOffset
-        // 2. file   => volume (volume writer), writerOffset = volumeOffset
-        if (m_targetType == TargetType::COPYFILE) {
-            writerOffset = consumeBlock.volumeOffset - m_sharedConfig->sessionOffset;
-        }
         DBGLOG("write block[%llu] (%p, %llu, %u) writerOffset = %llu",
             index, buffer, consumeBlock.volumeOffset, length, writerOffset);
         if (!m_dataWriter->Write(writerOffset, buffer, length, errorCode)) {

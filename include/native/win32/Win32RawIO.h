@@ -112,9 +112,15 @@ bool CreateDynamicVHDXFile(
     uint64_t volumeSize,
     ErrCodeType& errorCode);
 
-bool AttachVirtualDiskCopy(
+bool VirtualDiskAttached(const std::string& virtualDiskFilePath);
+
+bool GetVirtualDiskPhysicalDrivePath(
     const std::string&  virtualDiskFilePath,
     std::string&        physicalDrivePath,
+    ErrCodeType&        errorCode);
+
+bool AttachVirtualDiskCopy(
+    const std::string&  virtualDiskFilePath,
     ErrCodeType&        errorCode);
 
 bool DetachVirtualDiskCopy(

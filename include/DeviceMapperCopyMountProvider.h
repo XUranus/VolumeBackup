@@ -14,13 +14,13 @@ namespace mount {
  * LinuxVolumeCopyMountProvider provides the functionality to mount/umount volume copy from a specified data path and meta path.
  * This piece of code will load copy slices from volumecopy.meta.json and create a block device from it.
  *
- * For a copy contains only one session, LinuxMountProvider will create a loopback device from the file
+ * For a copy contains only one session, DeviceMapper will create a loopback device from the file
  *  to be mount directly.
  *
- * For a copy contains multiple sessions, LinuxMountProvider will assign a loopback device for each
+ * For a copy contains multiple sessions, DeviceMapper will assign a loopback device for each
  *  copy file and create a devicemapper device with linear targets using the loopback devices.
  *
- * LinuxMountProvider needs to keep the mounting record for volume umount, which need to store the loopback device path,
+ * DeviceMapper needs to keep the mounting record for volume umount, which need to store the loopback device path,
  *  devicemapper name.
  */
 
@@ -75,7 +75,7 @@ struct VOLUMEPROTECT_API LinuxCopyMountRecord {
     SERIALIZE_SECTION_END
 };
 
-// define constants for LinuxMountProvider
+// define constants for DeviceMapper
 const std::string DEVICE_MAPPER_DEVICE_NAME_PREFIX = "volumeprotect_dm_copy_";
 const std::string MOUNT_RECORD_JSON_NAME = "volumecopymount.record.json";
 const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
@@ -83,7 +83,7 @@ const std::string DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX = ".dm.record";
 
 /**
  * provide api to mount volume copy on Linux system
- * LinuxMountProvider need a cache directory to store mount record and residual device info for each mount task.
+ * DeviceMapper need a cache directory to store mount record and residual device info for each mount task.
  *
  * "MountCopy" method require a config struct containing mount fs type, options, target path and so on,
  * and save mount record as volumecopymount.record.json into cache directory if success.
@@ -96,13 +96,13 @@ const std::string DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX = ".dm.record";
  * These files will be used to track residual device if mount task is partial failed.
  * Callers can use ClearResidue method to try to clear the residual device.
  */
-class VOLUMEPROTECT_API LinuxMountProvider {
+class VOLUMEPROTECT_API DeviceMapper {
 public:
-    static std::unique_ptr<LinuxMountProvider> BuildLinuxMountProvider(const std::string& cacheDirPath);
+    static std::unique_ptr<DeviceMapper> BuildDeviceMapper(const std::string& cacheDirPath);
 
-    LinuxMountProvider(const std::string& cacheDirPath);
+    DeviceMapper(const std::string& cacheDirPath);
 
-    virtual ~LinuxMountProvider() = default;
+    virtual ~DeviceMapper() = default;
 
     // create device and mount using mountConfig and save result to volumecopymount.record.json in cache directory
     bool MountCopy(const LinuxCopyMountConfig& mountConfig);

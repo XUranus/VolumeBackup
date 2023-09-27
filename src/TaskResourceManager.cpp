@@ -86,31 +86,31 @@ static bool CreateVirtualDiskBackupCopy(
 {
     bool result = false;
     ErrCodeType errorCode = ERROR_SUCCESS;
-    std::string virtualDiskPath;
+    std::string virtualDiskFilePath;
     std::string physicalDrivePath;
     switch (static_cast<int>(copyFormat)) {
         case static_cast<int>(CopyFormat::VHD_FIXED): {
-            virtualDiskPath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = rawio::win32::CreateFixedVHDFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateFixedVHDFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHD_DYNAMIC): {
-            virtualDiskPath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = rawio::win32::CreateDynamicVHDFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateDynamicVHDFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHDX_FIXED): {
-            virtualDiskPath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = rawio::win32::CreateFixedVHDXFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateFixedVHDXFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC): {
-            virtualDiskPath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = util::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
-            result = rawio::win32::CreateDynamicVHDXFile(virtualDiskPath, volumeSize, errorCode);
+            result = rawio::win32::CreateDynamicVHDXFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
         }
     }
@@ -156,15 +156,22 @@ bool TaskResourceManager::AttachCopyResource()
         case static_cast<int>(CopyFormat::VHD_DYNAMIC) :
         case static_cast<int>(CopyFormat::VHDX_FIXED) :
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
-            std::string virtualDiskPath = util::GetCopyDataFilePath(
+            ErrCodeType errorCode = ERROR_SUCCESS;
+            std::string virtualDiskFilePath = util::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
-            ErrCodeType errorCode = 0;
-            if (!rawio::win32::AttachVirtualDiskCopy(virtualDiskPath, m_physicalDrivePath, errorCode)) {
-                ERRLOG("failed to attach win32 virtual disk %s, error %d", virtualDiskPath.c_str(), errorCode);
+            // need to check if attached ahead, attached virtual disk should not be attached again
+            if (!rawio::win32::VirtualDiskAttached(virtualDiskFilePath) &&
+                !rawio::win32::AttachVirtualDiskCopy(virtualDiskFilePath, errorCode)) {
+                ERRLOG("failed to attach win32 virtual disk %s, error %d", virtualDiskFilePath.c_str(), errorCode);
                 return false;
             }
-            INFOLOG("win32 virtual disk %s attached, physical driver path: %s",
-                virtualDiskPath.c_str(), m_physicalDrivePath.c_str());
+            if (!rawio::win32::GetVirtualDiskPhysicalDrivePath(virtualDiskFilePath, m_physicalDrivePath, errorCode)) {
+                ERRLOG("failed to get physical driver path for virtual disk %s, error %d",
+                    virtualDiskFilePath.c_str(), errorCode);
+                return false;
+            }
+            INFOLOG("virtual disk %s attached local physical drive path %s",
+                virtualDiskFilePath.c_str(), m_physicalDrivePath.c_str());
             return true;
         }
 #endif
@@ -187,13 +194,14 @@ bool TaskResourceManager::DetachCopyResource()
         case static_cast<int>(CopyFormat::VHD_DYNAMIC) :
         case static_cast<int>(CopyFormat::VHDX_FIXED) :
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
-            std::string virtualDiskPath = util::GetCopyDataFilePath(
+            std::string virtualDiskFilePath = util::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
             ErrCodeType errorCode = 0;
-            if (!rawio::win32::DetachVirtualDiskCopy(virtualDiskPath, errorCode)) {
+            if (rawio::win32::VirtualDiskAttached(virtualDiskFilePath) &&
+                !rawio::win32::DetachVirtualDiskCopy(virtualDiskFilePath, errorCode)) {
                 ERRLOG("failed to detach virtual disk copy, error %d", errorCode);
             }
-            INFOLOG("win32 virtual disk %s detached", virtualDiskPath.c_str());
+            INFOLOG("win32 virtual disk %s detached", virtualDiskFilePath.c_str());
             return true;
         }
 #endif
@@ -283,6 +291,10 @@ bool BackupTaskResourceManager::InitBackupCopyResource()
         case static_cast<int>(CopyFormat::VHDX_FIXED) :
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
             ErrCodeType errorCode = 0;
+            if (m_physicalDrivePath.empty()) {
+                ERRLOG("physical drive path empty, virtual disk not properly attached!");
+                return false;
+            }
             if (!rawio::win32::InitVirtualDiskGPT(m_physicalDrivePath, m_volumeSize, errorCode)) {
                 ERRLOG("failed to init GPT partition for %s, error %d", m_physicalDrivePath.c_str(), errorCode);
                 return false;

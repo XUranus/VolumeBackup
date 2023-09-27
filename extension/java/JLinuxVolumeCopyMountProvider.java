@@ -27,7 +27,7 @@ public class JLinuxVolumeCopyMountProvider {
     public boolean mountCopy(LinuxVolumeCopyMountConfig mountConfig) throws RuntimeException {
         long provider = createMountProvider(this.cacheDirPath);
         if (provider == 0) {
-            throw new RuntimeException("build LinuxMountProvider C instance failed");
+            throw new RuntimeException("build DeviceMapper C instance failed");
         }
         if (!mountVolumeCopy(provider, mountConfig)) {
             errorString = getMountProviderError(provider);
@@ -41,7 +41,7 @@ public class JLinuxVolumeCopyMountProvider {
     public boolean umountCopy() throws RuntimeException {
         long provider = createMountProvider(this.cacheDirPath);
         if (provider == 0) {
-            throw new RuntimeException("build LinuxMountProvider C instance failed");
+            throw new RuntimeException("build DeviceMapper C instance failed");
         }
         if (!umountVolumeCopy(provider)) {
             errorString = getMountProviderError(provider);
@@ -54,7 +54,7 @@ public class JLinuxVolumeCopyMountProvider {
     public boolean clearResidue() throws RuntimeException {
         long provider = createMountProvider(this.cacheDirPath);
         if (provider == 0) {
-            throw new RuntimeException("build LinuxMountProvider C instance failed");
+            throw new RuntimeException("build DeviceMapper C instance failed");
         }
         if (!clearResidue(provider)) {
             errorString = getMountProviderError(provider);

@@ -45,13 +45,7 @@ std::shared_ptr<rawio::RawDataReader> rawio::OpenRawDataCopyReader(const Session
         case static_cast<int>(CopyFormat::VHD_DYNAMIC):
         case static_cast<int>(CopyFormat::VHDX_FIXED):
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC): {
-            // check and attach VHD and open device
-            std::string physicalDrivePath;
-            ErrCodeType errorCode = ERROR_SUCCESS;
-            if (!rawio::win32::AttachVirtualDiskCopy(copyFilePath, physicalDrivePath, errorCode)) {
-                ERRLOG("failed to attach virtual disk file %s, error = %d", copyFilePath.c_str(), errorCode);
-                return nullptr;
-            }
+            // need virtual disk be attached and inited ahead, this should be guaranteed by TaskResourceManager
             return std::make_shared<rawio::win32::Win32VirtualDiskVolumeRawDataReader>(copyFilePath, true);
             break;
         }
@@ -78,15 +72,8 @@ std::shared_ptr<RawDataWriter> rawio::OpenRawDataCopyWriter(const SessionCopyRaw
         case static_cast<int>(CopyFormat::VHD_DYNAMIC):
         case static_cast<int>(CopyFormat::VHDX_FIXED):
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC): {
-            // check and attach VHD and open device
-            std::string physicalDrivePath;
-            ErrCodeType errorCode = ERROR_SUCCESS;
-            if (!rawio::win32::AttachVirtualDiskCopy(copyFilePath, physicalDrivePath, errorCode)) {
-                ERRLOG("failed to attach virtual disk file %s, error = %d", copyFilePath.c_str(), errorCode);
-                return nullptr;
-            }
-            return std::make_shared<rawio::win32::Win32VirtualDiskVolumeRawDataWriter  >(copyFilePath, true);
-            break;
+            // need virtual disk be attached and inited ahead, this should be guaranteed by TaskResourceManager
+            return std::make_shared<rawio::win32::Win32VirtualDiskVolumeRawDataWriter>(copyFilePath, true);
         }
 #endif
         default: ERRLOG("open unsupport copy format %d for write", static_cast<int>(copyFormat));

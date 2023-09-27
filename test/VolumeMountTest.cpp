@@ -87,11 +87,11 @@ protected:
     VolumeCopyMeta copyMutipleSlicesMock {};
 };
 
-class LinuxMountProviderMock : public LinuxMountProvider {
+class DeviceMapperMock : public DeviceMapper {
 public:
-    LinuxMountProviderMock(const std::string& cacheDirPath);
+    DeviceMapperMock(const std::string& cacheDirPath);
 
-    ~LinuxMountProviderMock() = default;
+    ~DeviceMapperMock() = default;
 
     MOCK_METHOD(bool, ReadMountRecord, (LinuxCopyMountRecord& record), (override));
 
@@ -126,14 +126,14 @@ public:
     MOCK_METHOD(bool, RemoveFileInCacheDir, (const std::string& filename), (override));
 };
 
-LinuxMountProviderMock::LinuxMountProviderMock(const std::string& cacheDirPath)
-    : LinuxMountProvider(cacheDirPath)
+DeviceMapperMock::DeviceMapperMock(const std::string& cacheDirPath)
+    : DeviceMapper(cacheDirPath)
 {}
 
 // get a simple mock item with default mocks
-static std::shared_ptr<LinuxMountProviderMock> NewDefaultLinuxMountProviderMock()
+static std::shared_ptr<DeviceMapperMock> NewDefaultDeviceMapperMock()
 {
-    auto mountProviderMock = std::make_shared<LinuxMountProviderMock>(DUMMY_CACHE_DIR);
+    auto mountProviderMock = std::make_shared<DeviceMapperMock>(DUMMY_CACHE_DIR);
     
     std::vector<std::string> defaultRecordFileList = {
         "1.loop.record",
@@ -176,15 +176,15 @@ static std::shared_ptr<LinuxMountProviderMock> NewDefaultLinuxMountProviderMock(
     return mountProviderMock;
 }
 
-TEST_F(VolumeMountTest, BuildLinuxMountProvider_Test)
+TEST_F(VolumeMountTest, BuildDeviceMapper_Test)
 {
-    EXPECT_TRUE(LinuxMountProvider::BuildLinuxMountProvider("/tmp") != nullptr);
-    EXPECT_TRUE(LinuxMountProvider::BuildLinuxMountProvider(DUMMY_CACHE_DIR) == nullptr);
+    EXPECT_TRUE(DeviceMapper::BuildDeviceMapper("/tmp") != nullptr);
+    EXPECT_TRUE(DeviceMapper::BuildDeviceMapper(DUMMY_CACHE_DIR) == nullptr);
 }
 
 TEST_F(VolumeMountTest, MountCopy_SingleSlice_Success)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
         .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMetaSingleSliceMock), ::testing::Return(true)));
     EXPECT_TRUE(mountProviderMock->MountCopy(mountConfig));
@@ -193,7 +193,7 @@ TEST_F(VolumeMountTest, MountCopy_SingleSlice_Success)
 
 TEST_F(VolumeMountTest, MountCopy_MultipleSlice_Success)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
         .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
     EXPECT_TRUE(mountProviderMock->MountCopy(mountConfig));
@@ -201,7 +201,7 @@ TEST_F(VolumeMountTest, MountCopy_MultipleSlice_Success)
 
 TEST_F(VolumeMountTest, MountCopy_FailedForCopyMetaJsonNotFound)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
         .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
     EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(_, _))
@@ -211,7 +211,7 @@ TEST_F(VolumeMountTest, MountCopy_FailedForCopyMetaJsonNotFound)
 
 TEST_F(VolumeMountTest, MountCopy_FailedForAttachLoopDeviceFailed)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
         .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
     EXPECT_CALL(*mountProviderMock, AttachReadOnlyLoopDevice(_, _))
@@ -221,7 +221,7 @@ TEST_F(VolumeMountTest, MountCopy_FailedForAttachLoopDeviceFailed)
 
 TEST_F(VolumeMountTest, MountCopy_FailedForCreateDmDeviceFailed)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
         .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
     EXPECT_CALL(*mountProviderMock, CreateReadOnlyDmDevice(_, _, _))
@@ -231,13 +231,13 @@ TEST_F(VolumeMountTest, MountCopy_FailedForCreateDmDeviceFailed)
 
 TEST_F(VolumeMountTest, UmountCopy_Success)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_TRUE(mountProviderMock->UmountCopy());
 }
 
 TEST_F(VolumeMountTest, UmountCopy_FailedForMountRecordNotFound)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, ReadMountRecord(_))
         .WillRepeatedly(Return(false));
     EXPECT_FALSE(mountProviderMock->UmountCopy());
@@ -245,7 +245,7 @@ TEST_F(VolumeMountTest, UmountCopy_FailedForMountRecordNotFound)
 
 TEST_F(VolumeMountTest, UmountCopy_FailedForIOError)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, UmountDeviceIfExists(_))
         .WillRepeatedly(Return(false));
     EXPECT_CALL(*mountProviderMock, RemoveDmDeviceIfExists(_))
@@ -258,7 +258,7 @@ TEST_F(VolumeMountTest, UmountCopy_FailedForIOError)
 
 TEST_F(VolumeMountTest, MountCopy_FailedForMount)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     EXPECT_CALL(*mountProviderMock, MountReadOnlyDevice(_, _, _, _))
         .WillRepeatedly(Return(false));
     
@@ -272,7 +272,7 @@ TEST_F(VolumeMountTest, MountCopy_FailedForMount)
 
 TEST_F(VolumeMountTest, MountCopy_ClearResidueFailed)
 {
-    auto mountProviderMock = NewDefaultLinuxMountProviderMock();
+    auto mountProviderMock = NewDefaultDeviceMapperMock();
     // to make both LoadResidualDmDeviceList and LoadResidualLoopDeviceList fail
     EXPECT_CALL(*mountProviderMock, RemoveDmDeviceIfExists(_))
         .WillRepeatedly(Return(false));

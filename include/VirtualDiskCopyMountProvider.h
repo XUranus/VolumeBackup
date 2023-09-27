@@ -1,3 +1,5 @@
+#if 0
+
 #ifndef VOLUMEBACKUP_WIN32_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_WIN32_COPY_MOUNT_PROVIDER_HEADER
 
@@ -12,7 +14,7 @@ namespace mount {
 #ifdef _WIN32
 
 /**
- * Win32VolumeCopyMountProvider provides the functionality to mount/umount volume copy from a specified
+ * VirtualDiskCopyMountProvider provides the functionality to mount/umount volume copy from a specified
  *   data path and meta path. This piece of code will attach the virtual disk (*.vhd/*.vhdx) file and assign
  *   a driver letter to it, it can alse be assigned a non-root path if it's a NTFS volume.
  * Each virtual disk is guaranteed to have only one MSR partition and one data partition, it can only be mounted
@@ -20,23 +22,28 @@ namespace mount {
  * The mount process won't create any mount record thus won't create any garbage files.
  */
 
-struct Win32CopyMountConfig {
+struct VirtualDiskCopyMountConfig {
+    std::string     copyName;
     std::string     copyMetaDirPath;
     std::string     copyDataDirPath;
+    std::string     cacheDirPath;
     std::string     mountTargetPath;
 };
 
-class Win32VolumeCopyMountProvider {
+class VirtualDiskCopyMountProvider {
 public:
-    static std::unique_ptr<Win32VolumeCopyMountProvider> BuildWin32MountProvider(
+    // used for mount
+    static std::unique_ptr<VirtualDiskCopyMountProvider> BuildWin32MountProvider(
         const Win32CopyMountConfig& mountConfig);
 
-    Win32VolumeCopyMountProvider(
+    static std::unique_ptr<VirtualDiskCopyMountProvider> BuildWin32UmountProvider();
+
+    VirtualDiskCopyMountProvider(
         std::string copyMetaDirPath,
         std::string copyDataDirPath,
         std::string mountTargetPath);
 
-    ~Win32VolumeCopyMountProvider();
+    ~VirtualDiskCopyMountProvider();
 
     bool MountCopy();
 
@@ -52,5 +59,7 @@ private:
 
 }
 }
+
+#endif
 
 #endif

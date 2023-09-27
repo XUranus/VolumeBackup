@@ -39,21 +39,21 @@ namespace {
 
 // implement public methods here ...
 
-std::unique_ptr<LinuxMountProvider> LinuxMountProvider::BuildLinuxMountProvider(const std::string& cacheDirPath)
+std::unique_ptr<DeviceMapper> DeviceMapper::BuildDeviceMapper(const std::string& cacheDirPath)
 {
     struct stat st {};
     if (::stat(cacheDirPath.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
         // invalid directory path
         return nullptr;
     }
-    return std::unique_ptr<LinuxMountProvider>(new LinuxMountProvider(cacheDirPath));
+    return std::unique_ptr<DeviceMapper>(new DeviceMapper(cacheDirPath));
 }
 
-LinuxMountProvider::LinuxMountProvider(const std::string& cacheDirPath)
+DeviceMapper::DeviceMapper(const std::string& cacheDirPath)
     : m_cacheDirPath(cacheDirPath)
 {}
 
-bool LinuxMountProvider::MountCopy(const LinuxCopyMountConfig& mountConfig)
+bool DeviceMapper::MountCopy(const LinuxCopyMountConfig& mountConfig)
 {
     LinuxCopyMountRecord mountRecord {};
     mountRecord.mountTargetPath = mountConfig.mountTargetPath;
@@ -114,7 +114,7 @@ bool LinuxMountProvider::MountCopy(const LinuxCopyMountConfig& mountConfig)
     return SaveMountRecord(mountRecord);
 }
 
-bool LinuxMountProvider::UmountCopy()
+bool DeviceMapper::UmountCopy()
 {
     LinuxCopyMountRecord record {};
     bool success = true; // if error occurs, make every effort to clear the mount
@@ -144,7 +144,7 @@ bool LinuxMountProvider::UmountCopy()
     return success;
 }
 
-bool LinuxMountProvider::MountReadOnlyDevice(
+bool DeviceMapper::MountReadOnlyDevice(
     const std::string& devicePath,
     const std::string& mountTargetPath,
     const std::string& fsType,
@@ -159,7 +159,7 @@ bool LinuxMountProvider::MountReadOnlyDevice(
     return true;
 }
 
-bool LinuxMountProvider::UmountDeviceIfExists(const std::string& mountTargetPath)
+bool DeviceMapper::UmountDeviceIfExists(const std::string& mountTargetPath)
 {
     // check if directory has fs mounted
     bool mounted = false;
@@ -187,7 +187,7 @@ bool LinuxMountProvider::UmountDeviceIfExists(const std::string& mountTargetPath
     return true;
 }
 
-std::string LinuxMountProvider::GetErrors() const
+std::string DeviceMapper::GetErrors() const
 {
     std::string errors;
     for (const std::string& errorMessage : m_errors) {
@@ -196,7 +196,7 @@ std::string LinuxMountProvider::GetErrors() const
     return errors;
 }
 
-void LinuxMountProvider::RecordError(const char* message, ...)
+void DeviceMapper::RecordError(const char* message, ...)
 {
     va_list args;
     va_start(args, message);
@@ -217,7 +217,7 @@ void LinuxMountProvider::RecordError(const char* message, ...)
     m_errors.emplace_back(formattedString);
 }
 
-bool LinuxMountProvider::ClearResidue()
+bool DeviceMapper::ClearResidue()
 {
     bool success = true; // allow failure, make every effort to remove residual
     // check residual dm device and remove
@@ -244,7 +244,7 @@ bool LinuxMountProvider::ClearResidue()
 }
 
 // used to load checkpoint in cache directory
-bool LinuxMountProvider::LoadResidualLoopDeviceList(std::vector<std::string>& loopDeviceList)
+bool DeviceMapper::LoadResidualLoopDeviceList(std::vector<std::string>& loopDeviceList)
 {
     std::vector<std::string> filelist;
     if (!ListRecordFiles(filelist)) {
@@ -263,7 +263,7 @@ bool LinuxMountProvider::LoadResidualLoopDeviceList(std::vector<std::string>& lo
     return true;
 }
 
-bool LinuxMountProvider::LoadResidualDmDeviceList(std::vector<std::string>& dmDeviceNameList)
+bool DeviceMapper::LoadResidualDmDeviceList(std::vector<std::string>& dmDeviceNameList)
 {
     std::vector<std::string> filelist;
     if (!ListRecordFiles(filelist)) {
@@ -281,14 +281,14 @@ bool LinuxMountProvider::LoadResidualDmDeviceList(std::vector<std::string>& dmDe
     return true;
 }
 
-std::string LinuxMountProvider::GetMountRecordJsonPath() const
+std::string DeviceMapper::GetMountRecordJsonPath() const
 {
     return m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
 }
 
 // implement private methods here ...
 
-bool LinuxMountProvider::ReadMountRecord(LinuxCopyMountRecord& record)
+bool DeviceMapper::ReadMountRecord(LinuxCopyMountRecord& record)
 {
     std::string linuxCopyMountRecordJsonPath = m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
     std::ifstream file(linuxCopyMountRecordJsonPath);
@@ -302,7 +302,7 @@ bool LinuxMountProvider::ReadMountRecord(LinuxCopyMountRecord& record)
     return true;
 }
 
-bool LinuxMountProvider::SaveMountRecord(const LinuxCopyMountRecord& mountRecord)
+bool DeviceMapper::SaveMountRecord(const LinuxCopyMountRecord& mountRecord)
 {
     std::string jsonContent = xuranus::minijson::util::Serialize(mountRecord);
     std::string filepath = m_cacheDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
@@ -316,7 +316,7 @@ bool LinuxMountProvider::SaveMountRecord(const LinuxCopyMountRecord& mountRecord
     return true;
 }
 
-bool LinuxMountProvider::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
+bool DeviceMapper::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
 {
     if (!util::ReadVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta)) {
         RECORD_ERROR("failed to read volume copy meta in directory %s", copyMetaDirPath.c_str());
@@ -325,7 +325,7 @@ bool LinuxMountProvider::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, 
     return true;
 }
 
-bool LinuxMountProvider::CreateReadOnlyDmDevice(
+bool DeviceMapper::CreateReadOnlyDmDevice(
     const std::vector<CopySliceTarget> copySlices,
     std::string& dmDeviceName,
     std::string& dmDevicePath)
@@ -356,7 +356,7 @@ bool LinuxMountProvider::CreateReadOnlyDmDevice(
     return true;
 }
 
-bool LinuxMountProvider::RemoveDmDeviceIfExists(const std::string& dmDeviceName)
+bool DeviceMapper::RemoveDmDeviceIfExists(const std::string& dmDeviceName)
 {
     if (!devicemapper::RemoveDeviceIfExists(dmDeviceName)) {
         RECORD_ERROR("failed to remove dm device %s, errno %u", dmDeviceName.c_str(), errno);
@@ -366,7 +366,7 @@ bool LinuxMountProvider::RemoveDmDeviceIfExists(const std::string& dmDeviceName)
     return true;
 }
 
-bool LinuxMountProvider::AttachReadOnlyLoopDevice(const std::string& filePath, std::string& loopDevicePath)
+bool DeviceMapper::AttachReadOnlyLoopDevice(const std::string& filePath, std::string& loopDevicePath)
 {
     if (!loopback::Attach(filePath, loopDevicePath, O_RDONLY)) {
         RECORD_ERROR("failed to attach read only loopback device from %s, errno %u", filePath.c_str(), errno);
@@ -377,7 +377,7 @@ bool LinuxMountProvider::AttachReadOnlyLoopDevice(const std::string& filePath, s
     return true;
 }
 
-bool LinuxMountProvider::DetachLoopDeviceIfAttached(const std::string& loopDevicePath)
+bool DeviceMapper::DetachLoopDeviceIfAttached(const std::string& loopDevicePath)
 {
     if (!loopback::Attached(loopDevicePath)) {
         RemoveLoopDeviceCreationRecord(loopDevicePath);
@@ -391,7 +391,7 @@ bool LinuxMountProvider::DetachLoopDeviceIfAttached(const std::string& loopDevic
     return true;
 }
 
-std::string LinuxMountProvider::GenerateNewDmDeviceName() const
+std::string DeviceMapper::GenerateNewDmDeviceName() const
 {
     namespace chrono = std::chrono;
     using clock = std::chrono::system_clock;
@@ -401,7 +401,7 @@ std::string LinuxMountProvider::GenerateNewDmDeviceName() const
 }
 
 // used to store checkpoint
-bool LinuxMountProvider::SaveLoopDeviceCreationRecord(const std::string& loopDevicePath)
+bool DeviceMapper::SaveLoopDeviceCreationRecord(const std::string& loopDevicePath)
 {
     if (loopDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
         std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
@@ -412,7 +412,7 @@ bool LinuxMountProvider::SaveLoopDeviceCreationRecord(const std::string& loopDev
     return false;
 }
 
-bool LinuxMountProvider::SaveDmDeviceCreationRecord(const std::string& dmDeviceName)
+bool DeviceMapper::SaveDmDeviceCreationRecord(const std::string& dmDeviceName)
 {
     if (dmDeviceName.find(SEPARATOR) == std::string::npos) {
         return CreateEmptyFileInCacheDir(dmDeviceName + DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX);
@@ -422,7 +422,7 @@ bool LinuxMountProvider::SaveDmDeviceCreationRecord(const std::string& dmDeviceN
     return false;
 }
 
-bool LinuxMountProvider::RemoveLoopDeviceCreationRecord(const std::string& loopDevicePath)
+bool DeviceMapper::RemoveLoopDeviceCreationRecord(const std::string& loopDevicePath)
 {
     if (loopDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
         std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
@@ -433,7 +433,7 @@ bool LinuxMountProvider::RemoveLoopDeviceCreationRecord(const std::string& loopD
     return false;
 }
 
-bool LinuxMountProvider::RemoveDmDeviceCreationRecord(const std::string& dmDeviceName)
+bool DeviceMapper::RemoveDmDeviceCreationRecord(const std::string& dmDeviceName)
 {
     if (dmDeviceName.find(SEPARATOR) == std::string::npos) {
         return RemoveFileInCacheDir(dmDeviceName + DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX);
@@ -444,7 +444,7 @@ bool LinuxMountProvider::RemoveDmDeviceCreationRecord(const std::string& dmDevic
 }
 
 // create empty file in cache directory is not exist
-bool LinuxMountProvider::CreateEmptyFileInCacheDir(const std::string& filename)
+bool DeviceMapper::CreateEmptyFileInCacheDir(const std::string& filename)
 {
     std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
     int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
@@ -457,7 +457,7 @@ bool LinuxMountProvider::CreateEmptyFileInCacheDir(const std::string& filename)
 }
 
 // remove file in cache directory is exists
-bool LinuxMountProvider::RemoveFileInCacheDir(const std::string& filename)
+bool DeviceMapper::RemoveFileInCacheDir(const std::string& filename)
 {
     std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
     if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
@@ -468,7 +468,7 @@ bool LinuxMountProvider::RemoveFileInCacheDir(const std::string& filename)
 }
 
 // load all files in cache dir
-bool LinuxMountProvider::ListRecordFiles(std::vector<std::string>& filelist)
+bool DeviceMapper::ListRecordFiles(std::vector<std::string>& filelist)
 {
     DIR* dir = ::opendir(m_cacheDirPath.c_str());
     if (dir == nullptr) {
