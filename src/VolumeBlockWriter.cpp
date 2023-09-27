@@ -130,7 +130,7 @@ void VolumeBlockWriter::MainThread()
         DBGLOG("write block[%llu] (%p, %llu, %u) writerOffset = %llu",
             index, buffer, consumeBlock.volumeOffset, length, writerOffset);
         if (!m_dataWriter->Write(writerOffset, buffer, length, errorCode)) {
-            ERRLOG("write %llu bytes failed, error code = %u", writerOffset, errorCode);
+            ERRLOG("write %d bytes at %llu failed, error code = %u", length, writerOffset, errorCode);
             m_sharedContext->allocator->bfree(buffer);
             ++m_sharedContext->counter->blockesWriteFailed;
             // writer should not return (otherwise writer queue may block reader)

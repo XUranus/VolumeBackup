@@ -46,7 +46,7 @@ std::shared_ptr<rawio::RawDataReader> rawio::OpenRawDataCopyReader(const Session
         case static_cast<int>(CopyFormat::VHDX_FIXED):
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC): {
             // need virtual disk be attached and inited ahead, this should be guaranteed by TaskResourceManager
-            return std::make_shared<rawio::win32::Win32VirtualDiskVolumeRawDataReader>(copyFilePath, true);
+            return std::make_shared<rawio::win32::Win32VirtualDiskVolumeRawDataReader>(copyFilePath, false);
             break;
         }
 #endif
@@ -73,7 +73,7 @@ std::shared_ptr<RawDataWriter> rawio::OpenRawDataCopyWriter(const SessionCopyRaw
         case static_cast<int>(CopyFormat::VHDX_FIXED):
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC): {
             // need virtual disk be attached and inited ahead, this should be guaranteed by TaskResourceManager
-            return std::make_shared<rawio::win32::Win32VirtualDiskVolumeRawDataWriter>(copyFilePath, true);
+            return std::make_shared<rawio::win32::Win32VirtualDiskVolumeRawDataWriter>(copyFilePath, false);
         }
 #endif
         default: ERRLOG("open unsupport copy format %d for write", static_cast<int>(copyFormat));

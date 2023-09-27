@@ -329,6 +329,11 @@ static bool AttachVirtualDiskAndGetVolumeDevicePath(
         ::SetLastError(errorCode);
         return false;
     }
+    if (!rawio::win32::GetVirtualDiskPhysicalDrivePath(virtualDiskFilePath, physicalDrivePath, errorCode)) {
+        ERRLOG("failed to get physical driver path for virtual disk %s, error %d",
+            virtualDiskFilePath.c_str(), errorCode);
+        return false;
+    }
     if (!rawio::win32::GetCopyVolumeDevicePath(physicalDrivePath, volumeDevicePath, errorCode)) {
         ERRLOG("failed to find first volume for virtual disk %s, error %d", virtualDiskFilePath.c_str(), errorCode);
         ::SetLastError(errorCode);
@@ -680,9 +685,12 @@ bool rawio::win32::GetVirtualDiskPhysicalDrivePath(
     opStatus = ::GetVirtualDiskPhysicalPath(hVirtualDiskFile, &wPhysicalDriveNameLength, wPhysicalDriveName);
     if(opStatus != ERROR_SUCCESS) { // Unable to retrieve virtual disk path
         errorCode = opStatus;
+        ::CloseHandle(hVirtualDiskFile);
         return false;
     }
     physicalDrivePath = Utf16ToUtf8(wPhysicalDriveName);
+	::CloseHandle(hVirtualDiskFile);
+	return true;
 }
 
 bool rawio::win32::AttachVirtualDiskCopy(
