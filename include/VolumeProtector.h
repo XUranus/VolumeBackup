@@ -20,6 +20,8 @@ const uint32_t DEFAULT_ALLOCATOR_BLOCK_NUM = 32; // 128MB
 const uint32_t DEFAULT_QUEUE_SIZE = 64;
 const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 
+const std::string DEFAULT_VOLUME_COPY_NAME = "volumeprotect";
+
 /*
  * volume backup/restore facade and common struct defines
  */
@@ -42,7 +44,7 @@ enum class VOLUMEPROTECT_API CopyFormat {
 struct VOLUMEPROTECT_API VolumeBackupConfig {
     BackupType      backupType      { BackupType::FULL };   // type of target copy to be generated
     CopyFormat      copyFormat      { CopyFormat::BIN };    // format of target copy to be generated
-    std::string     copyName;
+    std::string     copyName        { DEFAULT_VOLUME_COPY_NAME };
     std::string     volumePath;                             // path of the block device (volume)
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
     std::string	    outputCopyDataDirPath;
@@ -57,6 +59,7 @@ struct VOLUMEPROTECT_API VolumeBackupConfig {
 // immutable config, used to build volume restore task
 struct VOLUMEPROTECT_API VolumeRestoreConfig {
     std::string     volumePath;                             // path of the block device (volume)
+    std::string     copyName         { DEFAULT_VOLUME_COPY_NAME };
     std::string	    copyDataDirPath;
     std::string	    copyMetaDirPath;
     bool            enableCheckpoint { true };              // start from checkpoint if exists

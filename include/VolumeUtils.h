@@ -68,10 +68,15 @@ std::string GetWriterBitmapFilePath(
 
 std::string GetFileName(const std::string& fullpath);
 
-bool WriteVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta);
+bool WriteVolumeCopyMeta(
+    const std::string& copyMetaDirPath,
+    const std::string& copyName,
+    const VolumeCopyMeta& volumeCopyMeta);
 
-bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
-
+bool ReadVolumeCopyMeta(
+    const std::string& copyMetaDirPath,
+    const std::string& copyName,
+    VolumeCopyMeta& volumeCopyMeta);
 }
 }
 

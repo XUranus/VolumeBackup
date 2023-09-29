@@ -98,7 +98,10 @@ bool VolumeBackupTask::Prepare()
         }
         volumeCopyMeta.segments.emplace_back(CopySegment {
             util::GetFileName(util::GetCopyDataFilePath(
-                m_backupConfig->outputCopyDataDirPath, m_backupConfig->copyName, m_backupConfig->copyFormat, sessionIndex
+                m_backupConfig->outputCopyDataDirPath,
+                m_backupConfig->copyName,
+                m_backupConfig->copyFormat,
+                sessionIndex
             )),
             util::GetFileName(util::GetChecksumBinPath(
                 m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, sessionIndex
@@ -112,7 +115,7 @@ bool VolumeBackupTask::Prepare()
         ++sessionIndex;
     }
 
-    if (!SaveVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, volumeCopyMeta)) {
+    if (!SaveVolumeCopyMeta(m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, volumeCopyMeta)) {
         ERRLOG("failed to write copy meta to dir: %s", m_backupConfig->outputCopyMetaDirPath.c_str());
         return false;
     }
@@ -316,9 +319,9 @@ bool VolumeBackupTask::LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTas
 }
 
 bool VolumeBackupTask::SaveVolumeCopyMeta(
-    const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta) const
+    const std::string& copyMetaDirPath, const std::string& copyName, const VolumeCopyMeta& volumeCopyMeta) const
 {
-    return util::WriteVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta);
+    return util::WriteVolumeCopyMeta(copyMetaDirPath, copyName, volumeCopyMeta);
 }
 
 bool VolumeBackupTask::ValidateIncrementBackup() const
@@ -330,7 +333,7 @@ bool VolumeBackupTask::ValidateIncrementBackup() const
         return false;
     }
     VolumeCopyMeta volumeCopyMeta {};
-    if (!util::ReadVolumeCopyMeta(m_backupConfig->prevCopyMetaDirPath, volumeCopyMeta)) {
+    if (!util::ReadVolumeCopyMeta(m_backupConfig->prevCopyMetaDirPath, m_backupConfig->copyName, volumeCopyMeta)) {
         ERRLOG("failed to read previous copy meta in %s", m_backupConfig->prevCopyMetaDirPath.c_str());
         return false;
     }

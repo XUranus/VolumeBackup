@@ -116,7 +116,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
     
     // 3. read copy meta json and validate
     VolumeCopyMeta volumeCopyMeta {};
-    if (!util::ReadVolumeCopyMeta(restoreConfig.copyMetaDirPath, volumeCopyMeta)) {
+    if (!util::ReadVolumeCopyMeta(restoreConfig.copyMetaDirPath, restoreConfig.copyName, volumeCopyMeta)) {
         ERRLOG("failed to read copy meta json from dir: %s", restoreConfig.copyMetaDirPath.c_str());
         return nullptr;
     }

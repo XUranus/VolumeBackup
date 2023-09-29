@@ -656,8 +656,8 @@ bool rawio::win32::VirtualDiskAttached(const std::string& virtualDiskFilePath)
     // get full path of wVirtualDiskFilePath;
     WCHAR fullPathBuffer[MAX_PATH] = { 0 };
     DWORD result = ::GetFullPathName(wVirtualDiskFilePath.c_str(), MAX_PATH, fullPathBuffer, NULL);
-    if (result != ERROR_SUCCESS) {
-        ERRLOG("GetFullPathName failed with error %d", result);
+    if (result == 0) {
+        ERRLOG("GetFullPathName failed with error %d", ::GetLastError());
         return false;
     }
     std::wstring wVirtualDiskFileFullPath = fullPathBuffer;

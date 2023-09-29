@@ -77,7 +77,6 @@ struct VOLUMEPROTECT_API LinuxCopyMountRecord {
 
 // define constants for DeviceMapper
 const std::string DEVICE_MAPPER_DEVICE_NAME_PREFIX = "volumeprotect_dm_copy_";
-const std::string MOUNT_RECORD_JSON_NAME = "volumecopymount.record.json";
 const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
 const std::string DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX = ".dm.record";
 

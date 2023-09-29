@@ -8,14 +8,14 @@ namespace {
 #else
     constexpr auto SEPARATOR = "/";
 #endif
-    constexpr auto VOLUME_COPY_META_JSON_FILENAME = "volumecopy.meta.json";
-    constexpr auto SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX = ".sha256.meta.bin";
-    constexpr auto COPY_DATA_BIN_FILENAME_SUFFIX = ".copydata.bin";
-    constexpr auto COPY_DATA_BIN_PARTED_FILENAME_SUFFIX = ".copydata.bin.part";
-    constexpr auto COPY_DATA_IMAGE_FILENAME_SUFFIX = ".copydata.img";
-    constexpr auto COPY_DATA_VHD_FILENAME_SUFFIX = ".copydata.vhd";
-    constexpr auto COPY_DATA_VHDX_FILENAME_SUFFIX = ".copydata.vhdx";
-    constexpr auto WRITER_BITMAP_FILENAME_SUFFIX = ".checkpoint.bin";
+    constexpr auto VOLUME_COPY_META_JSON_FILENAME_EXTENSION = ".volumecopy.meta.json";
+    constexpr auto SHA256_CHECKSUM_BINARY_FILENAME_EXTENSION = ".sha256.meta.bin";
+    constexpr auto COPY_DATA_BIN_FILENAME_EXTENSION = ".copydata.bin";
+    constexpr auto COPY_DATA_BIN_PARTED_FILENAME_EXTENSION = ".copydata.bin.part";
+    constexpr auto COPY_DATA_IMAGE_FILENAME_EXTENSION = ".copydata.img";
+    constexpr auto COPY_DATA_VHD_FILENAME_EXTENSION = ".copydata.vhd";
+    constexpr auto COPY_DATA_VHDX_FILENAME_EXTENSION = ".copydata.vhdx";
+    constexpr auto WRITER_BITMAP_FILENAME_EXTENSION = ".checkpoint.bin";
 }
 
 using namespace volumeprotect;
@@ -25,7 +25,7 @@ std::string util::GetChecksumBinPath(
     const std::string&  copyName,
     int                 sessionIndex)
 {
-    std::string filename = copyName + "." + std::to_string(sessionIndex) + SHA256_CHECKSUM_BINARY_FILENAME_SUFFIX;
+    std::string filename = copyName + "." + std::to_string(sessionIndex) + SHA256_CHECKSUM_BINARY_FILENAME_EXTENSION;
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
@@ -35,18 +35,18 @@ std::string util::GetCopyDataFilePath(
     CopyFormat          copyFormat,
     int                 sessionIndex)
 {
-    std::string suffix = COPY_DATA_BIN_FILENAME_SUFFIX;
+    std::string suffix = COPY_DATA_BIN_FILENAME_EXTENSION;
     std::string filename;
     if (copyFormat == CopyFormat::BIN && sessionIndex == 0) {
-        filename = copyName + COPY_DATA_BIN_FILENAME_SUFFIX;
+        filename = copyName + COPY_DATA_BIN_FILENAME_EXTENSION;
     } else if (copyFormat == CopyFormat::IMAGE) {
-        filename = copyName + COPY_DATA_IMAGE_FILENAME_SUFFIX;
+        filename = copyName + COPY_DATA_IMAGE_FILENAME_EXTENSION;
     } else if (copyFormat == CopyFormat::BIN && sessionIndex != 0) {
-        filename = copyName + COPY_DATA_BIN_PARTED_FILENAME_SUFFIX + std::to_string(sessionIndex);
+        filename = copyName + COPY_DATA_BIN_PARTED_FILENAME_EXTENSION + std::to_string(sessionIndex);
     } else if (copyFormat == CopyFormat::VHD_FIXED || copyFormat == CopyFormat::VHD_DYNAMIC) {
-        filename = copyName + COPY_DATA_VHD_FILENAME_SUFFIX;
+        filename = copyName + COPY_DATA_VHD_FILENAME_EXTENSION;
     } else if (copyFormat == CopyFormat::VHDX_FIXED || copyFormat == CopyFormat::VHDX_DYNAMIC) {
-        filename = copyName + COPY_DATA_VHDX_FILENAME_SUFFIX;
+        filename = copyName + COPY_DATA_VHDX_FILENAME_EXTENSION;
     }
     return copyDataDirPath + SEPARATOR + filename;
 }
@@ -56,7 +56,7 @@ std::string util::GetWriterBitmapFilePath(
     const std::string&  copyName,
     int                 sessionIndex)
 {
-    std::string filename = copyName + "." + std::to_string(sessionIndex) + WRITER_BITMAP_FILENAME_SUFFIX;
+    std::string filename = copyName + "." + std::to_string(sessionIndex) + WRITER_BITMAP_FILENAME_EXTENSION;
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
@@ -68,10 +68,11 @@ std::string util::GetFileName(const std::string& fullpath)
 
 bool util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
+    const std::string&  copyName,
     const VolumeCopyMeta& volumeCopyMeta)
 {
     std::string jsonStr = xuranus::minijson::util::Serialize(volumeCopyMeta);
-    std::string filepath = copyMetaDirPath + SEPARATOR + VOLUME_COPY_META_JSON_FILENAME;
+    std::string filepath = copyMetaDirPath + SEPARATOR + copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION;
     try {
         std::ofstream file(filepath);
         if (!file.is_open()) {
@@ -92,9 +93,10 @@ bool util::WriteVolumeCopyMeta(
 
 bool util::ReadVolumeCopyMeta(
     const std::string& copyMetaDirPath,
+    const std::string& copyName,
     VolumeCopyMeta& volumeCopyMeta)
 {
-    std::string filepath = copyMetaDirPath + SEPARATOR + VOLUME_COPY_META_JSON_FILENAME;
+    std::string filepath = copyMetaDirPath + SEPARATOR + copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION;
     try {
         std::ifstream file(filepath);
         std::string jsonStr;

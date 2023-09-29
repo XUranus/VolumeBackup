@@ -1,5 +1,3 @@
-#if 0
-
 #include "VirtualDiskCopyMountProvider.h"
 #include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
@@ -46,6 +44,3 @@ bool VirtualDiskCopyMountProvider::UmountCopy()
 {
     return false;
 }
-
-
-#endif

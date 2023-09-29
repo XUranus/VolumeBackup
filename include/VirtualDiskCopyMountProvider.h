@@ -1,5 +1,3 @@
-#if 0
-
 #ifndef VOLUMEBACKUP_WIN32_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_WIN32_COPY_MOUNT_PROVIDER_HEADER
 
@@ -34,7 +32,7 @@ class VirtualDiskCopyMountProvider {
 public:
     // used for mount
     static std::unique_ptr<VirtualDiskCopyMountProvider> BuildWin32MountProvider(
-        const Win32CopyMountConfig& mountConfig);
+        const VirtualDiskCopyMountConfig& mountConfig);
 
     static std::unique_ptr<VirtualDiskCopyMountProvider> BuildWin32UmountProvider();
 
@@ -59,7 +57,5 @@ private:
 
 }
 }
-
-#endif
 
 #endif
