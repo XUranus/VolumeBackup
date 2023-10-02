@@ -34,10 +34,12 @@ enum class VOLUMEPROTECT_API BackupType {
 enum class VOLUMEPROTECT_API CopyFormat {
     BIN = 0,            // save as sector-by-sector *.bin/*.bin.partX file with no header (allow fragmentation)
     IMAGE = 1,          // save as sector-by-sector *.img file with no header (force one fragmentation)
+#ifdef _WIN32
     VHD_FIXED = 2,      // save as fixed *.vhd file, no size limit (force one fragmentation)
     VHD_DYNAMIC = 3,    // save as dynamic *.vhd file, limit volume size to 2040GB (force one fragmentation)
     VHDX_FIXED = 4,     // save as fixed *.vhdx file, limit volume size to 64TB (force one fragmentation)
     VHDX_DYNAMIC = 5    // save as dyamic *.vhdx file, limit volume size to 64TB (force one fragmentation)
+#endif
 };
 
 // immutable config, used to build volume full/increment backup task

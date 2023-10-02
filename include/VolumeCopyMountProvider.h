@@ -49,6 +49,17 @@ public:
     virtual bool IsMountSupported();
 
     virtual bool Mount();
+
+    virtual std::string GetMountRecordPath() const;
+
+    // get all errors splited by "\n"
+    std::string GetError() const;
+
+private:
+    std::string RecordError(const char* message, ...);
+
+    
+
 };
 
 /**
