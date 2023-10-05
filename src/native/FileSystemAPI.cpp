@@ -38,6 +38,7 @@ namespace {
 #else
     constexpr auto SEPARATOR = "/";
 #endif
+    const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
 }
 
 #ifdef _WIN32
@@ -280,7 +281,7 @@ bool fsapi::IsVolumeExists(const std::string& volumePath)
     return true;
 }
 
-bool CreateEmptyFile(const std::string& dirPath, const std::string& filename)
+bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filename)
 {
 #ifdef __linux__
     std::string fullpath = m_outputDirPath + SEPARATOR + filename;
@@ -291,9 +292,12 @@ bool CreateEmptyFile(const std::string& dirPath, const std::string& filename)
     ::close(fd);
     return true;
 #endif
+#ifdef _WIN32
+    // TODO
+#endif
 }
 
-bool RemoveEmptyFile(const std::string& dirPath, const std::string& filename)
+bool fsapi::RemoveFile(const std::string& dirPath, const std::string& filename)
 {
 #ifdef __linux__
     std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
@@ -301,6 +305,9 @@ bool RemoveEmptyFile(const std::string& dirPath, const std::string& filename)
         return false;
     }
     return true;
+#endif
+#ifdef _WIN32
+    // TODO
 #endif
 }
 
@@ -335,5 +342,24 @@ uint64_t fsapi::ReadSectorSizeLinux(const std::string& devicePath)
     }
     ::close(fd);
     return sectorSize;
+}
+
+bool fsapi::IsMountPoint(const std::string& dirPath)
+{
+	bool mounted = false;
+    FILE* mountsFile = ::setmntent(SYS_MOUNTS_ENTRY_PATH.c_str(), "r");
+    if (mountsFile == nullptr) {
+        ERRLOG("failed to open /proc/mounts, errno %u", errno);
+        return false;
+    }
+    struct mntent* entry = nullptr;
+    while ((entry = ::getmntent(mountsFile)) != nullptr) {
+        if (std::string(entry->mnt_dir) == dirPath) {
+            mounted = true;
+            break;
+        } 
+    }
+    ::endmntent(mountsFile);
+    return mounted;
 }
 #endif

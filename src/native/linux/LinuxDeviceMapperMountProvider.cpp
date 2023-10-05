@@ -33,7 +33,6 @@ using namespace volumeprotect;
 namespace {
     const std::string SEPARATOR = "/";
     const int NUM1 = 1;
-    const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
     const std::string LOOPBACK_DEVICE_PATH_PREFIX = "/dev/loop";
 }
 
@@ -161,23 +160,8 @@ bool DeviceMapper::MountReadOnlyDevice(
 
 bool DeviceMapper::UmountDeviceIfExists(const std::string& mountTargetPath)
 {
-    // check if directory has fs mounted
-    bool mounted = false;
-    FILE* mountsFile = ::setmntent(SYS_MOUNTS_ENTRY_PATH.c_str(), "r");
-    if (mountsFile == nullptr) {
-        RECORD_ERROR("failed to open /proc/mounts, errno %u", errno);
-        return false;
-    }
-    struct mntent* entry = nullptr;
-    while ((entry = ::getmntent(mountsFile)) != nullptr) {
-        if (std::string(entry->mnt_dir) == mountTargetPath) {
-            mounted = true;
-            break;
-        } 
-    }
-    ::endmntent(mountsFile);
-    if (!mounted) {
-        return true;
+    if (!fsapi::IsMountPoint(mountTargetPath)) { // not mounted
+    	return true;
     }
     // umount the target
     if (::umount2(mountTargetPath.c_str(), MNT_FORCE) != 0) {

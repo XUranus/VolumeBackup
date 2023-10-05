@@ -1,4 +1,4 @@
-#include "ImageCopyMountProvider.h"
+#include "LinuxImageCopyMountProvider.h"
 #include "VolumeCopyMountProvider.h"
 #include "Logger.h"
 
@@ -27,7 +27,7 @@ namespace {
     const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
 }
 
-struct ImageCopyMountRecord {
+struct LinuxImageCopyMountRecord {
     std::string     loopbackDevicePath;
     std::string     mountTargetPath;
     std::string     mountFsType;
@@ -41,11 +41,11 @@ struct ImageCopyMountRecord {
     SERIALIZE_SECTION_END
 };
 
-std::unique_ptr<ImageCopyMountProvider> ImageCopyMountProvider::Build(
+std::unique_ptr<LinuxImageCopyMountProvider> LinuxImageCopyMountProvider::Build(
     const VolumeCopyMountConfig& volumeCopyMountConfig,
     const VolumeCopyMeta& volumeCopyMeta)
 {
-    ImageCopyMountProviderParams params {};
+    LinuxImageCopyMountProviderParams params {};
     params.outputDirPath = volumeCopyMountConfig.outputDirPath;
     params.copyName = volumeCopyMeta.copyName;
     if (volumeCopyMeta.segments.empty()) {
@@ -56,10 +56,10 @@ std::unique_ptr<ImageCopyMountProvider> ImageCopyMountProvider::Build(
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
-    return std::make_unique<ImageCopyMountProvider>(params);
+    return std::make_unique<LinuxImageCopyMountProvider>(params);
 }
 
-ImageCopyMountProvider::ImageCopyMountProvider(const ImageCopyMountProviderParams& params)
+LinuxImageCopyMountProvider::LinuxImageCopyMountProvider(const LinuxImageCopyMountProviderParams& params)
     : m_outputDirPath(params.outputDirPath),
     m_copyName(params.copyName),
     m_imageFilePath(params.imageFilePath),
@@ -68,34 +68,18 @@ ImageCopyMountProvider::ImageCopyMountProvider(const ImageCopyMountProviderParam
     m_mountOptions(params.mountOptions)
 {}
 
-bool ImageCopyMountProvider::IsMountSupported()
+bool LinuxImageCopyMountProvider::IsMountSupported()
 {
-#ifdef _WIN32
-    // win32 image mounting requires 3rd utilities, implement later...
-    return false;
-#else
     return true;
-#endif
 }
 
-bool ImageCopyMountProvider::Mount()
-{
-#ifdef _WIN32
-    // win32 image mounting requires 3rd utilities, implement later...
-    RECORD_ERROR("Win32 platform does not support mount image copy %s", m_copyName.c_str());
-    return false;
-#else
-    return PosixLoopMount();
-#endif
-}
-
-std::string ImageCopyMountProvider::GetMountRecordPath() const
+std::string LinuxImageCopyMountProvider::GetMountRecordPath() const
 {
     return m_outputDirPath + SEPARATOR + m_copyName + IMAGE_COPY_MOUNT_RECORD_FILE_SUFFIX; 
 }
 
 // mount using *nix loopback device
-bool ImageCopyMountProvider::PosixLoopMount()
+bool LinuxImageCopyMountProvider::Mount()
 {
     // 1. attach loopback device
     std::string loopDevicePath;
@@ -105,7 +89,10 @@ bool ImageCopyMountProvider::PosixLoopMount()
     }
     // keep checkpoint for loopback device creation
     std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
-    CreateEmptyFileInCacheDir(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+    std::string loopbackDeviceCheckpointName = loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+    if (!fsapi::CreateEmptyFile(m_outputDirPath, loopbackDeviceCheckpointName)) {
+    	RECORD_ERROR("failed to create checkpoint file %s", loopbackDeviceCheckpointName.c_str());
+    }
 
     // 2. mount block device as readonly
     unsigned long mountFlags = MS_RDONLY;
@@ -113,11 +100,12 @@ bool ImageCopyMountProvider::PosixLoopMount()
         mountFlags, m_mountOptions.c_str()) != 0) {
         RECORD_ERROR("mount %s to %s failed, type %s, option %s, errno %u",
             loopDevicePath.c_str(), m_mountTargetPath.c_str(), m_mountFsType.c_str(), m_mountOptions.c_str(), errno);
+        PosixLoopbackMountRollback(loopbackDevicePath);
         return false;
     }
 
     // 3. save mount record to output directory
-    ImageCopyMountRecord mountRecord {};
+    LinuxImageCopyMountRecord mountRecord {};
     mountRecord.loopbackDevicePath = loopDevicePath;
     mountRecord.mountTargetPath = m_mountTargetPath;
     mountRecord.mountFsType = m_mountFsType;
@@ -127,7 +115,7 @@ bool ImageCopyMountProvider::PosixLoopMount()
     std::ofstream file(filepath.c_str(), std::ios::trunc);
     if (!file.is_open()) {
         RECORD_ERROR("failed to save image copy mount record to %s, errno %u", filepath.c_str(), errno);
-        // TODO:: rollback
+        PosixLoopbackMountRollback(loopbackDevicePath);
         return false;
     }
     file << jsonContent;
@@ -135,25 +123,27 @@ bool ImageCopyMountProvider::PosixLoopMount()
     return true;
 }
 
-void ImageCopyMountProvider::CreateEmptyFileInCacheDir(const std::string& filename) const
+bool LinuxImageCopyMountProvider::PosixLoopbackMountRollback(const std::string& loopbackDevicePath)
 {
-    std::string fullpath = m_outputDirPath + SEPARATOR + filename;
-    int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
-    if (fd == -1) {
-        RECORD_ERROR("error creating empty file %s, errno %u", fullpath.c_str(), errno);
-        return;
+	if (loopbackDevicePath.empty()) {
+		// no loopback device attached, no mounts, return directly
+		return true;
     }
-    ::close(fd);
-    return;
+    if (fsapi::IsMountPoint(m_mountTargetPath) && fsapi::GetMountDevicePath(m_mountTargetPath) != loopbackDevicePath) {
+    	// moint point used by other application, return directly
+    	return true;
+    }
+    ImageCopyUmountProvider umountProvider(m_outputDirPath, m_mountTargetPath, loopbackDevicePath);
+    if (!umountProvider.Umount()) {
+    	RECORD_ERROR("failed to clear loopback mount residue");
+    	return false;
+    }
+    return true;
 }
 
-
-
-
-
-std::unique_ptr<ImageCopyUmountProvider> ImageCopyUmountProvider::Build(const std::string& mountRecordJsonFilePath)
+std::unique_ptr<ImageCopyUmountProvider> ImageCopyUmountProvider::Build(const std::string& mountRecordJsonFilePath, const std::string& outputDirPath)
 {
-    ImageCopyMountRecord mountRecord {};
+    LinuxImageCopyMountRecord mountRecord {};
     std::string jsonContent;
     std::ifstream file(mountRecordJsonFilePath);
     if (!file.is_open()) {
@@ -167,26 +157,14 @@ std::unique_ptr<ImageCopyUmountProvider> ImageCopyUmountProvider::Build(const st
 }
 
 ImageCopyUmountProvider::ImageCopyUmountProvider(
-    const std::string& mountTargetPath, const std::string& loopbackDevicePath)
-    : m_mountTargetPath(mountTargetPath), m_loopbackDevicePath(loopbackDevicePath)
+    const std::string& outputDirPath, const std::string& mountTargetPath, const std::string& loopbackDevicePath)
+    : m_outputDirPath(outputDirPath), m_mountTargetPath(mountTargetPath), m_loopbackDevicePath(loopbackDevicePath)
 {}
 
 bool ImageCopyUmountProvider::Umount()
 {
-#ifdef _WIN32
-    // win32 image umounting requires 3rd utilities, implement later...
-    RECORD_ERROR("Win32 platform does not support umount image copy %s", m_copyName.c_str());
-    return false;
-#else
-    return PosixLoopUMount();
-#endif
-}
-
-bool ImageCopyUmountProvider::PosixLoopUMount()
-{
-    // TODO:: check mounted
     // 1. umount filesystem
-    if (!m_mountTargetPath.empty() && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
+    if (!m_mountTargetPath.empty() && fsapi::IsMountPoint(m_mountTargetPath) && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
         RECORD_ERROR("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
         return false;
     }
@@ -197,7 +175,9 @@ bool ImageCopyUmountProvider::PosixLoopUMount()
     }
     if (m_loopbackDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
         std::string loopDeviceNumber = m_loopbackDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
-        RemoveFileInCacheDir(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+        if (!fsapi::RemoveFile(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX)) {
+        	ERRLOG("failed to remove loopback record checkpoint");
+        }
     }
     return true;
 }
