@@ -3,6 +3,13 @@
 
 #include "VolumeProtectMacros.h"
 
+
+#define RECORD_ERROR(format, args...) do { \
+    RecordError(format, ##args); \
+    ERRLOG(format, ##args); \
+} while (0) \
+
+
 namespace volumeprotect {
 namespace mount {
 
@@ -28,6 +35,27 @@ struct VolumeCopyMountConfig {
 };
 
 /**
+ * Define a inner logger to track the errors occured in mount/umount routines.
+ * This should be necessary, for this module may be provided as an independent dynamic lib for extensions
+ * like CPython or JNI to invoke, inner logger may track and save the error info for debugging without
+ * 3rd logger module being used.  
+ */
+class VOLUMEPROTECT_API InnerErrorLoggerTrait {
+public:
+    // get all errors splited by "\n"
+    std::string GetError() const;
+
+    std::vector<std::string> GetErrors() const;
+
+protected:
+    // format an error log to for tracking
+    void RecordError(const char* message, ...);
+
+private:
+    std::vector<std::string> m_errors;
+};
+
+/**
  * function as base class for multple volume copy mount provider of different backup format
  * mount process takes a configuration from VolumeCopyMountConfig and may generate some magic file in outputDirPath
  * mounting process:
@@ -37,9 +65,9 @@ struct VolumeCopyMountConfig {
  *   4. mount copy using corresponding provider
  *   5. save the mount record file to outputDirPath
  */
-class VOLUMEPROTECT_API VolumeCopyMountProvider {
+class VOLUMEPROTECT_API VolumeCopyMountProvider : public InnerErrorLoggerTrait {
 public:
-    // factory function to load target copy mount provider, depending on which CopyFormat it is
+    // factory function to load target copy mount provider, depending on which CopyFormat specified
     static std::unique_ptr<VolumeCopyMountProvider> BuildVolumeCopyMountProvider(
         VolumeCopyMountConfig& mountConfig
     );
@@ -52,14 +80,6 @@ public:
 
     virtual std::string GetMountRecordPath() const;
 
-    // get all errors splited by "\n"
-    std::string GetError() const;
-
-private:
-    std::string RecordError(const char* message, ...);
-
-    
-
 };
 
 /**
@@ -70,8 +90,9 @@ private:
  *   2. deciding which umount provider to load
  *   3. umount copy using corresponding umount provider
  */
-class VOLUMEPROTECT_API VolumeCopyUmountProvider {
+class VOLUMEPROTECT_API VolumeCopyUmountProvider : public InnerErrorLoggerTrait {
 public:
+    // factory function to read copy meta json info from target path and umount it using corresponding umount provider
     static std::unique_ptr<VolumeCopyUmountProvider> BuildVolumeCopyUmountProvider(
         const std::string mountRecordJsonFilePath
     );

@@ -29,7 +29,7 @@ struct CopySegment {
 
 struct VolumeCopyMeta {
     std::string                 copyName;
-    int                         backupType;       // cast BackupType to int
+    int                         backupType;     // cast BackupType to int
     int                         copyFormat;     // cast CopyFormat to int
     uint64_t                    volumeSize;     // volume size in bytes
     uint32_t                    blockSize;      // block size in bytes

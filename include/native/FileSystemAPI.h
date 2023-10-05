@@ -32,6 +32,10 @@ uint64_t    ReadVolumeSize(const std::string& volumePath);
 
 uint32_t    ProcessorsNum();
 
+bool CreateEmptyFile(const std::string& dirPath, const std::string& filename);
+
+bool RemoveEmptyFile(const std::string& dirPath, const std::string& filename);
+
 #ifdef __linux__
 uint64_t    ReadSectorSizeLinux(const std::string& devicePath);
 #endif

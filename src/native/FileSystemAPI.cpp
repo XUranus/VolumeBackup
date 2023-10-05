@@ -32,6 +32,12 @@ using namespace volumeprotect::fsapi;
 namespace {
     constexpr auto DEFAULT_PROCESSORS_NUM = 4;
     constexpr auto DEFAULT_MKDIR_MASK = 0755;
+
+#ifdef _WIN32
+    constexpr auto SEPARATOR = "\\";
+#else
+    constexpr auto SEPARATOR = "/";
+#endif
 }
 
 #ifdef _WIN32
@@ -272,6 +278,30 @@ bool fsapi::IsVolumeExists(const std::string& volumePath)
         return false;
     }
     return true;
+}
+
+bool CreateEmptyFile(const std::string& dirPath, const std::string& filename)
+{
+#ifdef __linux__
+    std::string fullpath = m_outputDirPath + SEPARATOR + filename;
+    int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
+    if (fd == -1) {
+        return false;
+    }
+    ::close(fd);
+    return true;
+#endif
+}
+
+bool RemoveEmptyFile(const std::string& dirPath, const std::string& filename)
+{
+#ifdef __linux__
+    std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
+    if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
+        return false;
+    }
+    return true;
+#endif
 }
 
 uint32_t fsapi::ProcessorsNum()

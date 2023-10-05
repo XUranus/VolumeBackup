@@ -9,7 +9,7 @@
 namespace volumeprotect {
 namespace mount {
 
-#ifdef __linux
+#ifdef __linux__
 /**
  * LinuxVolumeCopyMountProvider provides the functionality to mount/umount volume copy from a specified data path and meta path.
  * This piece of code will load copy slices from volumecopy.meta.json and create a block device from it.

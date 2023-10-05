@@ -187,36 +187,6 @@ bool DeviceMapper::UmountDeviceIfExists(const std::string& mountTargetPath)
     return true;
 }
 
-std::string DeviceMapper::GetErrors() const
-{
-    std::string errors;
-    for (const std::string& errorMessage : m_errors) {
-        errors += errorMessage + "\n";
-    }
-    return errors;
-}
-
-void DeviceMapper::RecordError(const char* message, ...)
-{
-    va_list args;
-    va_start(args, message);
-    // Determine the length of the formatted string
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int length = std::vsnprintf(nullptr, 0, message, args_copy);
-    va_end(args_copy);
-    if (length <= 0) {
-        va_end(args);
-        ERRLOG("failed to compute str format buffer size, errno %u", errno);
-        return;
-    }
-    // Create a buffer to store the formatted string
-    std::string formattedString(static_cast<size_t>(length) + 1, '\0');
-    std::vsnprintf(&formattedString[0], formattedString.size(), message, args);
-    va_end(args);
-    m_errors.emplace_back(formattedString);
-}
-
 bool DeviceMapper::ClearResidue()
 {
     bool success = true; // allow failure, make every effort to remove residual
