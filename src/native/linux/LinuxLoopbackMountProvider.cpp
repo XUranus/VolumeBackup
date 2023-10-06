@@ -1,8 +1,9 @@
-#include "LinuxImageCopyMountProvider.h"
+#ifdef __linux
+
+#include "LinuxLoopbackMountProvider.h"
 #include "VolumeCopyMountProvider.h"
 #include "Logger.h"
 
-#ifdef __linux
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/mount.h>
@@ -14,11 +15,11 @@
 
 #include "native/FileSystemAPI.h"
 #include "native/linux/LoopDeviceControl.h"
-#endif
 
 using namespace volumeprotect;
 using namespace volumeprotect::util;
 using namespace volumeprotect::mount;
+using namespace volumeprotect::fsapi;
 
 namespace {
     const std::string SEPARATOR = "/";
@@ -27,6 +28,7 @@ namespace {
     const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
 }
 
+// serialize to $copyName.image.mount.record.json
 struct LinuxImageCopyMountRecord {
     std::string     loopbackDevicePath;
     std::string     mountTargetPath;
@@ -41,11 +43,11 @@ struct LinuxImageCopyMountRecord {
     SERIALIZE_SECTION_END
 };
 
-std::unique_ptr<LinuxImageCopyMountProvider> LinuxImageCopyMountProvider::Build(
+std::unique_ptr<LinuxLoopbackMountProvider> LinuxLoopbackMountProvider::Build(
     const VolumeCopyMountConfig& volumeCopyMountConfig,
     const VolumeCopyMeta& volumeCopyMeta)
 {
-    LinuxImageCopyMountProviderParams params {};
+    LinuxLoopbackMountProviderParams params {};
     params.outputDirPath = volumeCopyMountConfig.outputDirPath;
     params.copyName = volumeCopyMeta.copyName;
     if (volumeCopyMeta.segments.empty()) {
@@ -56,10 +58,10 @@ std::unique_ptr<LinuxImageCopyMountProvider> LinuxImageCopyMountProvider::Build(
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
-    return std::make_unique<LinuxImageCopyMountProvider>(params);
+    return std::make_unique<LinuxLoopbackMountProvider>(params);
 }
 
-LinuxImageCopyMountProvider::LinuxImageCopyMountProvider(const LinuxImageCopyMountProviderParams& params)
+LinuxLoopbackMountProvider::LinuxLoopbackMountProvider(const LinuxLoopbackMountProviderParams& params)
     : m_outputDirPath(params.outputDirPath),
     m_copyName(params.copyName),
     m_imageFilePath(params.imageFilePath),
@@ -68,37 +70,37 @@ LinuxImageCopyMountProvider::LinuxImageCopyMountProvider(const LinuxImageCopyMou
     m_mountOptions(params.mountOptions)
 {}
 
-bool LinuxImageCopyMountProvider::IsMountSupported()
+bool LinuxLoopbackMountProvider::IsMountSupported()
 {
     return true;
 }
 
-std::string LinuxImageCopyMountProvider::GetMountRecordPath() const
+std::string LinuxLoopbackMountProvider::GetMountRecordPath() const
 {
     return m_outputDirPath + SEPARATOR + m_copyName + IMAGE_COPY_MOUNT_RECORD_FILE_SUFFIX; 
 }
 
 // mount using *nix loopback device
-bool LinuxImageCopyMountProvider::Mount()
+bool LinuxLoopbackMountProvider::Mount()
 {
     // 1. attach loopback device
     std::string loopDevicePath;
     if (!loopback::Attach(m_imageFilePath, loopDevicePath, O_RDONLY)) {
-        RECORD_ERROR("failed to attach read only loopback device from %s, errno %u", filePath.c_str(), errno);
+        RECORD_INNER_ERROR("failed to attach read only loopback device from %s, errno %u", filePath.c_str(), errno);
         return false;
     }
     // keep checkpoint for loopback device creation
     std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
     std::string loopbackDeviceCheckpointName = loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     if (!fsapi::CreateEmptyFile(m_outputDirPath, loopbackDeviceCheckpointName)) {
-    	RECORD_ERROR("failed to create checkpoint file %s", loopbackDeviceCheckpointName.c_str());
+    	RECORD_INNER_ERROR("failed to create checkpoint file %s", loopbackDeviceCheckpointName.c_str());
     }
 
     // 2. mount block device as readonly
     unsigned long mountFlags = MS_RDONLY;
     if (::mount(loopDevicePath.c_str(), m_mountTargetPath.c_str(), m_mountFsType.c_str(),
         mountFlags, m_mountOptions.c_str()) != 0) {
-        RECORD_ERROR("mount %s to %s failed, type %s, option %s, errno %u",
+        RECORD_INNER_ERROR("mount %s to %s failed, type %s, option %s, errno %u",
             loopDevicePath.c_str(), m_mountTargetPath.c_str(), m_mountFsType.c_str(), m_mountOptions.c_str(), errno);
         PosixLoopbackMountRollback(loopbackDevicePath);
         return false;
@@ -110,20 +112,16 @@ bool LinuxImageCopyMountProvider::Mount()
     mountRecord.mountTargetPath = m_mountTargetPath;
     mountRecord.mountFsType = m_mountFsType;
     mountRecord.mountOptions = m_mountOptions;
-    std::string jsonContent = xuranus::minijson::util::Serialize(mountRecord);
     std::string filepath = GetMountRecordPath();
-    std::ofstream file(filepath.c_str(), std::ios::trunc);
-    if (!file.is_open()) {
-        RECORD_ERROR("failed to save image copy mount record to %s, errno %u", filepath.c_str(), errno);
+    if (!util::JsonSerialize(mountRecord, filepath)) {
+        RECORD_INNER_ERROR("failed to save image copy mount record to %s, errno %u", filepath.c_str(), errno);
         PosixLoopbackMountRollback(loopbackDevicePath);
         return false;
     }
-    file << jsonContent;
-    file.close();
     return true;
 }
 
-bool LinuxImageCopyMountProvider::PosixLoopbackMountRollback(const std::string& loopbackDevicePath)
+bool LinuxLoopbackMountProvider::PosixLoopbackMountRollback(const std::string& loopbackDevicePath)
 {
 	if (loopbackDevicePath.empty()) {
 		// no loopback device attached, no mounts, return directly
@@ -133,44 +131,39 @@ bool LinuxImageCopyMountProvider::PosixLoopbackMountRollback(const std::string& 
     	// moint point used by other application, return directly
     	return true;
     }
-    ImageCopyUmountProvider umountProvider(m_outputDirPath, m_mountTargetPath, loopbackDevicePath);
+    LinuxLoopbackUmountProvider umountProvider(m_outputDirPath, m_mountTargetPath, loopbackDevicePath);
     if (!umountProvider.Umount()) {
-    	RECORD_ERROR("failed to clear loopback mount residue");
+    	RECORD_INNER_ERROR("failed to clear loopback mount residue");
     	return false;
     }
     return true;
 }
 
-std::unique_ptr<ImageCopyUmountProvider> ImageCopyUmountProvider::Build(const std::string& mountRecordJsonFilePath, const std::string& outputDirPath)
+std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(const std::string& mountRecordJsonFilePath, const std::string& outputDirPath)
 {
     LinuxImageCopyMountRecord mountRecord {};
-    std::string jsonContent;
-    std::ifstream file(mountRecordJsonFilePath);
-    if (!file.is_open()) {
-        RECORD_ERROR("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
+    if (!util::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
+        ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
-    }
-    std::string jsonContent;
-    file >> jsonContent;
-    xuranus::minijson::util::Deserialize(jsonContent, mountRecord);
-    return std::make_unique<ImageCopyUmountProvider>(mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
+    };
+    return std::make_unique<LinuxLoopbackUmountProvider>(mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
 }
 
-ImageCopyUmountProvider::ImageCopyUmountProvider(
+LinuxLoopbackUmountProvider::LinuxLoopbackUmountProvider(
     const std::string& outputDirPath, const std::string& mountTargetPath, const std::string& loopbackDevicePath)
     : m_outputDirPath(outputDirPath), m_mountTargetPath(mountTargetPath), m_loopbackDevicePath(loopbackDevicePath)
 {}
 
-bool ImageCopyUmountProvider::Umount()
+bool LinuxLoopbackUmountProvider::Umount()
 {
     // 1. umount filesystem
     if (!m_mountTargetPath.empty() && fsapi::IsMountPoint(m_mountTargetPath) && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
-        RECORD_ERROR("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
+        RECORD_INNER_ERROR("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
         return false;
     }
     // 2. detach loopback device
     if (!m_loopbackDevicePath.empty() && loopback::Attached(m_loopbackDevicePath) && !loopback::Detach(m_loopbackDevicePath)) {
-        RECORD_ERROR("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
+        RECORD_INNER_ERROR("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
         return false;
     }
     if (m_loopbackDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
@@ -181,3 +174,5 @@ bool ImageCopyUmountProvider::Umount()
     }
     return true;
 }
+
+#endif

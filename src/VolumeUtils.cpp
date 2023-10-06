@@ -68,27 +68,11 @@ std::string util::GetFileName(const std::string& fullpath)
 
 bool util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
-    const std::string&  copyName,
+    const std::string& copyName,
     const VolumeCopyMeta& volumeCopyMeta)
 {
-    std::string jsonStr = xuranus::minijson::util::Serialize(volumeCopyMeta);
     std::string filepath = copyMetaDirPath + SEPARATOR + copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION;
-    try {
-        std::ofstream file(filepath);
-        if (!file.is_open()) {
-            ERRLOG("failed to open file %s to write copy meta json %s", filepath.c_str(), jsonStr.c_str());
-            return false;
-        }
-        file << jsonStr;
-        file.close();
-    } catch (const std::exception& e) {
-        ERRLOG("failed to write copy meta json %s, exception: %s", filepath.c_str(), e.what());
-        return false;
-    } catch (...) {
-        ERRLOG("failed to write copy meta json %s, exception caught", filepath.c_str());
-        return false;
-    }
-    return true;
+    return JsonSerialize(volumeCopyMeta, filepath);
 }
 
 bool util::ReadVolumeCopyMeta(
@@ -97,22 +81,5 @@ bool util::ReadVolumeCopyMeta(
     VolumeCopyMeta& volumeCopyMeta)
 {
     std::string filepath = copyMetaDirPath + SEPARATOR + copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION;
-    try {
-        std::ifstream file(filepath);
-        std::string jsonStr;
-        if (!file.is_open()) {
-            ERRLOG("failed to open file %s to read copy meta json %s", filepath.c_str(), jsonStr.c_str());
-            return false;
-        }
-        file >> jsonStr;
-        file.close();
-        xuranus::minijson::util::Deserialize(jsonStr, volumeCopyMeta);
-    } catch (const std::exception& e) {
-        ERRLOG("failed to read copy meta json %s, exception: %s", filepath.c_str(), e.what());
-        return false;
-    } catch (...) {
-        ERRLOG("failed to read copy meta json %s, exception caught", filepath.c_str());
-        return false;
-    }
-    return true;
+    return JsonDeserialize(volumeCopyMeta, filepath);
 }

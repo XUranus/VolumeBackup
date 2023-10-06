@@ -77,6 +77,54 @@ bool ReadVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     const std::string& copyName,
     VolumeCopyMeta& volumeCopyMeta);
+
+template<typename T>
+bool JsonSerialize(const T& record, const std::string& filepath)
+{
+    std::string jsonContent = xuranus::minijson::util::Serialize(record);
+    try {
+        std::ofstream file(filepath, std::ios::trunc);
+        if (!file.is_open()) {
+            ERRLOG("failed to open file %s to write json %s", filepath.c_str(), jsonContent.c_str());
+            return false;
+        }
+        file << jsonStr;
+        file.close();
+    } catch (const std::exception& e) {
+        ERRLOG("failed to write json %s, exception: %s", filepath.c_str(), e.what());
+        return false;
+    } catch (...) {
+        ERRLOG("failed to write json %s, exception caught", filepath.c_str());
+        return false;
+    }
+    return true;
+}
+
+template<typename T>
+bool JsonDeserialize(T& record, const std::string& filepath)
+{
+    std::string jsonContent;
+    std::ifstream file(filepath);
+    try {
+        std::ifstream file(filepath);
+        std::string jsonContent;
+        if (!file.is_open()) {
+            ERRLOG("failed to open file %s to read json %s", filepath.c_str(), jsonContent.c_str());
+            return false;
+        }
+        file >> jsonContent;
+        file.close();
+        xuranus::minijson::util::Deserialize(jsonContent, volumeCopyMeta);
+    } catch (const std::exception& e) {
+        ERRLOG("failed to read json %s, exception: %s", filepath.c_str(), e.what());
+        return false;
+    } catch (...) {
+        ERRLOG("failed to read json %s, exception caught", filepath.c_str());
+        return false;
+    }
+    return true;
+}
+
 }
 }
 

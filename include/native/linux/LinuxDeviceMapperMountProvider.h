@@ -1,3 +1,5 @@
+// #ifdef __linux__
+
 #ifndef VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
 
@@ -5,40 +7,23 @@
 // external logger/json library
 #include "Json.h"
 #include "VolumeUtils.h"
+#include "VolumeCopyMountProvider.h"
 
 namespace volumeprotect {
 namespace mount {
 
-#ifdef __linux__
-/**
- * LinuxVolumeCopyMountProvider provides the functionality to mount/umount volume copy from a specified data path and meta path.
- * This piece of code will load copy slices from volumecopy.meta.json and create a block device from it.
- *
- * For a copy contains only one session, DeviceMapper will create a loopback device from the file
- *  to be mount directly.
- *
- * For a copy contains multiple sessions, DeviceMapper will assign a loopback device for each
- *  copy file and create a devicemapper device with linear targets using the loopback devices.
- *
- * DeviceMapper needs to keep the mounting record for volume umount, which need to store the loopback device path,
- *  devicemapper name.
- */
-
-struct VOLUMEPROTECT_API LinuxCopyMountConfig {
-    std::string     copyMetaDirPath;
-    std::string     copyDataDirPath;
-    std::string     mountTargetPath;
-    std::string     mountFsType     { "ext4" };
-    std::string     mountOptions    { "noatime" };
-
-    SERIALIZE_SECTION_BEGIN
-    SERIALIZE_FIELD(copyMetaDirPath, copyMetaDirPath);
-    SERIALIZE_FIELD(copyDataDirPath, copyDataDirPath);
-    SERIALIZE_FIELD(mountTargetPath, mountTargetPath);
-    SERIALIZE_FIELD(mountFsType, mountFsType);
-    SERIALIZE_FIELD(mountOptions, mountOptions);
-    SERIALIZE_SECTION_END
+// same as LinuxLoopbackMountProviderParams
+struct LinuxDeviceMapperMountProviderParams {
+    std::string                 outputDirPath;
+    std::string                 copyDataDirPath;
+    std::string                 copyMetaDirPath;
+    std::string                 copyName;
+    std::vector<CopySegment>    segments;
+    std::string                 mountTargetPath;
+    std::string                 mountFsType;
+    std::string                 mountOptions;
 };
+
 
 struct VOLUMEPROTECT_API CopySliceTarget {
     std::string         copyFilePath;
@@ -54,16 +39,20 @@ struct VOLUMEPROTECT_API CopySliceTarget {
     SERIALIZE_SECTION_END
 };
 
-struct VOLUMEPROTECT_API LinuxCopyMountRecord {
+struct VOLUMEPROTECT_API LinuxDeviceMapperCopyMountRecord {
     // attributes required for umount
     std::string                 dmDeviceName;       // [opt] required only multiple copy files contained in a volume
     std::vector<std::string>    loopDevices;        // loopback device path like /dev/loopX
     std::string                 devicePath;         // block device mounted (loopback device path or dm device path)
     std::string                 mountTargetPath;    // the mount point path
     
-    // attribute used only for debug
+    // attribute and origin mount config, used only for debug
     std::vector<CopySliceTarget>    copySlices;
-    LinuxCopyMountConfig            mountConfig;
+    std::string                 copyDataDirPath;
+    std::string                 copyMetaDirPath;
+    std::string                 copyName;
+    std::string                 mountFsType;
+    std::string                 mountOptions;
 
     SERIALIZE_SECTION_BEGIN
     SERIALIZE_FIELD(dmDeviceName, dmDeviceName);
@@ -71,49 +60,42 @@ struct VOLUMEPROTECT_API LinuxCopyMountRecord {
     SERIALIZE_FIELD(devicePath, devicePath);
     SERIALIZE_FIELD(mountTargetPath, mountTargetPath);
     SERIALIZE_FIELD(copySlices, copySlices);
-    SERIALIZE_FIELD(mountConfig, mountConfig);
+    SERIALIZE_FIELD(copyDataDirPath, copyDataDirPath);
+    SERIALIZE_FIELD(copyMetaDirPath, copyMetaDirPath);
+    SERIALIZE_FIELD(copyName, copyName);
+    SERIALIZE_FIELD(mountFsType, mountFsType);
+    SERIALIZE_FIELD(mountOptions, mountOptions);
     SERIALIZE_SECTION_END
 };
 
-// define constants for DeviceMapper
-const std::string DEVICE_MAPPER_DEVICE_NAME_PREFIX = "volumeprotect_dm_copy_";
-const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
-const std::string DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX = ".dm.record";
-
 /**
- * provide api to mount volume copy on Linux system
- * DeviceMapper need a cache directory to store mount record and residual device info for each mount task.
- *
- * "MountCopy" method require a config struct containing mount fs type, options, target path and so on,
- * and save mount record as volumecopymount.record.json into cache directory if success.
- *
- * "UmountCopy" method load the volumecopymount.record.json from cache directory and execute umount and remove device.
- *
- * When mount/umount action failed:
+ * LinuxDeviceMapperMountProvider provide api to mount volume copy with CopyFormat::BIN on Linux system
+ * This provider need a output directory to store mount record and checkpoint file for each mount task.
+ * 
+ * For a copy contains only one session, LinuxDeviceMapperMountProvider will create a loopback device from the file
+ *    to be mount directly.
+ * For a copy contains multiple sessions, LinuxDeviceMapperMountProvider will assign a loopback device for each
+ *    copy file and create a devicemapper device with linear targets using the loopback devices.
+ * 
+ * To ensure robust:
  * For each created dm device, a "dmDeviceName.dm.record" file will be created,
- * and For each attached loop device, a "loopX.loop.record" file will be created.
+ * and for each attached loop device, a "loopX.loop.record" file will be created.
  * These files will be used to track residual device if mount task is partial failed.
- * Callers can use ClearResidue method to try to clear the residual device.
+ * ClearResidue method will be called to try to clear the residual device. if moun is failed.
  */
-class VOLUMEPROTECT_API DeviceMapper {
+class LinuxDeviceMapperMountProvider : public VolumeCopyMountProvider {
 public:
-    static std::unique_ptr<DeviceMapper> BuildDeviceMapper(const std::string& cacheDirPath);
+    static std::unique_ptr<LinuxDeviceMapperMountProvider> Build(
+        const VolumeCopyMountConfig& volumeCopyMountConfig,
+        const VolumeCopyMeta& volumeCopyMeta);
 
-    DeviceMapper(const std::string& cacheDirPath);
+    LinuxDeviceMapperMountProvider(const LinuxDeviceMapperMountProviderParams& params);
 
-    virtual ~DeviceMapper() = default;
+    virtual ~LinuxDeviceMapperMountProvider() = default;
 
-    // create device and mount using mountConfig and save result to volumecopymount.record.json in cache directory
-    bool MountCopy(const LinuxCopyMountConfig& mountConfig);
+    bool Mount() override;
 
-    // load volumecopymount.record.json in cache directory and execute umount and remove device
-    bool UmountCopy();
-
-    // get all errors splited by "\n"
-    std::string GetErrors() const;
-
-    // format error message and store inner, provider a debugging way for JNI c extension
-    void RecordError(const char* message, ...);
+    std::string GetMountRecordJsonPath() const override;
 
     // if mount failed, caller can call this methods to try to remove residual loop/dm device
     bool ClearResidue();
@@ -126,9 +108,9 @@ public:
     std::string GetMountRecordJsonPath() const;
 
 protected:
-    virtual bool ReadMountRecord(LinuxCopyMountRecord& record);
+    virtual bool ReadMountRecord(LinuxDeviceMapperCopyMountRecord& record);
 
-    virtual bool SaveMountRecord(const LinuxCopyMountRecord& mountRecord);
+    virtual bool SaveMountRecord(const LinuxDeviceMapperCopyMountRecord& mountRecord);
 
     virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
 
@@ -137,8 +119,6 @@ protected:
         const std::string& mountTargetPath,
         const std::string& fsType,
         const std::string& mountOptions);
-    
-    virtual bool UmountDeviceIfExists(const std::string& mountTargetPath);
     
     virtual bool CreateReadOnlyDmDevice(
         const std::vector<CopySliceTarget> copySlices,
@@ -153,28 +133,45 @@ protected:
 
     std::string GenerateNewDmDeviceName() const;
 
-    // used to store checkpoint
-    bool SaveLoopDeviceCreationRecord(const std::string& loopDevicePath);
-
-    bool SaveDmDeviceCreationRecord(const std::string& dmDeviceName);
-
-    bool RemoveLoopDeviceCreationRecord(const std::string& loopDevicePath);
-
-    bool RemoveDmDeviceCreationRecord(const std::string& dmDeviceName);
-
-    // native interface ...
-    virtual bool CreateEmptyFileInCacheDir(const std::string& filename);
-
-    virtual bool RemoveFileInCacheDir(const std::string& filename);
-
     virtual bool ListRecordFiles(std::vector<std::string>& filelist);
 
 private:
-    std::string m_cacheDirPath; // store the checkpoint and record info of the mount task
-    std::vector<std::string> m_errors {};
+    std::string     m_outputDirPath;
+    std::string     m_copyDataDirPath;
+    std::string     m_copyMetaDirPath;
+    std::string     m_copyName;
+    std::string     m_mountTargetPath;
+    std::string     m_mountFsType;
+    std::string     m_mountOptions;
+    std::vector<CopySegment>    segments;
 };
-#endif
+
+
+class LinuxDeviceMapperUmountProvider : VolumeCopyUmountProvider {
+public:
+    static std::unique_ptr<LinuxDeviceMapperUmountProvider> Build(
+        const std::string& mountRecordJsonFilePath,
+        const std::string& outputDirPath);
+
+    LinuxDeviceMapperUmountProvider(
+    	const std::string& outputDirPath,
+        const std::string& mountTargetPath,
+        const std::string& dmDeviceName,
+        const std::vector<std::string> loopDevices);
+
+    ~LinuxDeviceMapperUmountProvider() = default;
+
+    bool Umount() override;
+
+private:
+    std::string outputDirPath;
+    std::string mountTargetPath;
+    std::string dmDeviceName;
+    std::vector<std::string> loopDevices;
+};
 
 }
 }
+
 #endif
+//#endif

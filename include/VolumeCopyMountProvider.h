@@ -3,12 +3,21 @@
 
 #include "VolumeProtectMacros.h"
 
+#ifdef _MSC_VER
 
-#define RECORD_ERROR(format, args...) do { \
+#define RECORD_INNER_ERROR(format, ...) do { \
+    RecordError(format, __VA_ARGS__); \
+    ERRLOG(format, __VA_ARGS__); \
+} while (0) \
+
+#else
+
+#define RECORD_INNER_ERROR(format, args...) do { \
     RecordError(format, ##args); \
     ERRLOG(format, ##args); \
 } while (0) \
 
+#endif
 
 namespace volumeprotect {
 namespace mount {

@@ -1,3 +1,5 @@
+#ifdef _WIN32
+
 #ifndef VOLUMEBACKUP_WIN32_VIRTUALDISK_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_WIN32_VIRTUALDISK_MOUNT_PROVIDER_HEADER
 
@@ -11,33 +13,44 @@
 namespace volumeprotect {
 namespace mount {
 
-#ifdef _WIN32
-
 /**
- * VirtualDiskCopyMountProvider provides the functionality to mount/umount volume copy from a specified
+ * Win32VirtualDiskMountProvider provides the functionality to mount/umount volume copy from a specified
  *   data path and meta path. This piece of code will attach the virtual disk (*.vhd/*.vhdx) file and assign
  *   a driver letter to it, it can alse be assigned a non-root path if it's a NTFS volume.
  * Each virtual disk is guaranteed to have only one MSR partition and one data partition, it can only be mounted
  *   by the Windows OS version that support GPT partition and virtual disk service.
  */
-class VirtualDiskCopyMountProvider : public VolumeCopyMountProvider {
+class Win32VirtualDiskMountProvider : public VolumeCopyMountProvider {
 public:
-    static std::unique_ptr<VirtualDiskCopyMountProvider> Build(
-        const std::string& virtualDiskFilePath, const std::string& mountTargetPath);
+    static std::unique_ptr<Win32VirtualDiskMountProvider> Build(
+        const std::string& outputDirPath,
+        const std::string& copyName,
+        const std::string& virtualDiskFilePath,
+        const std::string& mountTargetPath);
 
-    VirtualDiskCopyMountProvider(
-        const std::string& virtualDiskFilePath, const std::string& mountTargetPath);
+    Win32VirtualDiskMountProvider(
+        const std::string& outputDirPath,
+        const std::string& copyName,
+        const std::string& virtualDiskFilePath,
+        const std::string& mountTargetPath);
 
     bool Mount() override;
 
+    std::string GetMountRecordPath() const override;
+
 private:
-    std::string      m_virtualDiskFilePath;
+    void MountRollback();
+
+private:
+    std::string     m_outputDirPath;
+    std::string     m_copyName;
+    std::string     m_virtualDiskFilePath;
     std::string     m_mountTargetPath;
 };
 
 class Win32VirtualDiskUmountProvider : public VolumeCopyUmountProvider {
 public:
-    static std::unique_ptr<Win32VirtualDiskUmountProvider> Build(const std::string virtualDiskFilePath);
+    static std::unique_ptr<Win32VirtualDiskUmountProvider> Build(const std::string& mountRecordJsonFilePath);
 
     Win32VirtualDiskUmountProvider(const std::string& virtualDiskFilePath);
 
@@ -48,9 +61,9 @@ private:
     
 };
 
-#endif
+}
+}
 
-}
-}
+#endif
 
 #endif
