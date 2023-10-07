@@ -1,7 +1,6 @@
 #ifdef __linux
 
-#include "LinuxVolumeCopyMountProvider.h"
-#include "native/linux/LinuxDeviceMapperMountProviderControl.h"
+#include "native/linux/LinuxDeviceMapperMountProvider.h"
 #include "Json.h"
 #include "Logger.h"
 #include "RawIO.h"

@@ -67,4 +67,8 @@ static_assert(false, "platform unsupported, none of __linux__ and _WIN32 defined
 #endif
 #endif
 
+// check if make_unique defined	
+#ifndef __cpp_lib_make_unique
+
+
 #endif

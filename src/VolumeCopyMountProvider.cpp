@@ -7,7 +7,7 @@
 #include "native/FileSystemAPI.h"
 
 #ifdef __linux__
-#include "native/linux/DeviceMapperCopyMountProvider.h"
+#include "native/linux/LinuxDeviceMapperMountProvider.h"
 #include "native/linux/LinuxLoopbackMountProvider.h"
 #endif
 

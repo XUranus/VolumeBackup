@@ -1,6 +1,6 @@
 #ifdef __linux
 
-#include "LinuxLoopbackMountProvider.h"
+#include "native/linux/LinuxLoopbackMountProvider.h"
 #include "VolumeCopyMountProvider.h"
 #include "Logger.h"
 
