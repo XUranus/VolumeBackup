@@ -2,6 +2,9 @@
 #include <cstdio>
 
 #ifdef __linux__
+#include <sys/mount.h>
+#include <mntent.h>
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -9,8 +12,6 @@
 #include <linux/fs.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/mount.h>
-#include <mntent.h>
 #endif
 
 #ifdef _WIN32
@@ -377,5 +378,24 @@ bool fsapi::IsMountPoint(const std::string& dirPath)
     }
     ::endmntent(mountsFile);
     return mounted;
+}
+
+std::string fsapi::GetMountDevicePath(const std::string& mountTargetPath)
+{
+	std::string devicePath;
+    FILE* mountsFile = ::setmntent(SYS_MOUNTS_ENTRY_PATH.c_str(), "r");
+    if (mountsFile == nullptr) {
+        ERRLOG("failed to open /proc/mounts, errno %u", errno);
+        return "";
+    }
+    struct mntent* entry = nullptr;
+    while ((entry = ::getmntent(mountsFile)) != nullptr) {
+        if (std::string(entry->mnt_dir) == dirPath) {
+            devicePath = entry->mnt_device;
+            break;
+        } 
+    }
+    ::endmntent(mountsFile);
+    return devicePath;
 }
 #endif

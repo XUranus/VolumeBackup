@@ -99,6 +99,11 @@ namespace {
     constexpr auto WAIT_FOR_MSR_PARTITION_DURATION_SEC = 2;
 }
 
+inline wchar_t LowerW(wchar_t ch)
+{
+	return (ch >= L'A' && ch <= L'Z') ? (ch - L'A' + L'a') : ch;
+}
+
 // Implement common WIN32 API utils
 static std::wstring Utf8ToUtf16(const std::string& str)
 {
@@ -607,7 +612,7 @@ static bool OpenWin32VirtualDiskW(const std::wstring& wVirtualDiskFilePath, HAND
     std::wstring wFileExtension = lastDot == nullptr ? L"" : std::wstring(lastDot);
     std::wstring wVhdExtension = L".vhd";
     std::wstring wVhdxExtension = L".vhdx";
-    auto caseInsensitiveEqualCheck = [](wchar_t a, wchar_t b) { return std::tolower(a) == std::tolower(b); };
+    auto caseInsensitiveEqualCheck = [](wchar_t a, wchar_t b) { return LowerW(a) == LowerW(b); };
     bool isVhd = std::equal(wVhdExtension.begin(), wVhdExtension.end(),
         wFileExtension.begin(), wFileExtension.end(), caseInsensitiveEqualCheck);
     bool isVhdx = std::equal(wVhdxExtension.begin(), wVhdxExtension.end(),

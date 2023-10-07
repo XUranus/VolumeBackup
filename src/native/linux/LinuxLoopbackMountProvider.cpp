@@ -88,11 +88,12 @@ bool LinuxLoopbackMountProvider::Mount()
     // 1. attach loopback device
     std::string loopDevicePath;
     if (!loopback::Attach(m_imageFilePath, loopDevicePath, O_RDONLY)) {
-        RECORD_INNER_ERROR("failed to attach read only loopback device from %s, errno %u", filePath.c_str(), errno);
+        RECORD_INNER_ERROR("failed to attach read only loopback device from %s, errno %u",
+            filePath.c_str(), errno);
         return false;
     }
     // keep checkpoint for loopback device creation
-    std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
+    std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length();
     std::string loopbackDeviceCheckpointName = loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
     if (!fsapi::CreateEmptyFile(m_outputDirPath, loopbackDeviceCheckpointName)) {
     	RECORD_INNER_ERROR("failed to create checkpoint file %s", loopbackDeviceCheckpointName.c_str());
@@ -118,7 +119,7 @@ bool LinuxLoopbackMountProvider::Mount()
     std::string filepath = GetMountRecordPath();
     if (!util::JsonSerialize(mountRecord, filepath)) {
         RECORD_INNER_ERROR("failed to save image copy mount record to %s, errno %u", filepath.c_str(), errno);
-        PosixLoopbackMountRollback(loopbackDevicePath);
+        PosixLoopbackMountRollback(loopDevicePath);
         return false;
     }
     return true;
@@ -149,7 +150,7 @@ std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };
-    return exstd::make_unique<LinuxLoopbackUmountProvider>(mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
+    return exstd::make_unique<LinuxLoopbackUmountProvider>(outputDirPath, mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
 }
 
 LinuxLoopbackUmountProvider::LinuxLoopbackUmountProvider(
@@ -161,12 +162,12 @@ bool LinuxLoopbackUmountProvider::Umount()
 {
     // 1. umount filesystem
     if (!m_mountTargetPath.empty() && fsapi::IsMountPoint(m_mountTargetPath) && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
-        RECORD_INNER_ERROR("failed to umount target %s, errno %u", mountTargetPath.c_str(), errno);
+        RECORD_INNER_ERROR("failed to umount target %s, errno %u", m_mountTargetPath.c_str(), errno);
         return false;
     }
     // 2. detach loopback device
     if (!m_loopbackDevicePath.empty() && loopback::Attached(m_loopbackDevicePath) && !loopback::Detach(m_loopbackDevicePath)) {
-        RECORD_INNER_ERROR("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
+        RECORD_INNER_ERROR("failed to detach loopback device %s, errno %u", m_loopbackDevicePath.c_str(), errno);
         return false;
     }
     if (m_loopbackDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {

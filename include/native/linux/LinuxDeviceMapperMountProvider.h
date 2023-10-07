@@ -137,11 +137,11 @@ private:
     std::string     m_mountTargetPath;
     std::string     m_mountFsType;
     std::string     m_mountOptions;
-    std::vector<CopySegment>    segments;
+    std::vector<CopySegment>    m_segments;
 };
 
 
-class LinuxDeviceMapperUmountProvider : VolumeCopyUmountProvider {
+class LinuxDeviceMapperUmountProvider : public VolumeCopyUmountProvider {
 public:
     static std::unique_ptr<LinuxDeviceMapperUmountProvider> Build(
         const std::string& mountRecordJsonFilePath,
@@ -158,10 +158,10 @@ public:
     bool Umount() override;
 
 private:
-    std::string outputDirPath;
-    std::string mountTargetPath;
-    std::string dmDeviceName;
-    std::vector<std::string> loopDevices;
+    std::string m_outputDirPath;
+    std::string m_mountTargetPath;
+    std::string m_dmDeviceName;
+    std::vector<std::string> m_loopDevices;
 };
 
 }

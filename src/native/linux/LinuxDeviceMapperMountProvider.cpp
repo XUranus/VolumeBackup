@@ -7,6 +7,7 @@
 #include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
 #include "native/linux/LoopDeviceControl.h"
+#include "native/linux/DeviceMapperControl.h"
 
 #include <cerrno>
 #include <fcntl.h>
@@ -160,7 +161,8 @@ bool LinuxDeviceMapperMountProvider::Mount()
             RollbackClearResidue();
             return false;
         }
-        INFOLOG("create devicemapper device %s, name = %s", dmDevicePath.c_str(), dmDeviceName.c_str());
+        INFOLOG("create devicemapper device %s, name = %s",
+            mountRecord.dmDevicePath.c_str(), mountRecord.dmDeviceName.c_str());
     }
 
     // mount the loop/dm device to target
@@ -357,9 +359,6 @@ bool LinuxDeviceMapperMountProvider::ListRecordFiles(std::vector<std::string>& f
     return true;
 }
 
-
-
-
 // implement LinuxDeviceMapperUmountProvider...
 
 std::unique_ptr<LinuxDeviceMapperUmountProvider> LinuxDeviceMapperUmountProvider::Build(
@@ -371,7 +370,7 @@ std::unique_ptr<LinuxDeviceMapperUmountProvider> LinuxDeviceMapperUmountProvider
         return nullptr;
     };
     return exstd::make_unique<LinuxDeviceMapperUmountProvider>(
-        outputDirPath, mountTargetPath, dmDeviceName, loopDevices);
+        outputDirPath, mountRecord.mountTargetPath, mountRecord.dmDeviceName, mountRecord.loopDevices);
 }
 
 LinuxDeviceMapperUmountProvider::LinuxDeviceMapperUmountProvider(
@@ -401,7 +400,7 @@ bool LinuxDeviceMapperUmountProvider::Umount()
     // finally detach all loopback devices involed
     for (const std::string& loopDevicePath: m_loopDevices) {
         if (loopback::Attached(loopDevicePath) && !loopback::Detach(loopDevicePath)) {
-            RECORD_INNER_ERROR("failed to detach loopback device %s, errno %u", devicePath.c_str(), errno);
+            RECORD_INNER_ERROR("failed to detach loopback device %s, errno %u", loopDevicePath.c_str(), errno);
             RemoveLoopDeviceCreationRecord(m_outputDirPath, loopDevicePath);
             success = false;
         }
