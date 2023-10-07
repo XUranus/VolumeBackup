@@ -1,4 +1,4 @@
-#ifdef __linux
+#ifdef __linux__
 
 #include "native/linux/LinuxLoopbackMountProvider.h"
 #include "VolumeCopyMountProvider.h"
@@ -60,7 +60,7 @@ std::unique_ptr<LinuxLoopbackMountProvider> LinuxLoopbackMountProvider::Build(
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
-    return std::make_unique<LinuxLoopbackMountProvider>(params);
+    return exstd::make_unique<LinuxLoopbackMountProvider>(params);
 }
 
 LinuxLoopbackMountProvider::LinuxLoopbackMountProvider(const LinuxLoopbackMountProviderParams& params)
@@ -104,7 +104,7 @@ bool LinuxLoopbackMountProvider::Mount()
         mountFlags, m_mountOptions.c_str()) != 0) {
         RECORD_INNER_ERROR("mount %s to %s failed, type %s, option %s, errno %u",
             loopDevicePath.c_str(), m_mountTargetPath.c_str(), m_mountFsType.c_str(), m_mountOptions.c_str(), errno);
-        PosixLoopbackMountRollback(loopbackDevicePath);
+        PosixLoopbackMountRollback(loopDevicePath);
         return false;
     }
 
@@ -149,7 +149,7 @@ std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };
-    return std::make_unique<LinuxLoopbackUmountProvider>(mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
+    return exstd::make_unique<LinuxLoopbackUmountProvider>(mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
 }
 
 LinuxLoopbackUmountProvider::LinuxLoopbackUmountProvider(
@@ -171,7 +171,7 @@ bool LinuxLoopbackUmountProvider::Umount()
     }
     if (m_loopbackDevicePath.find(LOOPBACK_DEVICE_PATH_PREFIX) == 0) {
         std::string loopDeviceNumber = m_loopbackDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
-        if (!fsapi::RemoveFile(loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX)) {
+        if (!fsapi::RemoveFile(m_outputDirPath, loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX)) {
         	ERRLOG("failed to remove loopback record checkpoint");
         }
     }

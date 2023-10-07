@@ -1,5 +1,6 @@
 #include <cerrno>
 #include <cstdio>
+
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -8,6 +9,8 @@
 #include <linux/fs.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/mount.h>
+#include <mntent.h>
 #endif
 
 #ifdef _WIN32

@@ -2,9 +2,10 @@
 
 // external logger/json library
 #include "Json.h"
-#include "logger.h"
+#include "Logger.h"
 #include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
+#include <memory>
 
 #ifdef __linux__
 #include "native/linux/LinuxDeviceMapperMountProvider.h"
@@ -83,14 +84,16 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::BuildVolumeCop
     switch (volumeCopyMeta.copyFormat) {
         case static_cast<int>(CopyFormat::BIN) : {
 #ifdef __linux__
-            return LinuxDeviceMapperMountProvider::Build(mountConfig, volumeCopyMeta);
+            return std::dynamic_pointer_cast<VolumeCopyMountProvider>(
+                LinuxDeviceMapperMountProvider::Build(mountConfig, volumeCopyMeta));
 #else
             return nullptr;
 #endif
         }
         case static_cast<int>(CopyFormat::IMAGE) : {
 #ifdef __linux__
-            return LinuxLoopbackMountProvider::Build(mountConfig, volumeCopyMeta);
+            return std::dynamic_pointer_cast<VolumeCopyMountProvider>(
+                LinuxLoopbackMountProvider::Build(mountConfig, volumeCopyMeta));
 #else
             return nullptr;
 #endif
@@ -140,19 +143,19 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::BuildVolumeC
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };
-    CopyFormat copyFormat = static_cast<CopyFormat>(mountRecord.copyFormat);
-    switch (copyFormat) {
+    switch (mountRecord.copyFormat) {
         case static_cast<int>(CopyFormat::BIN) : {
 #ifdef __linux__
-    
-            return LinuxDeviceMapperUmountProvider::Build(mountRecordJsonFilePath, outputDirPath);
+            return std::dynamic_pointer_cast<VolumeCopyMountProvider>(
+                LinuxDeviceMapperUmountProvider::Build(mountRecordJsonFilePath, outputDirPath));
 #else
             return nullptr;
 #endif
         }
         case static_cast<int>(CopyFormat::IMAGE) : {
 #ifdef __linux__
-            return LinuxLoopbackUmountProvider::Build(mountRecordJsonFilePath, outputDirPath);
+            return std::dynamic_pointer_cast<VolumeCopyMountProvider>(
+                LinuxLoopbackUmountProvider::Build(mountRecordJsonFilePath, outputDirPath));
 #else
             return nullptr;
 #endif
@@ -165,7 +168,7 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::BuildVolumeC
             return Win32VirtualDiskUmountProvider::Build(mountRecordJsonFilePath);
         }
 #endif
-        default: ERRLOG("unknown copy format type %d", copyFormat);
+        default: ERRLOG("unknown copy format type %d", mountRecord.copyFormat);
     }
     return nullptr;
 }

@@ -50,7 +50,7 @@ std::unique_ptr<Win32VirtualDiskMountProvider> Win32VirtualDiskMountProvider::Bu
         return nullptr;
     }
     std::string virtualDiskFilePath = volumeCopyMountConfig.copyDataDirPath + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
-    return std::make_unique<Win32VirtualDiskMountProvider>(
+    return exstd::make_unique<Win32VirtualDiskMountProvider>(
         volumeCopyMountConfig.outputDirPath,
         volumeCopyMountConfig.copyName,
         copyFormat,
@@ -137,7 +137,7 @@ std::unique_ptr<Win32VirtualDiskUmountProvider> Win32VirtualDiskUmountProvider::
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };
-    return std::make_unique<Win32VirtualDiskUmountProvider>(mountRecord.virtualDiskFilePath);
+    return exstd::make_unique<Win32VirtualDiskUmountProvider>(mountRecord.virtualDiskFilePath);
 }
 
 Win32VirtualDiskUmountProvider::Win32VirtualDiskUmountProvider(const std::string& virtualDiskFilePath)

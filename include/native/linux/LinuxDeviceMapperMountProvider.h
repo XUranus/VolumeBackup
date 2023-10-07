@@ -25,7 +25,7 @@ struct LinuxDeviceMapperMountProviderParams {
 };
 
 
-struct VOLUMEPROTECT_API CopySliceTarget {
+struct CopySliceTarget {
     std::string         copyFilePath;
     uint64_t            volumeOffset;
     uint64_t            size;
@@ -39,7 +39,7 @@ struct VOLUMEPROTECT_API CopySliceTarget {
     SERIALIZE_SECTION_END
 };
 
-struct VOLUMEPROTECT_API LinuxDeviceMapperCopyMountRecord {
+struct LinuxDeviceMapperCopyMountRecord {
     int                         copyFormat;
     // attributes required for umount
     std::string                 dmDeviceName;       // [opt] required only multiple copy files contained in a volume

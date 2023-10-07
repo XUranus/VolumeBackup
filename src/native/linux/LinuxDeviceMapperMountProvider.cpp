@@ -1,4 +1,4 @@
-#ifdef __linux
+#ifdef __linux__
 
 #include "native/linux/LinuxDeviceMapperMountProvider.h"
 #include "Json.h"
@@ -86,7 +86,7 @@ inline void RemoveDmDeviceCreationRecord(const std::string& outputDirPath, const
 }
 
 // implement public methods here ...
-std::unique_ptr<LinuxDeviceMapperMountProvider> LinuxLoopbackMountProvider::Build(
+std::unique_ptr<LinuxDeviceMapperMountProvider> LinuxDeviceMapperMountProvider::Build(
     const VolumeCopyMountConfig& volumeCopyMountConfig,
     const VolumeCopyMeta& volumeCopyMeta)
 {
@@ -112,7 +112,7 @@ std::unique_ptr<LinuxDeviceMapperMountProvider> LinuxLoopbackMountProvider::Buil
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
-    return std::make_unique<LinuxDeviceMapperMountProvider>(params);
+    return exstd::make_unique<LinuxDeviceMapperMountProvider>(params);
 }
 
 LinuxDeviceMapperMountProvider::LinuxDeviceMapperMountProvider(
@@ -370,7 +370,7 @@ std::unique_ptr<LinuxDeviceMapperUmountProvider> LinuxDeviceMapperUmountProvider
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };
-    return std::make_unique<LinuxLoopbackUmountProvider>(
+    return exstd::make_unique<LinuxDeviceMapperUmountProvider>(
         outputDirPath, mountTargetPath, dmDeviceName, loopDevices);
 }
 

@@ -126,13 +126,13 @@ static bool CreateVirtualDiskBackupCopy(
 std::unique_ptr<TaskResourceManager> TaskResourceManager::BuildBackupTaskResourceManager(
     const BackupTaskResourceManagerParams& params)
 {
-    return std::make_unique<BackupTaskResourceManager>(params);
+    return exstd::make_unique<BackupTaskResourceManager>(params);
 }
 
 std::unique_ptr<TaskResourceManager> TaskResourceManager::BuildRestoreTaskResourceManager(
     const RestoreTaskResourceManagerParams& params)
 {
-    return std::make_unique<RestoreTaskResourceManager>(params);
+    return exstd::make_unique<RestoreTaskResourceManager>(params);
 }
 
 TaskResourceManager::TaskResourceManager(
@@ -320,17 +320,17 @@ bool BackupTaskResourceManager::ResourceExists()
                    [](const std::pair<std::string, uint64_t>& p) { return p.first; });
             return FragmentBinaryBackupCopyExists(fragmentFiles);
         }
-        case static_cast<int>(CopyFormat::IMAGE):
 #ifdef _WIN32
         case static_cast<int>(CopyFormat::VHD_FIXED) :
         case static_cast<int>(CopyFormat::VHD_DYNAMIC) :
         case static_cast<int>(CopyFormat::VHDX_FIXED) :
-        case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
+        case static_cast<int>(CopyFormat::VHDX_DYNAMIC) :
+#endif
+        case static_cast<int>(CopyFormat::IMAGE): {
             std::string filePath = util::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
             return fsapi::IsFileExists(filePath);
         }
-#endif
     }
     DBGLOG("backup copy %s not exists, format %d", m_copyName.c_str(), m_copyFormat);
     return false;

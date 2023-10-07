@@ -43,10 +43,12 @@ std::string util::GetCopyDataFilePath(
         filename = copyName + COPY_DATA_IMAGE_FILENAME_EXTENSION;
     } else if (copyFormat == CopyFormat::BIN && sessionIndex != 0) {
         filename = copyName + COPY_DATA_BIN_PARTED_FILENAME_EXTENSION + std::to_string(sessionIndex);
+#ifdef _WIN32
     } else if (copyFormat == CopyFormat::VHD_FIXED || copyFormat == CopyFormat::VHD_DYNAMIC) {
         filename = copyName + COPY_DATA_VHD_FILENAME_EXTENSION;
     } else if (copyFormat == CopyFormat::VHDX_FIXED || copyFormat == CopyFormat::VHDX_DYNAMIC) {
         filename = copyName + COPY_DATA_VHDX_FILENAME_EXTENSION;
+#endif
     }
     return copyDataDirPath + SEPARATOR + filename;
 }

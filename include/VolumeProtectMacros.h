@@ -67,8 +67,25 @@ static_assert(false, "platform unsupported, none of __linux__ and _WIN32 defined
 #endif
 #endif
 
+
 // check if make_unique defined	
 #ifndef __cpp_lib_make_unique
 
+// define extended std function
+namespace exstd {
+
+template<typename T, class... Args>
+std::unique_ptr<T> make_unique(Args... args)
+{
+    return std::unique_ptr<T>(new T(args...));
+}
+
+}
+
+#else
+
+namespace exstd = std;
+
+#endif
 
 #endif
