@@ -4,18 +4,30 @@
 #include "Json.h"
 #include "logger.h"
 #include "VolumeUtils.h"
+#include "native/FileSystemAPI.h"
 
 #ifdef __linux__
-#include "DeviceMapperCopyMountProvider.h"
+#include "native/linux/DeviceMapperCopyMountProvider.h"
+#include "native/linux/LinuxLoopbackMountProvider.h"
 #endif
 
 #ifdef _WIN32
-#include "VirtualDiskCopyMountProvider.h"
+#include "native/win32/Win32VirtualDiskMountProvider.h"
 #endif
 
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
 using namespace volumeprotect::util;
+using namespace volumeprotect::fsapi;
+
+// used to read common 'copyFormat' field from all record json
+struct VolumeCopyMountRecordCommon {
+    int             copyFormat;             // cast to enum CopyFormat
+
+    SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyFormat, copyFormat);
+    SERIALIZE_SECTION_END
+};
 
 // implement InnerErrorLoggerTrait...
 std::vector<std::string> InnerErrorLoggerTrait::GetErrors() const
@@ -63,18 +75,22 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::BuildVolumeCop
             mountConfig.copyMetaDirPath.c_str(), mountConfig.copyName.c_str());
         return nullptr;
     }
+    if (!fsapi::IsDirectoryExists(mountConfig.outputDirPath)) {
+        ERRLOG("invalid output directory path %s", mountConfig.outputDirPath.c_str());
+        return nullptr;
+    }
     CopyFormat copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
     switch (volumeCopyMeta.copyFormat) {
         case static_cast<int>(CopyFormat::BIN) : {
 #ifdef __linux__
-            return std::make_unique<DeviceMapperCopyMountProvider>();
+            return LinuxDeviceMapperMountProvider::Build(mountConfig, volumeCopyMeta);
 #else
             return nullptr;
 #endif
         }
         case static_cast<int>(CopyFormat::IMAGE) : {
 #ifdef __linux__
-            return std::make_unique<ImageCopyMountProvider>(mountConfig, );
+            return LinuxLoopbackMountProvider::Build(mountConfig, volumeCopyMeta);
 #else
             return nullptr;
 #endif
@@ -84,7 +100,7 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::BuildVolumeCop
         case static_cast<int>(CopyFormat::VHD_FIXED) :
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) :
         case static_cast<int>(CopyFormat::VHDX_FIXED) : {
-            return std::make_unique<VirtualDiskCopyMountProvider>();
+            return Win32VirtualDiskMountProvider::Build(mountConfig, volumeCopyMeta);
         }
 #endif
         default: ERRLOG("unknown copy format type %d", copyFormat);
@@ -111,7 +127,52 @@ std::string VolumeCopyMountProvider::GetMountRecordPath() const
 
 // implement VolumeCopyMountProvider...
 std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::BuildVolumeCopyUmountProvider(
-    const std::string mountRecordJsonFilePath
-);
+    const std::string mountRecordJsonFilePath)
+{
+    if (!fsapi::IsFileExists(mountRecordJsonFilePath)) {
+        ERRLOG("umount json record file %s not exists", mountRecordJsonFilePath.c_str());
+        return nullptr;
+    }
+    std::string outputDirPath = util::GetParentDirectoryPath(mountRecordJsonFilePath);
+    
+    VolumeCopyMountRecordCommon mountRecord {};
+    if (!util::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
+        ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
+        return nullptr;
+    };
+    CopyFormat copyFormat = static_cast<CopyFormat>(mountRecord.copyFormat);
+    switch (copyFormat) {
+        case static_cast<int>(CopyFormat::BIN) : {
+#ifdef __linux__
+    
+            return LinuxDeviceMapperUmountProvider::Build(mountRecordJsonFilePath, outputDirPath);
+#else
+            return nullptr;
+#endif
+        }
+        case static_cast<int>(CopyFormat::IMAGE) : {
+#ifdef __linux__
+            return LinuxLoopbackUmountProvider::Build(mountRecordJsonFilePath, outputDirPath);
+#else
+            return nullptr;
+#endif
+        }
+#ifdef _WIN32
+        case static_cast<int>(CopyFormat::VHD_DYNAMIC) :
+        case static_cast<int>(CopyFormat::VHD_FIXED) :
+        case static_cast<int>(CopyFormat::VHDX_DYNAMIC) :
+        case static_cast<int>(CopyFormat::VHDX_FIXED) : {
+            return Win32VirtualDiskUmountProvider::Build(mountRecordJsonFilePath);
+        }
+#endif
+        default: ERRLOG("unknown copy format type %d", copyFormat);
+    }
+    return nullptr;
+}
 
-bool VolumeCopyUmountProvider::Umount();
+
+bool VolumeCopyUmountProvider::Umount()
+{
+    // base class does not support umount, need implementation from derived class
+    return false;
+}

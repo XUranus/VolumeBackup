@@ -1,4 +1,4 @@
-//#ifdef __linux
+#ifdef __linux
 
 #include "LinuxVolumeCopyMountProvider.h"
 #include "native/linux/LinuxDeviceMapperMountProviderControl.h"
@@ -96,16 +96,8 @@ std::unique_ptr<LinuxDeviceMapperMountProvider> LinuxLoopbackMountProvider::Buil
         ERRLOG("unsupport copy format %d for linux devicemapper mount provider!", volumeCopyMeta.copyFormat);
         return nullptr;
     }
-    if (!fsapi::IsDirectoryExists(volumeCopyMountConfig.outputDirPath)) {
-        ERRLOG("invalid output directory path %s", volumeCopyMountConfig.outputDirPath.c_str());
-        return nullptr;
-    }
     if (!fsapi::IsDirectoryExists(volumeCopyMountConfig.copyDataDirPath)) {
         ERRLOG("invalid copy data directory path %s", volumeCopyMountConfig.copyDataDirPath.c_str());
-        return nullptr;
-    }
-    if (!fsapi::IsDirectoryExists(volumeCopyMountConfig.copyMetaDirPath)) {
-        ERRLOG("invalid copy meta directory path %s", volumeCopyMountConfig.copyMetaDirPath.c_str());
         return nullptr;
     }
     LinuxDeviceMapperMountProviderParams params {};
@@ -139,6 +131,7 @@ LinuxDeviceMapperMountProvider::LinuxDeviceMapperMountProvider(
 bool LinuxDeviceMapperMountProvider::Mount()
 {
     LinuxDeviceMapperCopyMountRecord mountRecord {};
+    mountRecord.copyFormat = static_cast<int>(CopyFormat::BIN);
     mountRecord.mountTargetPath = m_mountTargetPath;
     std::string devicePath;
     // init and attach loopback device from each copy slice
@@ -150,6 +143,7 @@ bool LinuxDeviceMapperMountProvider::Mount()
             m_copyDataDirPath, m_copyName, CopyFormat::BIN, sessionIndex);
         std::string loopDevicePath;
         if (!AttachReadOnlyLoopDevice(copyFilePath, loopDevicePath)) {
+            RollbackClearResidue();
             return false;
         }
         mountRecord.loopDevices.push_back(loopDevicePath);
@@ -163,22 +157,26 @@ bool LinuxDeviceMapperMountProvider::Mount()
         mountRecord.devicePath = mountRecord.loopDevices[0];
     } else {
         // multiple slices involved, need to attach loop device and create dm device
-        std::string dmDeviceName;
-        std::string dmDevicePath;
-        if (!CreateReadOnlyDmDevice(mountRecord.copySlices, dmDeviceName, dmDevicePath)) {
+        if (!CreateReadOnlyDmDevice(mountRecord.copySlices, mountRecord.dmDeviceName, mountRecord.devicePath)) {
+            RollbackClearResidue();
             return false;
         }
-        mountRecord.devicePath = dmDevicePath;
-        mountRecord.dmDeviceName = dmDeviceName;
         INFOLOG("create devicemapper device %s, name = %s", dmDevicePath.c_str(), dmDeviceName.c_str());
     }
 
     // mount the loop/dm device to target
     if (!MountReadOnlyDevice(mountRecord.devicePath, m_mountTargetPath, m_mountFsType, m_mountOptions)) {
+        RollbackClearResidue();
         return false;
     }
     // save mount record json to cache directory
-    return SaveMountRecord(mountRecord);
+    std::string filepath = GetMountRecordPath();
+    if (!util::JsonDeserialize(mountRecord, filepath)) {
+        RECORD_INNER_ERROR("failed to save mount record to %s, errno %u", filepath.c_str(), errno);
+        RollbackClearResidue();
+        return false;
+    }
+    return true;
 }
 
 bool LinuxDeviceMapperMountProvider::MountReadOnlyDevice(
@@ -196,7 +194,7 @@ bool LinuxDeviceMapperMountProvider::MountReadOnlyDevice(
     return true;
 }
 
-bool LinuxDeviceMapperMountProvider::ClearResidue()
+bool LinuxDeviceMapperMountProvider::RollbackClearResidue()
 {
     bool success = true; // allow failure, make every effort to remove residual
     // check residual dm device and remove
@@ -260,49 +258,12 @@ bool LinuxDeviceMapperMountProvider::LoadResidualDmDeviceList(std::vector<std::s
     return true;
 }
 
-std::string LinuxDeviceMapperMountProvider::GetMountRecordJsonPath() const
+std::string LinuxDeviceMapperMountProvider::GetMountRecordPath() const
 {
     return m_outputDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
 }
 
 // implement private methods here ...
-
-bool LinuxDeviceMapperMountProvider::ReadMountRecord(LinuxDeviceMapperCopyMountRecord& record)
-{
-    std::string linuxCopyMountRecordJsonPath = m_outputDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
-    std::ifstream file(linuxCopyMountRecordJsonPath);
-    if (!file.is_open()) {
-        RECORD_INNER_ERROR("unabled to open copy mount record %s to read, errno %u", linuxCopyMountRecordJsonPath.c_str(), errno);
-        return false;
-    }
-    std::string jsonContent;
-    file >> jsonContent;
-    xuranus::minijson::util::Deserialize(jsonContent, record);
-    return true;
-}
-
-bool LinuxDeviceMapperMountProvider::SaveMountRecord(const LinuxDeviceMapperCopyMountRecord& mountRecord)
-{
-    std::string jsonContent = xuranus::minijson::util::Serialize(mountRecord);
-    std::string filepath = m_outputDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
-    std::ofstream file(filepath.c_str(), std::ios::trunc);
-    if (!file.is_open()) {
-        RECORD_INNER_ERROR("failed to save mount record to %s, errno %u", filepath.c_str(), errno);
-        return false;
-    }
-    file << jsonContent;
-    file.close();
-    return true;
-}
-
-bool LinuxDeviceMapperMountProvider::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
-{
-    if (!util::ReadVolumeCopyMeta(copyMetaDirPath, volumeCopyMeta)) {
-        RECORD_INNER_ERROR("failed to read volume copy meta in directory %s", copyMetaDirPath.c_str());
-        return false;
-    }
-    return true;
-}
 
 bool LinuxDeviceMapperMountProvider::CreateReadOnlyDmDevice(
     const std::vector<CopySliceTarget> copySlices,
@@ -449,6 +410,4 @@ bool LinuxDeviceMapperUmountProvider::Umount()
     return success;
 }
 
-
-
-//#endif
+#endif

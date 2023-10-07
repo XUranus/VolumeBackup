@@ -1,7 +1,8 @@
 #ifdef _WIN32
 
-#include "Win32VirtualDiskMountProvider.h"
+#include "native/win32/Win32VirtualDiskMountProvider.h"
 #include "VolumeUtils.h"
+#include "native/FileSystemAPI.h"
 #include "native/win32/Win32RawIO.h"
 #include "Logger.h"
 
@@ -9,6 +10,7 @@ using namespace volumeprotect;
 using namespace volumeprotect::mount;
 using namespace volumeprotect::rawio;
 using namespace volumeprotect::util;
+using namespace volumeprotect::fsapi;
 
 namespace {
     const std::string SEPARATOR = "\\";
@@ -17,10 +19,12 @@ namespace {
 
 // serialize to $copyName.image.mount.record.json
 struct Win32VirtualDiskCopyMountRecord {
+    int             copyFormat;             // cast to enum CopyFormat
     std::string     virtualDiskFilePath;
     std::string     mountTargetPath;
 
     SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyFormat, copyFormat);
     SERIALIZE_FIELD(virtualDiskFilePath, virtualDiskFilePath);
     SERIALIZE_FIELD(mountTargetPath, mountTargetPath);
     SERIALIZE_SECTION_END
@@ -28,22 +32,41 @@ struct Win32VirtualDiskCopyMountRecord {
 
 // implement Win32VirtualDiskMountProvider...
 std::unique_ptr<Win32VirtualDiskMountProvider> Win32VirtualDiskMountProvider::Build(
-    const std::string& outputDirPath,
-    const std::string& copyName,
-    const std::string& virtualDiskFilePath,
-    const std::string& mountTargetPath)
+    const VolumeCopyMountConfig& volumeCopyMountConfig,
+    const VolumeCopyMeta& volumeCopyMeta)
 {
+    CopyFormat copyFormat = static_cast<CopyFormat>(volumeCopyMeta.copyFormat);
+    if (copyFormat != CopyFormat::VHD_DYNAMIC && copyFormat != CopyFormat::VHD_FIXED
+        && copyFormat != CopyFormat::VHDX_DYNAMIC && copyFormat != CopyFormat::VHDX_FIXED) {
+        ERRLOG("unsupport copy format %d for win32 virtual disk mount provider!", volumeCopyMeta.copyFormat);
+        return nullptr;
+    }
+    if (!fsapi::IsDirectoryExists(volumeCopyMountConfig.copyDataDirPath)) {
+        ERRLOG("invalid copy data directory path %s", volumeCopyMountConfig.copyDataDirPath.c_str());
+        return nullptr;
+    }
+    if (volumeCopyMeta.segments.empty()) {
+        ERRLOG("illegal volume copy meta, image file segments list empty");
+        return nullptr;
+    }
+    std::string virtualDiskFilePath = volumeCopyMountConfig.copyDataDirPath + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
     return std::make_unique<Win32VirtualDiskMountProvider>(
-        outputDirPath, copyName, virtualDiskFilePath, mountTargetPath);
+        volumeCopyMountConfig.outputDirPath,
+        volumeCopyMountConfig.copyName,
+        copyFormat,
+        virtualDiskFilePath,
+        volumeCopyMountConfig.mountTargetPath);
 }
 
 Win32VirtualDiskMountProvider::Win32VirtualDiskMountProvider(
     const std::string& outputDirPath,
     const std::string& copyName,
+    CopyFormat copyFormat,
     const std::string& virtualDiskFilePath,
     const std::string& mountTargetPath)
     : m_outputDirPath(outputDirPath),
     m_copyName(copyName),
+    m_copyFormat(copyFormat),
     m_virtualDiskFilePath(virtualDiskFilePath),
     m_mountTargetPath(mountTargetPath)
 {}
@@ -56,13 +79,13 @@ bool Win32VirtualDiskMountProvider::Mount()
     // serialize mountRecord ahead
     std::string filepath = GetMountRecordPath();
     Win32VirtualDiskCopyMountRecord mountRecord {};
+    mountRecord.copyFormat = static_cast<int>(m_copyFormat);
     mountRecord.mountTargetPath = m_mountTargetPath;
     mountRecord.virtualDiskFilePath = m_virtualDiskFilePath;
     if (!util::JsonSerialize(mountRecord, filepath)) {
         RECORD_INNER_ERROR("failed to save image copy mount record to %s, errno %u", filepath.c_str(), errno);
         return false;
     }
-
     if (!rawio::win32::VirtualDiskAttached(m_virtualDiskFilePath)
         && !rawio::win32::AttachVirtualDiskCopy(m_virtualDiskFilePath, errorCode)) {
         RECORD_INNER_ERROR("failed to attach virtualdisk file %s, error %u", m_virtualDiskFilePath.c_str(), errorCode);

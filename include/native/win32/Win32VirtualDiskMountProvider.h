@@ -23,14 +23,13 @@ namespace mount {
 class Win32VirtualDiskMountProvider : public VolumeCopyMountProvider {
 public:
     static std::unique_ptr<Win32VirtualDiskMountProvider> Build(
-        const std::string& outputDirPath,
-        const std::string& copyName,
-        const std::string& virtualDiskFilePath,
-        const std::string& mountTargetPath);
+        const VolumeCopyMountConfig& volumeCopyMountConfig,
+        const VolumeCopyMeta& volumeCopyMeta);
 
     Win32VirtualDiskMountProvider(
         const std::string& outputDirPath,
         const std::string& copyName,
+        CopyFormat copyFormat,
         const std::string& virtualDiskFilePath,
         const std::string& mountTargetPath);
 
@@ -44,6 +43,7 @@ private:
 private:
     std::string     m_outputDirPath;
     std::string     m_copyName;
+    CopyFormat      m_copyFormat;
     std::string     m_virtualDiskFilePath;
     std::string     m_mountTargetPath;
 };

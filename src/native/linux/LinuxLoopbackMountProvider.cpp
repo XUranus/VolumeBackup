@@ -30,12 +30,14 @@ namespace {
 
 // serialize to $copyName.image.mount.record.json
 struct LinuxImageCopyMountRecord {
+    int             copyFormat;
     std::string     loopbackDevicePath;
     std::string     mountTargetPath;
     std::string     mountFsType;
     std::string     mountOptions;
 
     SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyFormat, copyFormat);
     SERIALIZE_FIELD(loopbackDevicePath, loopbackDevicePath);
     SERIALIZE_FIELD(mountTargetPath, mountTargetPath);
     SERIALIZE_FIELD(mountFsType, mountFsType);
@@ -54,7 +56,7 @@ std::unique_ptr<LinuxLoopbackMountProvider> LinuxLoopbackMountProvider::Build(
         ERRLOG("illegal volume copy meta, image file segments list empty");
         return nullptr;
     }
-    params.imageFilePath = volumeCopyMeta.segments.front().copyDataFile;
+    params.imageFilePath = volumeCopyMountConfig.copyDataDirPath + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
@@ -108,6 +110,7 @@ bool LinuxLoopbackMountProvider::Mount()
 
     // 3. save mount record to output directory
     LinuxImageCopyMountRecord mountRecord {};
+    mountRecord.copyFormat = static_cast<int>(CopyFormat::IMAGE);
     mountRecord.loopbackDevicePath = loopDevicePath;
     mountRecord.mountTargetPath = m_mountTargetPath;
     mountRecord.mountFsType = m_mountFsType;

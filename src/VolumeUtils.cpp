@@ -66,6 +66,16 @@ std::string util::GetFileName(const std::string& fullpath)
     return pos == std::string::npos ? fullpath : fullpath.substr(pos + 1);
 }
 
+std::string util::GetParentDirectoryPath(const std::string& fullpath)
+{
+    std::string parentDirPath = fullpath;
+    while (!parentDirPath.empty() && parentDirPath.back() == SEPARATOR[0]) {
+        parentDirPath.pop_back();
+    }
+    auto pos = parentDirPath.rfind(SEPARATOR);
+    return pos == std::string::npos ? "" : fullpath.substr(0, pos);
+}
+
 bool util::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     const std::string& copyName,

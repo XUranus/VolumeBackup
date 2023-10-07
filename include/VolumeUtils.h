@@ -4,6 +4,7 @@
 #include "VolumeProtectMacros.h"
 // external logger/json library
 #include "Json.h"
+#include "Logger.h"
 #include "VolumeProtector.h"
 #include <cstdint>
 #include <string>
@@ -68,6 +69,8 @@ std::string GetWriterBitmapFilePath(
 
 std::string GetFileName(const std::string& fullpath);
 
+std::string GetParentDirectoryPath(const std::string& fullpath);
+
 bool WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     const std::string& copyName,
@@ -88,7 +91,7 @@ bool JsonSerialize(const T& record, const std::string& filepath)
             ERRLOG("failed to open file %s to write json %s", filepath.c_str(), jsonContent.c_str());
             return false;
         }
-        file << jsonStr;
+        file << jsonContent;
         file.close();
     } catch (const std::exception& e) {
         ERRLOG("failed to write json %s, exception: %s", filepath.c_str(), e.what());
@@ -114,7 +117,7 @@ bool JsonDeserialize(T& record, const std::string& filepath)
         }
         file >> jsonContent;
         file.close();
-        xuranus::minijson::util::Deserialize(jsonContent, volumeCopyMeta);
+        xuranus::minijson::util::Deserialize(jsonContent, record);
     } catch (const std::exception& e) {
         ERRLOG("failed to read json %s, exception: %s", filepath.c_str(), e.what());
         return false;

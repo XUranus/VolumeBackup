@@ -1,4 +1,4 @@
-// #ifdef __linux__
+#ifdef __linux__
 
 #ifndef VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
@@ -40,6 +40,7 @@ struct VOLUMEPROTECT_API CopySliceTarget {
 };
 
 struct VOLUMEPROTECT_API LinuxDeviceMapperCopyMountRecord {
+    int                         copyFormat;
     // attributes required for umount
     std::string                 dmDeviceName;       // [opt] required only multiple copy files contained in a volume
     std::vector<std::string>    loopDevices;        // loopback device path like /dev/loopX
@@ -55,6 +56,7 @@ struct VOLUMEPROTECT_API LinuxDeviceMapperCopyMountRecord {
     std::string                 mountOptions;
 
     SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyFormat, copyFormat);
     SERIALIZE_FIELD(dmDeviceName, dmDeviceName);
     SERIALIZE_FIELD(loopDevices, loopDevices);
     SERIALIZE_FIELD(devicePath, devicePath);
@@ -81,7 +83,7 @@ struct VOLUMEPROTECT_API LinuxDeviceMapperCopyMountRecord {
  * For each created dm device, a "dmDeviceName.dm.record" file will be created,
  * and for each attached loop device, a "loopX.loop.record" file will be created.
  * These files will be used to track residual device if mount task is partial failed.
- * ClearResidue method will be called to try to clear the residual device. if moun is failed.
+ * RollbackClearResidue method will be called to try to clear the residual device. if moun is failed.
  */
 class LinuxDeviceMapperMountProvider : public VolumeCopyMountProvider {
 public:
@@ -95,25 +97,17 @@ public:
 
     bool Mount() override;
 
-    std::string GetMountRecordJsonPath() const override;
-
     // if mount failed, caller can call this methods to try to remove residual loop/dm device
-    bool ClearResidue();
+    bool RollbackClearResidue();
 
     // used to load residual record in cache directory
     bool LoadResidualLoopDeviceList(std::vector<std::string>& loopDeviceList);
 
     bool LoadResidualDmDeviceList(std::vector<std::string>& dmDeviceNameList);
 
-    std::string GetMountRecordJsonPath() const;
+    std::string GetMountRecordPath() const override;
 
 protected:
-    virtual bool ReadMountRecord(LinuxDeviceMapperCopyMountRecord& record);
-
-    virtual bool SaveMountRecord(const LinuxDeviceMapperCopyMountRecord& mountRecord);
-
-    virtual bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
-
     virtual bool MountReadOnlyDevice(
         const std::string& devicePath,
         const std::string& mountTargetPath,
@@ -174,4 +168,5 @@ private:
 }
 
 #endif
-//#endif
+
+#endif

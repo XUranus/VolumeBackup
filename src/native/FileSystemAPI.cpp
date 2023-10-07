@@ -283,8 +283,8 @@ bool fsapi::IsVolumeExists(const std::string& volumePath)
 
 bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filename)
 {
+    std::string fullpath = dirPath + SEPARATOR + filename;
 #ifdef __linux__
-    std::string fullpath = m_outputDirPath + SEPARATOR + filename;
     int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
     if (fd == -1) {
         return false;
@@ -293,21 +293,34 @@ bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filen
     return true;
 #endif
 #ifdef _WIN32
-    // TODO
+    HANDLE hFile = CreateFileW(
+        Utf8ToUtf16(fullpath).c_str(),
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        CREATE_ALWAYS,
+        FILE_FLAG_BACKUP_SEMANTICS,
+        NULL
+    );
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+    ::CloseHandle(hFile);
+    return true;
 #endif
 }
 
 bool fsapi::RemoveFile(const std::string& dirPath, const std::string& filename)
 {
+    std::string fullpath = dirPath + SEPARATOR + filename;
 #ifdef __linux__
-    std::string fullpath = m_cacheDirPath + SEPARATOR + filename;
     if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
         return false;
     }
     return true;
 #endif
 #ifdef _WIN32
-    // TODO
+    return ::DeleteFileW(Utf8ToUtf16(fullpath).c_str());
 #endif
 }
 
