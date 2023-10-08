@@ -138,6 +138,18 @@ bool GetCopyVolumeDevicePath(
     std::string& volumeDevicePath,
     ErrCodeType& errorCode);
 
+// Get volume name in form of "\\?\Volume{GUID}\" from volume device path (\\.\HarddiskVolumeX)
+bool GetVolumeGuidNameByVolumeDevicePath(
+    const std::string& volumeDevicePath,
+    std::string& volumeGuidName,
+    ErrCodeType& errorCode);
+
+// assign a driver path (X:\ or X:\dirX\dirXX\) to a volume
+bool AddVolumeMountPoint(
+    const std::string& volumeGuidName,
+    const std::string& mountPoint,
+    ErrCodeType& errorCode);
+
 }
 }
 }

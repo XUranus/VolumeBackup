@@ -72,10 +72,12 @@ namespace {
     // reserved for virtual disk (GPT_Header + MSR + Partition_1 + GPT_Footer + VHD_Footer) are actual size
     // need to reserve GPT_Header * 2 + MSR + VHD_Footer
     constexpr uint64_t VIRTUAL_DISK_RESERVED_PARTITION_SIZE
-        = 2 * VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + VIRTUAL_DISK_FOOTER_RESERVE;
+        = 2 * VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM +
+            VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + VIRTUAL_DISK_FOOTER_RESERVE;
     // size that is needed for virtual disk logical size excluding the copy volume size
     constexpr uint64_t VIRTUAL_DISK_COPY_ADDITIONAL_SIZE
-        = 2 * VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + VIRTUAL_DISK_FOOTER_RESERVE;
+        = 2 * VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM +
+            VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + VIRTUAL_DISK_FOOTER_RESERVE;
     // This is in compliance with the EFI specification
     constexpr int VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT = 128;
 
@@ -605,7 +607,10 @@ bool rawio::win32::CreateDynamicVHDXFile(
 }
 
 // util function, to open *.vhd or *.vhdx file to obtain handle
-static bool OpenWin32VirtualDiskW(const std::wstring& wVirtualDiskFilePath, HANDLE& hVirtualDiskFile, ErrCodeType& errorCode)
+static bool OpenWin32VirtualDiskW(
+    const std::wstring& wVirtualDiskFilePath,
+    HANDLE& hVirtualDiskFile,
+    ErrCodeType& errorCode)
 {
     // check extension *.vhd or *.vhdx
     const wchar_t* lastDot = ::wcsrchr(wVirtualDiskFilePath.c_str(), L'.');
@@ -707,7 +712,8 @@ bool rawio::win32::AttachVirtualDiskCopy(
 
     ATTACH_VIRTUAL_DISK_PARAMETERS attachParameters = { 0 };
     attachParameters.Version = ATTACH_VIRTUAL_DISK_VERSION_1;
-    ATTACH_VIRTUAL_DISK_FLAG attachFlags = ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME | ATTACH_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER;
+    ATTACH_VIRTUAL_DISK_FLAG attachFlags =
+        ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME | ATTACH_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER;
 
     std::shared_ptr<void> defer(nullptr, [&](...) {
         pSecurityDescriptor != NULL ? ::LocalFree(pSecurityDescriptor) : (void)NULL;
@@ -801,7 +807,8 @@ static bool InitMsrPartitionAndDataPartition(
     wcscpy_s(layout->PartitionEntry[NUM0].Gpt.Name, VIRTUAL_DISK_GPT_MSR_PARTITION_NAMEW);
     
     layout->PartitionEntry[NUM1].PartitionStyle = PARTITION_STYLE_GPT;
-    layout->PartitionEntry[NUM1].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
+    layout->PartitionEntry[NUM1].StartingOffset.QuadPart =
+        VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
     layout->PartitionEntry[NUM1].PartitionLength.QuadPart = volumeSize;
     layout->PartitionEntry[NUM1].PartitionNumber = NUM2; // 2nd partition
     layout->PartitionEntry[NUM1].RewritePartition = FALSE; // do not allow rewrite partition
@@ -813,8 +820,8 @@ static bool InitMsrPartitionAndDataPartition(
 
     if (!::DeviceIoControl(
         hDevice, IOCTL_DISK_SET_DRIVE_LAYOUT_EX, layout, layoutStructSize, NULL, 0, &bytesReturned, NULL)) {
-        std::cerr << "Error: IOCTL_DISK_SET_DRIVE_LAYOUT_EX failed" << ::GetLastError() << std::endl;
         errorCode = ::GetLastError();
+        ERRLOG("IOCTL_DISK_SET_DRIVE_LAYOUT_EX failed, error %d", errorCode);
         delete[] layout;
         return false;
     }
@@ -889,7 +896,8 @@ bool rawio::win32::InitVirtualDiskGPT(
     return true;
 }
 
-// list all win32 volume paths and convert from kernel path to user path : "\Device\HarddiskVolume1"  => \\.\HarddiskVolume1
+// list all win32 volume paths and convert from kernel path to user path
+// example : "\Device\HarddiskVolume1"  => \\.\HarddiskVolume1
 static bool ListWin32LocalVolumePathW(std::vector<std::wstring>& wVolumeDevicePaths)
 {
     WCHAR wVolumeNameBuffer[MAX_PATH] = L"";
@@ -928,7 +936,8 @@ static bool ListWin32LocalVolumePathW(std::vector<std::wstring>& wVolumeDevicePa
         std::wstring wVolumeDevicePath = wDeviceNameBuffer;
         auto pos = wVolumeDevicePath.find(WKERNEL_SPACE_DEVICE_PATH_PREFIX);
         if (pos == 0) {
-            wVolumeDevicePath = WUSER_SPACE_DEVICE_PATH_PREFIX + wVolumeDevicePath.substr(std::wstring(WKERNEL_SPACE_DEVICE_PATH_PREFIX).length());
+            wVolumeDevicePath = WUSER_SPACE_DEVICE_PATH_PREFIX +
+                wVolumeDevicePath.substr(std::wstring(WKERNEL_SPACE_DEVICE_PATH_PREFIX).length());
         }
         wVolumeDevicePaths.emplace_back(wVolumeDevicePath);
     }
@@ -968,7 +977,9 @@ static bool GetPhysicalDrivePathFromVolumePathW(const std::wstring& wVolumePath,
 }
 
 // Get path like \\.\HarddiskVolumeX from \\.\PhysicalDriveX 
-static bool GetVolumePathsFromPhysicalDrivePathW(const std::wstring& wPhysicalDrive, std::vector<std::wstring>& wVolumePathList)
+static bool GetVolumePathsFromPhysicalDrivePathW(
+    const std::wstring& wPhysicalDrive,
+    std::vector<std::wstring>& wVolumePathList)
 {
     std::vector<std::wstring> wAllVolumePaths;
     if (!ListWin32LocalVolumePathW(wAllVolumePaths)) {
@@ -976,7 +987,8 @@ static bool GetVolumePathsFromPhysicalDrivePathW(const std::wstring& wPhysicalDr
     }
     for (const std::wstring wVolumePathTmp: wAllVolumePaths) {
         std::wstring wPhysicalDriveTmp;
-        if (GetPhysicalDrivePathFromVolumePathW(wVolumePathTmp, wPhysicalDriveTmp) && wPhysicalDriveTmp == wPhysicalDrive) {
+        if (GetPhysicalDrivePathFromVolumePathW(wVolumePathTmp, wPhysicalDriveTmp)
+            && wPhysicalDriveTmp == wPhysicalDrive) {
             wVolumePathList.emplace_back(wVolumePathTmp);
         }
     }
@@ -996,6 +1008,81 @@ bool rawio::win32::GetCopyVolumeDevicePath(
         return true;
     }
     return false;
+}
+
+bool rawio::win32::GetVolumeGuidNameByVolumeDevicePath(
+    const std::string& volumeDevicePath,
+    std::string& volumeGuidName,
+    ErrCodeType& errorCode)
+{
+    WCHAR wVolumeNameBuffer[MAX_PATH] = L"";
+    std::vector<std::wstring> wVolumesNames;
+    HANDLE handle = ::FindFirstVolumeW(wVolumeNameBuffer, MAX_PATH);
+    if (handle == INVALID_HANDLE_VALUE) {
+        ::FindVolumeClose(handle);
+        /* find failed */
+        return false;
+    }
+    wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
+    while (::FindNextVolumeW(handle, wVolumeNameBuffer, MAX_PATH)) {
+        wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));        
+    }
+    ::FindVolumeClose(handle);
+    handle = INVALID_HANDLE_VALUE;
+
+    for (const std::wstring& wVolumeName : wVolumesNames) {
+        if (wVolumeName.size() < NUM4 ||
+            wVolumeName[NUM0] != L'\\' ||
+            wVolumeName[NUM1] != L'\\' ||
+            wVolumeName[NUM2] != L'?' ||
+            wVolumeName[NUM3] != L'\\' ||
+            wVolumeName.back() != L'\\') { // illegal volume name
+            continue;
+        }
+        std::wstring wVolumeParam = wVolumeName;
+        wVolumeParam.pop_back(); // QueryDosDeviceW does not allow a trailing backslash
+        wVolumeParam = wVolumeParam.substr(NUM4);
+        WCHAR wDeviceNameBuffer[MAX_PATH] = L"";
+        DWORD charCount = ::QueryDosDeviceW(wVolumeParam.c_str(), wDeviceNameBuffer, ARRAYSIZE(wDeviceNameBuffer));
+        if (charCount == 0) {
+            continue;
+        }
+        // convert kernel path to user path
+        std::wstring wVolumeDevicePath = wDeviceNameBuffer;
+        auto pos = wVolumeDevicePath.find(WKERNEL_SPACE_DEVICE_PATH_PREFIX);
+        if (pos == 0) {
+            wVolumeDevicePath = WUSER_SPACE_DEVICE_PATH_PREFIX +
+                wVolumeDevicePath.substr(std::wstring(WKERNEL_SPACE_DEVICE_PATH_PREFIX).length());
+        }
+        if (volumeDevicePath == Utf16ToUtf8(wVolumeDevicePath)) {
+            volumeGuidName = Utf16ToUtf8(wVolumeName);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool rawio::win32::AddVolumeMountPoint(
+    const std::string& volumeGuidName,
+    const std::string& mountPoint,
+    ErrCodeType& errorCode)
+{
+    std::wstring wVolumeGuidName = Utf8ToUtf16(volumeGuidName);
+    std::wstring wMountPoint = Utf8ToUtf16(mountPoint);
+    // both two parameter must end with backslash
+    if (!wVolumeGuidName.empty() && wVolumeGuidName.back() != L'\\') {
+        wVolumeGuidName.push_back(L'\\');
+    }
+    if (!wMountPoint.empty() && wMountPoint.back() != L'\\') {
+        wMountPoint.push_back(L'\\');
+    }
+    if (!::SetVolumeMountPointW(wMountPoint.c_str(), wVolumeGuidName.c_str())) {
+        errorCode = ::GetLastError();
+        ERRLOG("failed to assign mount point %s for volume %s, error %u",
+            mountPoint.c_str(), volumeGuidName.c_str(), errorCode);
+        return false;
+    }
+    return true;
 }
 
 #endif

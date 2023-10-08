@@ -75,6 +75,7 @@ bool Win32VirtualDiskMountProvider::Mount()
 {
     std::string physicalDrivePath;
     std::string volumeDevicePath;
+    std::string volumeGuidName;
     ErrCodeType errorCode = ERROR_SUCCESS;
     // serialize mountRecord ahead
     std::string filepath = GetMountRecordPath();
@@ -103,9 +104,15 @@ bool Win32VirtualDiskMountProvider::Mount()
         MountRollback();
         return false;
     }
-    if (!::SetVolumeMountPointA(m_mountTargetPath.c_str(), volumeDevicePath.c_str())) {
-        RECORD_INNER_ERROR("failed to assign mount point %s for volume %s, error %u",
-            m_mountTargetPath.c_str(), volumeDevicePath.c_str(), ::GetLastError());
+    if (!rawio::win32::GetVolumeGuidNameByVolumeDevicePath(volumeDevicePath, volumeGuidName, errorCode)) {
+        RECORD_INNER_ERROR("failed to get volume guid name, device path : %s, error %u",
+            volumeDevicePath.c_str(), errorCode);
+        MountRollback();
+        return false;
+    }
+    if (!rawio::win32::AddVolumeMountPoint(volumeGuidName, m_mountTargetPath, errorCode)) {
+        RECORD_INNER_ERROR("failed to assign mount point %s for volume %s, path %d, error %u",
+            m_mountTargetPath.c_str(), volumeGuidName.c_str(), volumeDevicePath.c_str(), ::GetLastError());
         MountRollback();
         return false;
     }
