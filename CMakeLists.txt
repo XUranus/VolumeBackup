@@ -189,19 +189,17 @@ TARGET_LINK_LIBRARIES(
 )
 
 # build vcopymount executable
-IF(NOT ${CMAKE_HOST_WIN32})
-    ADD_EXECUTABLE (vcopymount
-        "cli/vcopymount.cpp"
-        "cli/GetOption.cpp"
-    )
+ADD_EXECUTABLE (vcopymount
+    "cli/vcopymount.cpp"
+    "cli/GetOption.cpp"
+)
 
-    SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)
+SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)
 
-    TARGET_LINK_LIBRARIES(
-        vcopymount
-        volumebackup_static
-        # third part dependency provided by XUranus
-        minijson_static
-        minilogger_static
-    )
-ENDIF()
+TARGET_LINK_LIBRARIES(
+    vcopymount
+    volumebackup_static
+    # third part dependency provided by XUranus
+    minijson_static
+    minilogger_static
+)

@@ -256,7 +256,7 @@ TEST_F(VolumeBackupTest, VolumeBackTask_RunBackupSuccess)
 {
     VolumeBackupConfig backupConfig;
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
-    backupConfig.backupType = BackupType::SYNTHESIZE_FULLREMENT;
+    backupConfig.backupType = BackupType::FOREVER_INC;
     backupConfig.hasherEnabled = true;
     backupConfig.enableCheckpoint = true;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
@@ -287,7 +287,7 @@ TEST_F(VolumeBackupTest, VolumeBackTask_RunBackupThenAbort)
 {
     VolumeBackupConfig backupConfig;
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
-    backupConfig.backupType = BackupType::SYNTHESIZE_FULLREMENT;
+    backupConfig.backupType = BackupType::FOREVER_INC;
     backupConfig.hasherEnabled = true;
     backupConfig.enableCheckpoint = false;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
@@ -348,7 +348,7 @@ TEST_F(VolumeBackupTest, VolumeBackTask_DataWriterWriteFail)
 {
     VolumeBackupConfig backupConfig;
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
-    backupConfig.backupType = BackupType::SYNTHESIZE_FULLREMENT;
+    backupConfig.backupType = BackupType::FOREVER_INC;
     backupConfig.hasherEnabled = true;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
     backupConfig.sessionSize = DEFAULT_MOCK_SESSION_SIZE;
@@ -567,7 +567,7 @@ TEST_F(VolumeBackupTest, BuildBackupOrRestoreTask_FailForInvalidVolumePath)
 
     VolumeBackupConfig backupConfig;
     backupConfig.blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
-    backupConfig.backupType = BackupType::SYNTHESIZE_FULLREMENT;
+    backupConfig.backupType = BackupType::FOREVER_INC;
     backupConfig.hasherEnabled = true;
     backupConfig.enableCheckpoint = false;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;

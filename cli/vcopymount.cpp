@@ -9,7 +9,6 @@
  *                 generated from volumebackup using dm linear mapper
  * ==================================================================
  */
-#ifdef __linux__
 
 #include <cstdint>
 #include <fstream>
@@ -19,7 +18,7 @@
 #include "GetOption.h"
 #include "Json.h"
 #include "Logger.h"
-#include "LinuxVolumeCopyMountProvider.h"
+#include "VolumeCopyMountProvider.h"
 
 using namespace xuranus;
 using namespace xuranus::getopt;
@@ -31,72 +30,51 @@ static void PrintHelp()
 {
     std::cout << "Usage: vcopymount --mount | --umount [option]" << std::endl;
     std::cout << "Options:" << std::endl;
-    std::cout << "--data    <path>      copy data dir path>" << std::endl;
+    std::cout << "--name    <name>      name of the copy to be mount" << std::endl;
+    std::cout << "--data    <path>      copy data dir path" << std::endl;
     std::cout << "--meta    <path>      copy meta dir path" << std::endl;
-    std::cout << "--cache   <path>      cache dir path to ouput checkpoint" << std::endl;
+    std::cout << "--output  <path>      output dir path to ouput checkpoint" << std::endl;
     std::cout << "--target  <path>      dir target to mount to" << std::endl;
     std::cout << "--type    <fs>        mount fs type, ex: ext4, xfs..." << std::endl;
     std::cout << "--option  <option>    mount fs option args" << std::endl;
 }
 
-static bool MountCopy(
-    const std::string& copyDataDirPath,
-    const std::string& copyMetaDirPath,
-    const std::string& mountTargetPath,
-    const std::string& cacheDirPath,
-    const std::string& mountFsType,
-    const std::string& mountOptions)
+static bool MountCopy(const VolumeCopyMountConfig& mountConfig)
 {
     std::cout << "======== Mount Copy ========" << std::endl;
-    std::cout << "CopyMetaDirPath " << copyMetaDirPath << std::endl;
-    std::cout << "CopyDataDirPath " << copyDataDirPath << std::endl;
-    std::cout << "MountTargetPath " << mountTargetPath << std::endl;
-    std::cout << "CacheDirPath " << cacheDirPath << std::endl;
-    std::cout << "MountFsType " << mountFsType << std::endl;
-    std::cout << "MountOptions " << mountOptions << std::endl;
+    std::cout << "CopyName " << mountConfig.copyName << std::endl;
+    std::cout << "CopyMetaDirPath " << mountConfig.copyMetaDirPath << std::endl;
+    std::cout << "CopyDataDirPath " << mountConfig.copyDataDirPath << std::endl;
+    std::cout << "MountTargetPath " << mountConfig.mountTargetPath << std::endl;
+    std::cout << "OutputDirPath " << mountConfig.outputDirPath << std::endl;
+    std::cout << "MountFsType " << mountConfig.mountFsType << std::endl;
+    std::cout << "MountOptions " << mountConfig.mountOptions << std::endl;
     std::cout << std::endl;
-
-    LinuxCopyMountConfig mountConfig {};
-    mountConfig.copyMetaDirPath = copyMetaDirPath;
-    mountConfig.copyDataDirPath = copyDataDirPath;
-    mountConfig.mountTargetPath = mountTargetPath;
-    mountConfig.mountFsType = mountFsType;
-    mountConfig.mountOptions = mountOptions;
     
-    std::shared_ptr<DeviceMapper> mountProvider = DeviceMapper::BuildDeviceMapper(cacheDirPath);
+    std::unique_ptr<VolumeCopyMountProvider> mountProvider = VolumeCopyMountProvider::Build(mountConfig);
     if (mountProvider == nullptr) {
         std::cerr << "failed to build mount provider" << std::endl;
     }
-    LinuxCopyMountRecord mountRecord {};
-    if (!mountProvider->MountCopy(mountConfig)) {
+    if (!mountProvider->Mount()) {
         std::cerr << "=== Mount Copy Failed! ===" << std::endl;
-        std::cerr << mountProvider->GetErrors() << std::endl;
-        std::cout << "===== Mount Rollback =====" << std::endl;
-        if (!mountProvider->ClearResidue()) {
-            std::cerr << "Residue Not Cleared!" << std::endl;
-        } else {
-            std::cout << "Residue Cleared!" << std::endl;
-        }
+        std::cerr << mountProvider->GetError() << std::endl;
         return false;
     }
     std::cout << "Mount Copy Success" << std::endl;
-    std::cout << "Mount Record Json File Path: " << mountProvider->GetMountRecordJsonPath() << std::endl; 
+    std::cout << "Mount Record Json File Path: " << mountProvider->GetMountRecordPath() << std::endl; 
     return true;
 }
 
-static bool UmountCopy(const std::string& cacheDirPath)
+static bool UmountCopy(const std::string& mountRecordJsonFilePath)
 {
-    std::cout << "Umount Copy Using Cache Dir: " << cacheDirPath << std::endl;        
-    std::shared_ptr<DeviceMapper> umountProvider = DeviceMapper::BuildDeviceMapper(cacheDirPath);
+    std::cout << "Umount Copy Using Record: " << mountRecordJsonFilePath << std::endl;        
+    std::unique_ptr<VolumeCopyUmountProvider> umountProvider = VolumeCopyUmountProvider::Build(mountRecordJsonFilePath);
     if (umountProvider == nullptr) {
-        std::cerr << "failed to build mount provider" << std::endl;
+        std::cerr << "failed to build umount provider" << std::endl;
     }
-    if (!umountProvider->UmountCopy()) {
+    if (!umountProvider->Umount()) {
         ERRLOG("=== Umount Copy Failed! ===");
-        std::cerr << umountProvider->GetErrors() << std::endl;
-        if (!umountProvider->ClearResidue()) {
-            std::cerr << "Residue Not Cleared!" << std::endl;
-        }
+        std::cerr << umountProvider->GetError() << std::endl;
         return false;
     }
     std::cout << "Umount Success!" << std::endl;
@@ -106,22 +84,29 @@ static bool UmountCopy(const std::string& cacheDirPath)
 int main(int argc, const char** argv)
 {
     std::cout << "=== vcopymount ===" << std::endl;
-    std::string copyDataDirPath = "";
-    std::string copyMetaDirPath = "";
-    std::string mountTargetPath = "";
-    std::string cacheDirPath = "";
-    std::string mountFsType = "";
-    std::string mountOptions = "";
+    std::string copyName;
+    std::string copyDataDirPath;
+    std::string copyMetaDirPath;
+    std::string mountTargetPath;
+    std::string outputDirPath;
+    std::string mountFsType;
+    std::string mountOptions;
+
+    std::string mountRecordJsonFilePath;
     bool isMount = false;
     bool isUmount = false;
 
     GetOptionResult result = GetOption(
         argv + 1,
         argc - 1,
-        "m:d:ht:o:",
-        { "--meta=", "--data=", "--target=", "--mount", "--umount", "--cache=", "--type=", "--option=" });
+        "n:m:d:ht:o:",
+        {
+            "--name", "--meta=","--data=", "--target=", 
+            "--mount", "--umount=", "--output=", "--type=", "--option=" });
     for (const OptionResult opt: result.opts) {
-        if (opt.option == "d" || opt.option == "data") {
+        if (opt.option == "n" || opt.option == "name") {
+            copyName = opt.value;
+        } else if (opt.option == "d" || opt.option == "data") {
             copyDataDirPath = opt.value;
         } else if (opt.option == "m" || opt.option == "meta") {
             copyMetaDirPath = opt.value;
@@ -131,8 +116,9 @@ int main(int argc, const char** argv)
             isMount = true;
         } else if (opt.option == "umount") {
             isUmount = true;
-        } else if (opt.option == "cache") {
-            cacheDirPath = opt.value;
+            mountRecordJsonFilePath = opt.value;
+        } else if (opt.option == "output") {
+            outputDirPath = opt.value;
         } else if (opt.option == "t" || opt.option == "type") {
             mountFsType = opt.value;
         } else if (opt.option == "o" || opt.option == "option") {
@@ -152,14 +138,19 @@ int main(int argc, const char** argv)
     }
 
     if (isMount) {
-        return !MountCopy(
-                copyDataDirPath, copyMetaDirPath, mountTargetPath, cacheDirPath, mountFsType, mountOptions);
+        return !MountCopy(VolumeCopyMountConfig {
+            outputDirPath,
+            copyName,
+            copyMetaDirPath,
+            copyDataDirPath,
+            mountTargetPath,
+            mountFsType,
+            mountOptions
+        });
     }
     if (isUmount) {
-        return !UmountCopy(cacheDirPath);
+        return !UmountCopy(mountRecordJsonFilePath);
     }
     PrintHelp();
     return 0;
 }
-
-#endif

@@ -78,7 +78,7 @@ class VOLUMEPROTECT_API VolumeCopyMountProvider : public InnerErrorLoggerTrait {
 public:
     // factory function to load target copy mount provider, depending on which CopyFormat specified
     static std::unique_ptr<VolumeCopyMountProvider> Build(
-        VolumeCopyMountConfig& mountConfig
+        const VolumeCopyMountConfig& mountConfig
     );
 
     virtual ~VolumeCopyMountProvider() = default;

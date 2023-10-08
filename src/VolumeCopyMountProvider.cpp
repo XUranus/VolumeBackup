@@ -68,7 +68,7 @@ void InnerErrorLoggerTrait::RecordError(const char* message, ...)
 
 // implement VolumeCopyMountProvider...
 std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::Build(
-    VolumeCopyMountConfig& mountConfig)
+    const VolumeCopyMountConfig& mountConfig)
 {
     VolumeCopyMeta volumeCopyMeta {};
     if (!util::ReadVolumeCopyMeta(mountConfig.copyMetaDirPath, mountConfig.copyName, volumeCopyMeta)) {
