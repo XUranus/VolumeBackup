@@ -112,46 +112,9 @@ int ExecVolumeBackup(
     return 0;
 }
 
-
-// struct BackupTaskResourceManagerParams {
-//     CopyFormat          copyFormat;
-//     std::string         copyDataDirPath;
-//     std::string         copyName;
-//     uint64_t            volumeSize;
-//     uint64_t            maxSessionSize;     // only used to create fragment copy for CopyFormat::BIN
-// };
-
-// // params to build RestoreTaskResourceManager
-// struct RestoreTaskResourceManagerParams {
-//     CopyFormat          copyFormat;
-//     std::string         copyDataDirPath;
-//     std::string         copyName;
-// };
-
-int play()
-{
-    
-    std::unique_ptr<TaskResourceManager> resourceManager = TaskResourceManager::BuildBackupTaskResourceManager(BackupTaskResourceManagerParams {
-        CopyFormat::VHD_FIXED,
-        BackupType::FULL,
-        R"(C:\LoggerTest)",
-        "xuranuscopy",
-        1024 * 1024 * 300,
-        1024 * 1024 * 50
-    });
-    if (resourceManager->PrepareCopyResource()) {
-        std::cout << "PrepareCopyResource success" << std::endl;
-    } else {
-        std::cout << "PrepareCopyResource failed" << std::endl;
-    }
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-    return 0;
-}
-
 int main(int argc, const char** argv)
 {
-    return play();
-    std::cout << "=== vbkup ===" << std::endl;
+    std::cout << "=== vbackup cli ===" << std::endl;
     std::string volumePath = "";
     std::string copyDataDirPath = "";
     std::string copyMetaDirPath = "";

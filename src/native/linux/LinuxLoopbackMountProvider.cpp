@@ -89,12 +89,12 @@ bool LinuxLoopbackMountProvider::Mount()
     std::string loopDevicePath;
     if (!loopback::Attach(m_imageFilePath, loopDevicePath, O_RDONLY)) {
         RECORD_INNER_ERROR("failed to attach read only loopback device from %s, errno %u",
-            filePath.c_str(), errno);
+            m_imageFilePath.c_str(), errno);
         return false;
     }
     // keep checkpoint for loopback device creation
-    std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length();
-    std::string loopbackDeviceCheckpointName = loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX);
+    std::string loopDeviceNumber = loopDevicePath.substr(LOOPBACK_DEVICE_PATH_PREFIX.length());
+    std::string loopbackDeviceCheckpointName = loopDeviceNumber + LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX;
     if (!fsapi::CreateEmptyFile(m_outputDirPath, loopbackDeviceCheckpointName)) {
     	RECORD_INNER_ERROR("failed to create checkpoint file %s", loopbackDeviceCheckpointName.c_str());
     }

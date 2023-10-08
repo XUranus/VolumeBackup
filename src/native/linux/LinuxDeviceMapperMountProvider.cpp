@@ -27,6 +27,7 @@ namespace {
     const std::string SEPARATOR = "/";
     const int NUM1 = 1;
     const std::string LOOPBACK_DEVICE_PATH_PREFIX = "/dev/loop";
+    const std::string BIN_COPY_MOUNT_RECORD_FILE_SUFFIX = ".bin.mount.record.json";
     const std::string DEVICE_MAPPER_DEVICE_NAME_PREFIX = "volumeprotect_dm_copy_";
     const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
     const std::string DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX = ".dm.record";
@@ -162,7 +163,7 @@ bool LinuxDeviceMapperMountProvider::Mount()
             return false;
         }
         INFOLOG("create devicemapper device %s, name = %s",
-            mountRecord.dmDevicePath.c_str(), mountRecord.dmDeviceName.c_str());
+            mountRecord.devicePath.c_str(), mountRecord.dmDeviceName.c_str());
     }
 
     // mount the loop/dm device to target
@@ -261,7 +262,7 @@ bool LinuxDeviceMapperMountProvider::LoadResidualDmDeviceList(std::vector<std::s
 
 std::string LinuxDeviceMapperMountProvider::GetMountRecordPath() const
 {
-    return m_outputDirPath + SEPARATOR + MOUNT_RECORD_JSON_NAME;
+    return m_outputDirPath + SEPARATOR + m_copyName + BIN_COPY_MOUNT_RECORD_FILE_SUFFIX;
 }
 
 // implement private methods here ...

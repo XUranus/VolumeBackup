@@ -22,14 +22,7 @@
 #include <map>
 #include <unordered_map>
 
-#ifdef _WIN32
-// TODO
 using ErrCodeType = int;
-#endif
-
-#ifdef __linux__
-using ErrCodeType = int;
-#endif
 
  /*
  * @brief
@@ -75,7 +68,7 @@ namespace exstd {
 template<typename T, class... Args>
 std::unique_ptr<T> make_unique(Args&&... args)
 {
-    return std::unique_ptr<T>(new T(std::forward<Arg>(args)...));
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 }
 #else
@@ -86,7 +79,7 @@ namespace exstd {
 template<typename TO, typename FROM>
 std::unique_ptr<TO> static_unique_pointer_cast(std::unique_ptr<FROM>&& old)
 {
-	return std::unique_ptr<TO>{ static_cast<TO>(old.release()) };
+	return std::unique_ptr<TO>(static_cast<TO*>(old.release()));
 }
 }
 

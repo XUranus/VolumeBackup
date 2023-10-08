@@ -77,7 +77,7 @@ private:
 class VOLUMEPROTECT_API VolumeCopyMountProvider : public InnerErrorLoggerTrait {
 public:
     // factory function to load target copy mount provider, depending on which CopyFormat specified
-    static std::unique_ptr<VolumeCopyMountProvider> BuildVolumeCopyMountProvider(
+    static std::unique_ptr<VolumeCopyMountProvider> Build(
         VolumeCopyMountConfig& mountConfig
     );
 
@@ -102,7 +102,7 @@ public:
 class VOLUMEPROTECT_API VolumeCopyUmountProvider : public InnerErrorLoggerTrait {
 public:
     // factory function to read copy meta json info from target path and umount it using corresponding umount provider
-    static std::unique_ptr<VolumeCopyUmountProvider> BuildVolumeCopyUmountProvider(
+    static std::unique_ptr<VolumeCopyUmountProvider> Build(
         const std::string mountRecordJsonFilePath
     );
 

@@ -390,8 +390,8 @@ std::string fsapi::GetMountDevicePath(const std::string& mountTargetPath)
     }
     struct mntent* entry = nullptr;
     while ((entry = ::getmntent(mountsFile)) != nullptr) {
-        if (std::string(entry->mnt_dir) == dirPath) {
-            devicePath = entry->mnt_device;
+        if (std::string(entry->mnt_dir) == mountTargetPath) {
+            devicePath = entry->mnt_fsname;
             break;
         } 
     }

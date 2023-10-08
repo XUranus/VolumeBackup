@@ -67,7 +67,7 @@ void InnerErrorLoggerTrait::RecordError(const char* message, ...)
 }
 
 // implement VolumeCopyMountProvider...
-std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::BuildVolumeCopyMountProvider(
+std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::Build(
     VolumeCopyMountConfig& mountConfig)
 {
     VolumeCopyMeta volumeCopyMeta {};
@@ -129,7 +129,7 @@ std::string VolumeCopyMountProvider::GetMountRecordPath() const
 }
 
 // implement VolumeCopyMountProvider...
-std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::BuildVolumeCopyUmountProvider(
+std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::Build(
     const std::string mountRecordJsonFilePath)
 {
     if (!fsapi::IsFileExists(mountRecordJsonFilePath)) {
@@ -146,7 +146,7 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::BuildVolumeC
     switch (mountRecord.copyFormat) {
         case static_cast<int>(CopyFormat::BIN) : {
 #ifdef __linux__
-            return exstd::static_unique_pointer_cast<VolumeCopyMountProvider>(
+            return exstd::static_unique_pointer_cast<VolumeCopyUmountProvider>(
                 LinuxDeviceMapperUmountProvider::Build(mountRecordJsonFilePath, outputDirPath));
 #else
             return nullptr;
@@ -154,7 +154,7 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::BuildVolumeC
         }
         case static_cast<int>(CopyFormat::IMAGE) : {
 #ifdef __linux__
-            return exstd::static_unique_pointer_cast<VolumeCopyMountProvider>(
+            return exstd::static_unique_pointer_cast<VolumeCopyUmountProvider>(
                 LinuxLoopbackUmountProvider::Build(mountRecordJsonFilePath, outputDirPath));
 #else
             return nullptr;
