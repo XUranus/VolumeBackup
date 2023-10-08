@@ -27,7 +27,7 @@ using namespace xuranus::minilogger;
 
 static void PrintHelp()
 {
-    std::cout << "vbkup -v volume -d datadir -m metadir [-p prevmetadir]" << std::endl;
+    std::cout << "vbkup -v volume -n name -f format -d datadir -m metadir [-p prevmetadir]" << std::endl;
 }
 
 static void PrintTaskStatistics(const TaskStatistics& statistics)
@@ -115,17 +115,25 @@ int ExecVolumeBackup(
 int main(int argc, const char** argv)
 {
     std::cout << "=== vbackup cli ===" << std::endl;
-    std::string volumePath = "";
-    std::string copyDataDirPath = "";
-    std::string copyMetaDirPath = "";
-    std::string prevCopyMetaDirPath = "";
+    std::string volumePath;
+    atd::string copyName;
+    std::string copyFormat;
+    std::string copyDataDirPath;
+    std::string copyMetaDirPath;
+    std::string prevCopyMetaDirPath;
     std::string logLevel = "DEBUG";
     bool isRestore = false;
 
-    GetOptionResult result = GetOption(argv + 1, argc - 1, "v:d:m:p:h:r:l", {});
+    GetOptionResult result = GetOption(argv + 1, argc - 1, "v:n:f:d:m:p:h:r:l:", {
+    	"--volume=", "--name", "--format", "--data=", "--meta=", "--prevmeta=", "--help", "--restore", "--loglevel"
+    });
     for (const OptionResult opt: result.opts) {
         if (opt.option == "v") {
             volumePath = opt.value;
+        } else if (opt.option == "n" || opt.option == "name") {
+            copyName = opt.value;
+        } else if (opt.option == "f" || opt.option == "format") {
+            copyFormat = opt.value;
         } else if (opt.option == "d") {
             copyDataDirPath = opt.value;
         } else if (opt.option == "m") {

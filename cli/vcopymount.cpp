@@ -101,7 +101,7 @@ int main(int argc, const char** argv)
         argc - 1,
         "n:m:d:ht:o:",
         {
-            "--name", "--meta=","--data=", "--target=", 
+            "--name=", "--meta=","--data=", "--target=", 
             "--mount", "--umount=", "--output=", "--type=", "--option=" });
     for (const OptionResult opt: result.opts) {
         if (opt.option == "n" || opt.option == "name") {

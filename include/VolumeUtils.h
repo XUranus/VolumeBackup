@@ -38,7 +38,9 @@ struct VolumeCopyMeta {
     std::vector<CopySegment>    segments;
 
     SERIALIZE_SECTION_BEGIN
+    SERIALIZE_FIELD(copyName, copyName);
     SERIALIZE_FIELD(backupType, backupType);
+    SERIALIZE_FIELD(copyFormat, copyFormat);
     SERIALIZE_FIELD(volumeSize, volumeSize);
     SERIALIZE_FIELD(volumePath, volumePath);
     SERIALIZE_FIELD(blockSize, blockSize);
