@@ -84,7 +84,7 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::Build(
     switch (volumeCopyMeta.copyFormat) {
         case static_cast<int>(CopyFormat::BIN) : {
 #ifdef __linux__
-            return exstd::static_unique_pointer_cast<VolumeCopyMountProvider>(
+            return mem::static_unique_pointer_cast<VolumeCopyMountProvider>(
                 LinuxDeviceMapperMountProvider::Build(mountConfig, volumeCopyMeta));
 #else
             return nullptr;
@@ -92,7 +92,7 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::Build(
         }
         case static_cast<int>(CopyFormat::IMAGE) : {
 #ifdef __linux__
-            return exstd::static_unique_pointer_cast<VolumeCopyMountProvider>(
+            return mem::static_unique_pointer_cast<VolumeCopyMountProvider>(
                 LinuxLoopbackMountProvider::Build(mountConfig, volumeCopyMeta));
 #else
             return nullptr;
@@ -146,7 +146,7 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::Build(
     switch (mountRecord.copyFormat) {
         case static_cast<int>(CopyFormat::BIN) : {
 #ifdef __linux__
-            return exstd::static_unique_pointer_cast<VolumeCopyUmountProvider>(
+            return mem::static_unique_pointer_cast<VolumeCopyUmountProvider>(
                 LinuxDeviceMapperUmountProvider::Build(mountRecordJsonFilePath, outputDirPath));
 #else
             return nullptr;
@@ -154,7 +154,7 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::Build(
         }
         case static_cast<int>(CopyFormat::IMAGE) : {
 #ifdef __linux__
-            return exstd::static_unique_pointer_cast<VolumeCopyUmountProvider>(
+            return mem::static_unique_pointer_cast<VolumeCopyUmountProvider>(
                 LinuxLoopbackUmountProvider::Build(mountRecordJsonFilePath, outputDirPath));
 #else
             return nullptr;

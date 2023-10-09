@@ -446,27 +446,29 @@ public:
     VolumeRestoreTaskMock(const VolumeRestoreConfig& restoreConfig);
     bool ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const;
     bool InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
-    bool ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta);
     bool IsSessionRestarted(std::shared_ptr<VolumeTaskSession> session) const;
 
-    MOCK_METHOD(bool, ReadVolumeCopyMetaMockReturn, (), (const));
     MOCK_METHOD(bool, DataReaderReadMockReturn, (), (const));
     MOCK_METHOD(bool, DataWriterWriteMockReturn, (), (const));
 };
 
-VolumeRestoreTaskMock::VolumeRestoreTaskMock(const VolumeRestoreConfig& restoreConfig)
-  : VolumeRestoreTask(restoreConfig) {}
-
-bool VolumeRestoreTaskMock::ReadVolumeCopyMeta(const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta)
+static VolumeCopyMeta MockReadVolumeCopyMeta()
 {
-    volumeCopyMeta.backupType = 0;
+    VolumeCopyMeta volumeCopyMeta {};
+    volumeCopyMeta.backupType = static_cast<int>(BackupType::FULL);
+    volumeCopyMeta.copyName = "volumeprotect";
+    volumeCopyMeta.copyFormat = static_cast<int>(CopyFormat::BIN);
     volumeCopyMeta.volumeSize  = ONE_GB;
     volumeCopyMeta.blockSize = 4 * ONE_MB;
-    volumeCopyMeta.copySlices = std::vector<std::pair<std::uint64_t, uint64_t>> {
-        { 0, ONE_MB * 512 }, { ONE_MB * 512, ONE_MB * 512 }
+    volumeCopyMeta.segments = std::vector<CopySegment> {
+        CopySegment{ "volumeprotect.data.1", "volumeprotect.meta.1", 1,  0, ONE_MB * 512 },
+        CopySegment{ "volumeprotect.data.2", "volumeprotect.meta.2", 2,  ONE_MB * 512, ONE_MB * 512 }
     };
-    return ReadVolumeCopyMetaMockReturn();
+    return volumeCopyMeta;
 }
+
+VolumeRestoreTaskMock::VolumeRestoreTaskMock(const VolumeRestoreConfig& restoreConfig)
+  : VolumeRestoreTask(restoreConfig, MockReadVolumeCopyMeta()) {}
 
 bool VolumeRestoreTaskMock::ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const
 {
@@ -519,8 +521,6 @@ TEST_F(VolumeBackupTest, VolumeRestoreTask_RunRestoreSuccess)
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*restoreTaskMock, DataWriterWriteMockReturn())
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*restoreTaskMock, ReadVolumeCopyMetaMockReturn())
-        .WillRepeatedly(Return(true));
 
     EXPECT_TRUE(restoreTaskMock->Start());
     while (!restoreTaskMock->IsTerminated()) {
@@ -542,8 +542,6 @@ TEST_F(VolumeBackupTest, VolumeRestoreTask_RunRestoreThenAbort)
     EXPECT_CALL(*restoreTaskMock, DataReaderReadMockReturn())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*restoreTaskMock, DataWriterWriteMockReturn())
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*restoreTaskMock, ReadVolumeCopyMetaMockReturn())
         .WillRepeatedly(Return(true));
 
     EXPECT_TRUE(restoreTaskMock->Start());

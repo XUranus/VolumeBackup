@@ -75,7 +75,7 @@ std::unique_ptr<T> make_unique(Args&&... args)
 namespace exstd = std;
 #endif
 
-namespace exstd {
+namespace mem {
 template<typename TO, typename FROM>
 std::unique_ptr<TO> static_unique_pointer_cast(std::unique_ptr<FROM>&& old)
 {
