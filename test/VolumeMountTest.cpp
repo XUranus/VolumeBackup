@@ -8,6 +8,7 @@
 *
 ================================================================*/
 
+#include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -16,7 +17,7 @@
 #include <string>
 #include <thread>
 
-#include "LinuxVolumeCopyMountProvider.h"
+#include "VolumeCopyMountProvider.h"
 #include "Logger.h"
 
 using namespace ::testing;
@@ -34,7 +35,7 @@ namespace {
     const uint64_t ONE_GB = 1024LLU * ONE_MB;
 }
 
-class VolumeMountTest : public ::testing::Test {
+class VolumeCopyMountProviderTest : public ::testing::Test {
 protected:
     static void SetUpTestCase() {
         using namespace xuranus::minilogger;
@@ -51,233 +52,39 @@ protected:
         using namespace xuranus::minilogger;
         Logger::GetInstance()->Destroy();
     }
-
-    void SetUp() override {
-        // mock common mount config
-        mountConfig.copyMetaDirPath = DUMMY_META_DIR;
-        mountConfig.copyDataDirPath = DUMMY_DATA_DIR;
-        mountConfig.mountTargetPath = DUMMY_TARGET_DIR;
-        mountConfig.mountFsType = "ext4";
-        mountConfig.mountOptions = "noatime";
-
-        // mock copyMetaSingleSliceMock, test mount single slice
-        copyMetaSingleSliceMock.backupType = 0;
-        copyMetaSingleSliceMock.volumeSize = ONE_GB * 4LLU; // 4GB
-        copyMetaSingleSliceMock.blockSize = ONE_MB * 4LLU; // 4MB
-        copyMetaSingleSliceMock.volumePath = "/dev/mapper/volumeprotect_dm_dummy_name";
-        copyMetaSingleSliceMock.copySlices = std::vector<std::pair<uint64_t, uint64_t>> {
-            { 0LLU, 4LLU * ONE_GB }
-        };
-
-        // mock copyMutipleSlicesMock, test mount multiple slices
-        copyMutipleSlicesMock.backupType = 0;
-        copyMutipleSlicesMock.volumeSize = ONE_GB * 10LLU; // 10GB
-        copyMutipleSlicesMock.blockSize = ONE_MB * 4LLU; // 4MB
-        copyMutipleSlicesMock.volumePath = "/dev/mapper/volumeprotect_dm_dummy_name";
-        copyMutipleSlicesMock.copySlices = std::vector<std::pair<uint64_t, uint64_t>> {
-            { 0LLU, 4LLU * ONE_GB },
-            { 4LLU * ONE_GB, 4LLU * ONE_GB },
-            { 8LLU * ONE_GB, 2LLU * ONE_GB }
-        };
-    }
-
-protected:
-    LinuxCopyMountConfig mountConfig {};
-    VolumeCopyMeta copyMetaSingleSliceMock {};
-    VolumeCopyMeta copyMutipleSlicesMock {};
 };
 
-class DeviceMapperMock : public DeviceMapper {
-public:
-    DeviceMapperMock(const std::string& cacheDirPath);
-
-    ~DeviceMapperMock() = default;
-
-    MOCK_METHOD(bool, ReadMountRecord, (LinuxCopyMountRecord& record), (override));
-
-    MOCK_METHOD(bool, ListRecordFiles, (std::vector<std::string>& filelist), (override));
-
-    MOCK_METHOD(bool, ReadVolumeCopyMeta, (const std::string& copyMetaDirPath, VolumeCopyMeta& volumeCopyMeta), (override));
-
-    MOCK_METHOD(bool, SaveMountRecord, (const LinuxCopyMountRecord& mountRecord), (override));
-
-    MOCK_METHOD(bool, MountReadOnlyDevice, (
-        const std::string& devicePath,
-        const std::string& mountTargetPath,
-        const std::string& fsType,
-        const std::string& mountOptions), (override));
-    
-    MOCK_METHOD(bool, UmountDeviceIfExists, (const std::string& mountTargetPath), (override));
-    
-    MOCK_METHOD(bool, CreateReadOnlyDmDevice, (
-        const std::vector<CopySliceTarget> copySlices,
-        std::string& dmDeviceName,
-        std::string& dmDevicePath), (override));
-    
-    MOCK_METHOD(bool, RemoveDmDeviceIfExists, (const std::string& dmDeviceName), (override));
-    
-    MOCK_METHOD(bool, AttachReadOnlyLoopDevice, (const std::string& filePath, std::string& loopDevicePath), (override));
-    
-    MOCK_METHOD(bool, DetachLoopDeviceIfAttached, (const std::string& loopDevicePath), (override));
-
-    // native interface ...
-    MOCK_METHOD(bool, CreateEmptyFileInCacheDir, (const std::string& filename), (override));
-
-    MOCK_METHOD(bool, RemoveFileInCacheDir, (const std::string& filename), (override));
-};
-
-DeviceMapperMock::DeviceMapperMock(const std::string& cacheDirPath)
-    : DeviceMapper(cacheDirPath)
-{}
-
-// get a simple mock item with default mocks
-static std::shared_ptr<DeviceMapperMock> NewDefaultDeviceMapperMock()
+// basic class does not provide any functionality
+TEST_F(VolumeCopyMountProviderTest, TestBaseClass)
 {
-    auto mountProviderMock = std::make_shared<DeviceMapperMock>(DUMMY_CACHE_DIR);
-    
-    std::vector<std::string> defaultRecordFileList = {
-        "1.loop.record",
-        "2.loop.record",
-        "3.loop.record",
-        "xuranus-volume.dm.record"
-    };
+    std::shared_ptr<VolumeCopyMountProvider> mountProvider = std::make_shared<VolumeCopyMountProvider>();
+    EXPECT_FALSE(mountProvider->IsMountSupported());
+    EXPECT_FALSE(mountProvider->Mount());
+    EXPECT_TRUE(mountProvider->GetMountRecordPath().empty());
+    EXPECT_FALSE(mountProvider->GetError().empty());
+    EXPECT_FALSE(mountProvider->GetErrors().empty());
 
-    LinuxCopyMountRecord defaultCopyMountRecord {};
-    defaultCopyMountRecord.dmDeviceName = "volumeprotect_dm_dummy_name";
-    defaultCopyMountRecord.loopDevices = {
-        "/dev/loop100",
-        "/dev/loop200"
-    };
-    defaultCopyMountRecord.devicePath = "/dev/mapper/volumeprotect_dm_dummy_name";
-    defaultCopyMountRecord.mountTargetPath = "/mnt/dummyPoint";
-
-    EXPECT_CALL(*mountProviderMock, SaveMountRecord(_))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, ListRecordFiles(::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<0>(defaultRecordFileList), ::testing::Return(true)));
-    EXPECT_CALL(*mountProviderMock, ReadMountRecord(::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<0>(defaultCopyMountRecord), ::testing::Return(true)));
-    EXPECT_CALL(*mountProviderMock, MountReadOnlyDevice(_, _, _, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, UmountDeviceIfExists(_))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, CreateReadOnlyDmDevice(_, _, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, RemoveDmDeviceIfExists(_))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, AttachReadOnlyLoopDevice(_, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, DetachLoopDeviceIfAttached(_))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, CreateEmptyFileInCacheDir(_))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mountProviderMock, RemoveFileInCacheDir(_))
-        .WillRepeatedly(Return(true));
-    return mountProviderMock;
+    std::shared_ptr<VolumeCopyUmountProvider> umountProvider = std::make_shared<VolumeCopyUmountProvider>();
+    EXPECT_FALSE(umountProvider->Umount());
+    EXPECT_FALSE(umountProvider->GetError().empty());
+    EXPECT_FALSE(umountProvider->GetErrors().empty());
 }
 
-TEST_F(VolumeMountTest, BuildDeviceMapper_Test)
+TEST_F(VolumeCopyMountProviderTest, TestBuildMountProviderFail)
 {
-    EXPECT_TRUE(DeviceMapper::BuildDeviceMapper("/tmp") != nullptr);
-    EXPECT_TRUE(DeviceMapper::BuildDeviceMapper(DUMMY_CACHE_DIR) == nullptr);
+    VolumeCopyMountConfig mountConfig {};
+    mountConfig.outputDirPath = "/tmp";
+    mountConfig.copyName = "dummyCopyName";
+    mountConfig.copyMetaDirPath = "/tmp";
+    mountConfig.copyDataDirPath = "/tmp";
+    mountConfig.mountTargetPath = "/tmp/mnt";
+    auto mountProvider = VolumeCopyMountProvider::Build(mountConfig);
+    EXPECT_TRUE(mountProvider == nullptr);
 }
 
-TEST_F(VolumeMountTest, MountCopy_SingleSlice_Success)
+TEST_F(VolumeCopyMountProviderTest, TestBuildUmountProviderFail)
 {
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMetaSingleSliceMock), ::testing::Return(true)));
-    EXPECT_TRUE(mountProviderMock->MountCopy(mountConfig));
-    EXPECT_EQ(mountProviderMock->GetMountRecordJsonPath(), DUMMY_CACHE_DIR + SEPARATOR + MOUNT_RECORD_JSON_NAME);
-}
-
-TEST_F(VolumeMountTest, MountCopy_MultipleSlice_Success)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
-    EXPECT_TRUE(mountProviderMock->MountCopy(mountConfig));
-}
-
-TEST_F(VolumeMountTest, MountCopy_FailedForCopyMetaJsonNotFound)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
-    EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(_, _))
-        .WillRepeatedly(Return(false));
-    EXPECT_FALSE(mountProviderMock->MountCopy(mountConfig));
-}
-
-TEST_F(VolumeMountTest, MountCopy_FailedForAttachLoopDeviceFailed)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
-    EXPECT_CALL(*mountProviderMock, AttachReadOnlyLoopDevice(_, _))
-        .WillRepeatedly(Return(false));
-    EXPECT_FALSE(mountProviderMock->MountCopy(mountConfig));
-}
-
-TEST_F(VolumeMountTest, MountCopy_FailedForCreateDmDeviceFailed)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
-    EXPECT_CALL(*mountProviderMock, CreateReadOnlyDmDevice(_, _, _))
-        .WillRepeatedly(Return(false));
-    EXPECT_FALSE(mountProviderMock->MountCopy(mountConfig));
-}
-
-TEST_F(VolumeMountTest, UmountCopy_Success)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_TRUE(mountProviderMock->UmountCopy());
-}
-
-TEST_F(VolumeMountTest, UmountCopy_FailedForMountRecordNotFound)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, ReadMountRecord(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_FALSE(mountProviderMock->UmountCopy());
-}
-
-TEST_F(VolumeMountTest, UmountCopy_FailedForIOError)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, UmountDeviceIfExists(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(*mountProviderMock, RemoveDmDeviceIfExists(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(*mountProviderMock, DetachLoopDeviceIfAttached(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_FALSE(mountProviderMock->UmountCopy());
-    EXPECT_NO_THROW(mountProviderMock->GetErrors());
-}
-
-TEST_F(VolumeMountTest, MountCopy_FailedForMount)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    EXPECT_CALL(*mountProviderMock, MountReadOnlyDevice(_, _, _, _))
-        .WillRepeatedly(Return(false));
-    
-    EXPECT_CALL(*mountProviderMock, ReadVolumeCopyMeta(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgReferee<1>(copyMutipleSlicesMock), ::testing::Return(true)));
-    
-    EXPECT_FALSE(mountProviderMock->MountCopy(mountConfig));
-    EXPECT_NO_THROW(mountProviderMock->GetErrors());
-    EXPECT_TRUE(mountProviderMock->ClearResidue());
-}
-
-TEST_F(VolumeMountTest, MountCopy_ClearResidueFailed)
-{
-    auto mountProviderMock = NewDefaultDeviceMapperMock();
-    // to make both LoadResidualDmDeviceList and LoadResidualLoopDeviceList fail
-    EXPECT_CALL(*mountProviderMock, RemoveDmDeviceIfExists(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(*mountProviderMock, DetachLoopDeviceIfAttached(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_FALSE(mountProviderMock->ClearResidue());
-    EXPECT_NO_THROW(mountProviderMock->GetErrors());
+    std::string mountRecordJsonFilePath = "/tmp/dummyRecord.json";
+    auto umountProvider = VolumeCopyUmountProvider::Build(mountRecordJsonFilePath);
+    EXPECT_TRUE(umountProvider == nullptr);
 }
