@@ -70,7 +70,7 @@ static bool FragmentBinaryBackupCopyExists(std::vector<std::string> fragmentFile
     for (const std::string& fragmentFile : fragmentFiles) {
         ErrCodeType errorCode = 0;
         if (!fsapi::IsFileExists(fragmentFile)) {
-            ERRLOG("fragment binary file %s not exists", fragmentFile.c_str());
+            INFOLOG("fragment binary file %s not exists", fragmentFile.c_str());
             return false;
         }
     }

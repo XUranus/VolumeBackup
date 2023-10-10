@@ -47,7 +47,7 @@ private:
     
     virtual bool ValidateIncrementBackup() const;
 
-private:
+protected:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeBackupConfig>     m_backupConfig;
 

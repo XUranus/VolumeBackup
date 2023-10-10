@@ -10,10 +10,12 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <memory>
 #include <vector>
 #include <string>
 #include <thread>
 
+#include "TaskResourceManager.h"
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
@@ -67,6 +69,35 @@ public:
     MOCK_METHOD(bool, Flush, (), (override));
     MOCK_METHOD(ErrCodeType, Error, (), (override));
 };
+
+class TaskResourceManagerMock : public TaskResourceManager {
+public:
+    static std::shared_ptr<TaskResourceManagerMock> Build(bool mockSuccess = true);
+    explicit TaskResourceManagerMock(bool mockSuccess);
+    bool PrepareCopyResource() override;
+    bool ResourceExists() override;
+private:
+    bool m_mockSuccess;
+};
+
+std::shared_ptr<TaskResourceManagerMock> TaskResourceManagerMock::Build(bool mockSuccess)
+{
+    return std::make_shared<TaskResourceManagerMock>(mockSuccess);
+}
+
+TaskResourceManagerMock::TaskResourceManagerMock(bool mockSuccess)
+    : TaskResourceManager(CopyFormat::BIN, "", ""), m_mockSuccess(mockSuccess)
+{}
+
+bool TaskResourceManagerMock::PrepareCopyResource()
+{
+    return m_mockSuccess;
+}
+
+bool TaskResourceManagerMock::ResourceExists()
+{
+    return m_mockSuccess;
+}
 
 static void InitSessionSharedConfig(std::shared_ptr<VolumeTaskSession> session)
 {
@@ -160,13 +191,23 @@ class VolumeBackupTaskMock : public VolumeBackupTask
 {
 public:
     VolumeBackupTaskMock(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);
+    
     bool ValidateIncrementBackup() const;
+    
     bool InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
-    bool SaveVolumeCopyMeta(const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta) const;
+    
+    bool SaveVolumeCopyMeta(
+        const std::string& copyMetaDirPath,
+        const std::string& copyName,
+        const VolumeCopyMeta& volumeCopyMeta) const override;
+    
     bool LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTaskSession> session) const;
+    
     std::shared_ptr<CheckpointSnapshot> ReadCheckpointSnapshot(
         std::shared_ptr<VolumeTaskSession> session) const;
+    
     bool ReadLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
+    
     bool IsSessionRestarted(std::shared_ptr<VolumeTaskSession> session) const;
 
     MOCK_METHOD(bool, SaveVolumeCopyMetaMockReturn, (), (const));
@@ -176,7 +217,10 @@ public:
 };
 
 VolumeBackupTaskMock::VolumeBackupTaskMock(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
-  : VolumeBackupTask(backupConfig, volumeSize) {}
+  : VolumeBackupTask(backupConfig, volumeSize)
+{
+    m_resourceManager = std::dynamic_pointer_cast<TaskResourceManager>(TaskResourceManagerMock::Build());    
+}
 
 bool VolumeBackupTaskMock::ValidateIncrementBackup() const
 {
@@ -184,7 +228,9 @@ bool VolumeBackupTaskMock::ValidateIncrementBackup() const
 }
 
 bool VolumeBackupTaskMock::SaveVolumeCopyMeta(
-    const std::string& copyMetaDirPath, const VolumeCopyMeta& volumeCopyMeta) const
+    const std::string& copyMetaDirPath,
+    const std::string& copyName,
+    const VolumeCopyMeta& volumeCopyMeta) const
 {
     return SaveVolumeCopyMetaMockReturn();
 }
@@ -468,7 +514,10 @@ static VolumeCopyMeta MockReadVolumeCopyMeta()
 }
 
 VolumeRestoreTaskMock::VolumeRestoreTaskMock(const VolumeRestoreConfig& restoreConfig)
-  : VolumeRestoreTask(restoreConfig, MockReadVolumeCopyMeta()) {}
+  : VolumeRestoreTask(restoreConfig, MockReadVolumeCopyMeta())
+{
+    m_resourceManager = std::dynamic_pointer_cast<TaskResourceManager>(TaskResourceManagerMock::Build());
+}
 
 bool VolumeRestoreTaskMock::ValidateRestoreTask(const VolumeCopyMeta& volumeCopyMeta) const
 {
