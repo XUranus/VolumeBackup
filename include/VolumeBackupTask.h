@@ -4,7 +4,7 @@
 #include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
-#include "TaskResourceManager.h"
+#include "native/TaskResourceManager.h"
 #include "VolumeUtils.h"
 
 namespace volumeprotect {

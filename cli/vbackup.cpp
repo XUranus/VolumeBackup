@@ -19,7 +19,7 @@
 #include "Logger.h"
 
 
-#include "TaskResourceManager.h"
+#include "native/TaskResourceManager.h"
 
 using namespace volumeprotect;
 using namespace xuranus::getopt;

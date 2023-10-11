@@ -15,7 +15,7 @@
 #include <string>
 #include <thread>
 
-#include "TaskResourceManager.h"
+#include "native/TaskResourceManager.h"
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
