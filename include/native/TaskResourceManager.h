@@ -40,7 +40,7 @@ struct RestoreTaskResourceManagerParams {
 /**
  * Base class for BackupTaskResourceManager and RestoreTaskResourceManager.
  * Provide TaskResourceManager builder and RAII resource management.
- * PrepareCopyResource() need to be invoked before backup/restore task start. 
+ * PrepareCopyResource() need to be invoked before backup/restore task start.
  */
 class TaskResourceManager {
 public:
@@ -113,7 +113,7 @@ private:
     std::vector<std::string> m_copyDataFiles;
 };
 
- 
+
 
 }
 

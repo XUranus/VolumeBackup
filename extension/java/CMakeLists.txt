@@ -20,8 +20,8 @@ ELSE()
 ENDIF()
 
 # define headers and sources
-SET(Headers JLinuxVolumeCopyMountProvider.h)
-SET(Sources JLinuxVolumeCopyMountProvider.cpp)
+SET(Headers JVolumeCopyMountUtil.h)
+SET(Sources JVolumeCopyMountUtil.cpp)
 
 INCLUDE_DIRECTORIES(
     ${JNI_INCLUDE}

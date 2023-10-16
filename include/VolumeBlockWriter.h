@@ -46,6 +46,8 @@ public:
     bool Flush();
 
 private:
+    bool NeedToWrite(uint8_t* buffer, int length) const;
+
     void MainThread();
 
 private:

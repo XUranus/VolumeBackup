@@ -33,7 +33,7 @@ public:
      * Return the name of the parameter
      */
     virtual std::string Name() const = 0;
-    
+
     /**
      * Get the parameter string that is passed to the end of the dm_target_spec for this target type.
      */
@@ -63,7 +63,7 @@ private:
 class DmTable {
 public:
     bool    AddTarget(std::shared_ptr<DmTarget> target);
-    
+
     /**
      * Returns the string represntation of the table that is ready to be passed into the kernel
      * as part of the DM_TABLE_LOAD ioctl.
@@ -71,9 +71,9 @@ public:
     std::string Serialize() const;
 
     uint64_t TargetCount() const;
-    
+
     void SetReadOnly();
-    
+
     bool IsReadOnly() const;
 
 private:

@@ -111,12 +111,6 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::Build(
     return nullptr;
 }
 
-bool VolumeCopyMountProvider::IsMountSupported()
-{
-    RECORD_INNER_ERROR("base class does not support mount, need implementation from derived class");
-    return false;
-}
-
 bool VolumeCopyMountProvider::Mount() {
     RECORD_INNER_ERROR("base class does not support mount, need implementation from derived class");
     return false;
@@ -137,7 +131,7 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::Build(
         return nullptr;
     }
     std::string outputDirPath = util::GetParentDirectoryPath(mountRecordJsonFilePath);
-    
+
     VolumeCopyMountRecordCommon mountRecord {};
     if (!util::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);

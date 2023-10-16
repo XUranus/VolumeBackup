@@ -13,6 +13,8 @@ VOLUME_BACKUP_LIBRARY_PATH = "./build/libvolumebackup.so"
 class VolumeBackupConf_C(ctypes.Structure):
     _fields_ = [
         ("backupType", ctypes.c_int),
+        ("copyFormat", ctypes.c_int),
+        ("copyName", ctypes.c_char_p),
         ("volumePath", ctypes.c_char_p),
         ("prevCopyMetaDirPath", ctypes.c_char_p),
         ("outputCopyDataDirPath", ctypes.c_char_p),
@@ -27,6 +29,7 @@ class VolumeBackupConf_C(ctypes.Structure):
 class VolumeRestoreConf_C(ctypes.Structure):
     _fields_ = [
         ("volumePath", ctypes.c_char_p),
+        ("copyName", ctypes.c_char_p),
         ("copyDataDirPath", ctypes.c_char_p),
         ("copyMetaDirPath", ctypes.c_char_p),
         ("enableCheckpoint", ctypes.c_bool)
@@ -155,7 +158,7 @@ def start_backup():
     while not task.is_terminated():
         task.print_statistics()
         #time.sleep(1)
-        
+
     print("task terminated with status {}".format(task.status()))
 
 def start_restore():

@@ -21,30 +21,30 @@ public:
     ~VolumeBackupTask();
 private:
     bool Prepare(); // split session and save meta
-    
+
     void ThreadFunc();
-    
+
     bool StartBackupSession(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     virtual bool InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     virtual bool InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     bool IsIncrementBackup() const;
-    
+
     void SaveSessionWriterBitmap(std::shared_ptr<VolumeTaskSession> session);
-    
+
     VolumeTaskSession NewVolumeTaskSession(uint64_t sessionOffset, uint64_t sessionSize, int sessionIndex) const;
-    
+
     bool InitHashingContext(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     virtual bool LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     virtual bool SaveVolumeCopyMeta(
         const std::string& copyMetaDirPath,
         const std::string& copyName,
         const VolumeCopyMeta& volumeCopyMeta) const;
-    
+
     virtual bool ValidateIncrementBackup() const;
 
 protected:

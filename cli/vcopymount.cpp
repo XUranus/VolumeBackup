@@ -5,7 +5,7 @@
  *   File:         vcopymount.cpp
  *   Author:       XUranus
  *   Date:         2023-08-23
- *   Description:  a command line tool to mount/umount copy 
+ *   Description:  a command line tool to mount/umount copy
  *                 generated from volumebackup using dm linear mapper
  * ==================================================================
  */
@@ -50,7 +50,7 @@ static bool MountCopy(const VolumeCopyMountConfig& mountConfig)
     std::cout << "MountFsType " << mountConfig.mountFsType << std::endl;
     std::cout << "MountOptions " << mountConfig.mountOptions << std::endl;
     std::cout << std::endl;
-    
+
     std::unique_ptr<VolumeCopyMountProvider> mountProvider = VolumeCopyMountProvider::Build(mountConfig);
     if (mountProvider == nullptr) {
         std::cerr << "failed to build mount provider" << std::endl;
@@ -61,13 +61,13 @@ static bool MountCopy(const VolumeCopyMountConfig& mountConfig)
         return false;
     }
     std::cout << "Mount Copy Success" << std::endl;
-    std::cout << "Mount Record Json File Path: " << mountProvider->GetMountRecordPath() << std::endl; 
+    std::cout << "Mount Record Json File Path: " << mountProvider->GetMountRecordPath() << std::endl;
     return true;
 }
 
 static bool UmountCopy(const std::string& mountRecordJsonFilePath)
 {
-    std::cout << "Umount Copy Using Record: " << mountRecordJsonFilePath << std::endl;        
+    std::cout << "Umount Copy Using Record: " << mountRecordJsonFilePath << std::endl;
     std::unique_ptr<VolumeCopyUmountProvider> umountProvider = VolumeCopyUmountProvider::Build(mountRecordJsonFilePath);
     if (umountProvider == nullptr) {
         std::cerr << "failed to build umount provider" << std::endl;
@@ -101,7 +101,7 @@ int main(int argc, const char** argv)
         argc - 1,
         "n:m:d:ht:o:",
         {
-            "--name=", "--meta=","--data=", "--target=", 
+            "--name=", "--meta=","--data=", "--target=",
             "--mount", "--umount=", "--output=", "--type=", "--option=" });
     for (const OptionResult opt: result.opts) {
         if (opt.option == "n" || opt.option == "name") {
@@ -128,7 +128,7 @@ int main(int argc, const char** argv)
             return 0;
         }
     }
-    
+
     using namespace xuranus::minilogger;
     LoggerConfig conf {};
     conf.target = LoggerTarget::STDOUT;

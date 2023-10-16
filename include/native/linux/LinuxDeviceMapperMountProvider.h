@@ -46,7 +46,7 @@ struct LinuxDeviceMapperCopyMountRecord {
     std::vector<std::string>    loopDevices;        // loopback device path like /dev/loopX
     std::string                 devicePath;         // block device mounted (loopback device path or dm device path)
     std::string                 mountTargetPath;    // the mount point path
-    
+
     // attribute and origin mount config, used only for debug
     std::vector<CopySliceTarget>    copySlices;
     std::string                 copyDataDirPath;
@@ -73,12 +73,12 @@ struct LinuxDeviceMapperCopyMountRecord {
 /**
  * LinuxDeviceMapperMountProvider provide api to mount volume copy with CopyFormat::BIN on Linux system
  * This provider need a output directory to store mount record and checkpoint file for each mount task.
- * 
+ *
  * For a copy contains only one session, LinuxDeviceMapperMountProvider will create a loopback device from the file
  *    to be mount directly.
  * For a copy contains multiple sessions, LinuxDeviceMapperMountProvider will assign a loopback device for each
  *    copy file and create a devicemapper device with linear targets using the loopback devices.
- * 
+ *
  * To ensure robust:
  * For each created dm device, a "dmDeviceName.dm.record" file will be created,
  * and for each attached loop device, a "loopX.loop.record" file will be created.
@@ -113,16 +113,16 @@ protected:
         const std::string& mountTargetPath,
         const std::string& fsType,
         const std::string& mountOptions);
-    
+
     virtual bool CreateReadOnlyDmDevice(
         const std::vector<CopySliceTarget> copySlices,
         std::string& dmDeviceName,
         std::string& dmDevicePath);
-    
+
     virtual bool RemoveDmDeviceIfExists(const std::string& dmDeviceName);
-    
+
     virtual bool AttachReadOnlyLoopDevice(const std::string& filePath, std::string& loopDevicePath);
-    
+
     virtual bool DetachLoopDeviceIfAttached(const std::string& loopDevicePath);
 
     std::string GenerateNewDmDeviceName() const;

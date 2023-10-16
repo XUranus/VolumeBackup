@@ -107,6 +107,7 @@ static void InitSessionSharedConfig(std::shared_ptr<VolumeTaskSession> session)
     sharedConfig->blockSize = DEFAULT_MOCK_SESSION_BLOCK_SIZE;
     sharedConfig->hasherEnabled = true;
     sharedConfig->checkpointEnabled = true;
+    sharedConfig->skipEmptyBlock = false;
     sharedConfig->volumePath = "/dummy/volumePath";
     sharedConfig->copyFilePath = "/dummy/targetPath";
     session->sharedConfig = sharedConfig;
@@ -122,7 +123,7 @@ static void InitSessionSharedContext(std::shared_ptr<VolumeTaskSession> session)
     sharedContext->hashingQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
     // init hasher context
     sharedContext->writeQueue = std::make_shared<BlockingQueue<VolumeConsumeBlock>>(DEFAULT_QUEUE_SIZE);
-    uint64_t blockCount = session->sharedConfig->sessionSize / static_cast<uint64_t>(session->sharedConfig->blockSize); 
+    uint64_t blockCount = session->sharedConfig->sessionSize / static_cast<uint64_t>(session->sharedConfig->blockSize);
     uint64_t numBlocks = session->TotalBlocks();
     uint64_t lastestChecksumTableSize = numBlocks * SHA256_CHECKSUM_SIZE;
     uint64_t prevChecksumTableSize = lastestChecksumTableSize;
@@ -191,23 +192,23 @@ class VolumeBackupTaskMock : public VolumeBackupTask
 {
 public:
     VolumeBackupTaskMock(const VolumeBackupConfig& backupConfig, uint64_t volumeSize);
-    
+
     bool ValidateIncrementBackup() const;
-    
+
     bool InitBackupSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     bool SaveVolumeCopyMeta(
         const std::string& copyMetaDirPath,
         const std::string& copyName,
         const VolumeCopyMeta& volumeCopyMeta) const override;
-    
+
     bool LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     std::shared_ptr<CheckpointSnapshot> ReadCheckpointSnapshot(
         std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     bool ReadLatestHashingTable(std::shared_ptr<VolumeTaskSession> session) const;
-    
+
     bool IsSessionRestarted(std::shared_ptr<VolumeTaskSession> session) const;
 
     MOCK_METHOD(bool, SaveVolumeCopyMetaMockReturn, (), (const));
@@ -219,7 +220,7 @@ public:
 VolumeBackupTaskMock::VolumeBackupTaskMock(const VolumeBackupConfig& backupConfig, uint64_t volumeSize)
   : VolumeBackupTask(backupConfig, volumeSize)
 {
-    m_resourceManager = std::dynamic_pointer_cast<TaskResourceManager>(TaskResourceManagerMock::Build());    
+    m_resourceManager = std::dynamic_pointer_cast<TaskResourceManager>(TaskResourceManagerMock::Build());
 }
 
 bool VolumeBackupTaskMock::ValidateIncrementBackup() const
@@ -289,7 +290,7 @@ TEST_F(VolumeBackupTest, VolumeBackupTask_InvalidDataReaderOrWriterBeforeStart)
 {
     // init session
     auto session = std::make_shared<VolumeTaskSession>();
-    InitSessionSharedConfig(session);    
+    InitSessionSharedConfig(session);
     InitSessionSharedContext(session);
     InitSessionBlockVolumeReader(session, nullptr);
     InitSessionBlockCopyWriter(session, nullptr);
@@ -625,7 +626,7 @@ TEST_F(VolumeBackupTest, BuildBackupOrRestoreTask_FailForInvalidVolumePath)
 
 TEST_F(VolumeBackupTest, BuildComponentTask_FailForInvalidPath)
 {
-    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig = 
+    std::shared_ptr<VolumeTaskSharedConfig> sharedConfig =
         std::make_shared<VolumeTaskSharedConfig>();
     std::shared_ptr<VolumeTaskSharedContext> sharedContext =
         std::make_shared<VolumeTaskSharedContext>();

@@ -58,7 +58,6 @@ protected:
 TEST_F(VolumeCopyMountProviderTest, TestBaseClass)
 {
     std::shared_ptr<VolumeCopyMountProvider> mountProvider = std::make_shared<VolumeCopyMountProvider>();
-    EXPECT_FALSE(mountProvider->IsMountSupported());
     EXPECT_FALSE(mountProvider->Mount());
     EXPECT_TRUE(mountProvider->GetMountRecordPath().empty());
     EXPECT_FALSE(mountProvider->GetError().empty());

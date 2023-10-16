@@ -51,11 +51,13 @@ struct VOLUMEPROTECT_API VolumeBackupConfig {
     std::string     prevCopyMetaDirPath;                    // [optional] only be needed for increment backup
     std::string	    outputCopyDataDirPath;
     std::string	    outputCopyMetaDirPath;
+    // optional advance params
     uint32_t        blockSize       { DEFAULT_BLOCK_SIZE };  // [optional] default blocksize used for computing sha256
     uint64_t        sessionSize     { DEFAULT_SESSION_SIZE };// default sesson size used to split session
     uint32_t        hasherNum       { DEFAULT_HASHER_NUM };  // hasher worker count, set to the num of processors
     bool            hasherEnabled   { true };                // if set to false, won't compute sha256
     bool            enableCheckpoint{ true };                // start from checkpoint if exists
+    bool            skipEmptyBlock  { false };               // use sparsefile and skipping zero block to save storage
 };
 
 // immutable config, used to build volume restore task
@@ -120,7 +122,9 @@ extern "C" {
 
 // C style struct definition
 struct VOLUMEPROTECT_API VolumeBackupConf_C {
-    int         backupType;                       // type of target copy to be generated
+    int         backupType;                     // type of target copy to be generated
+    int         copyFormat;
+    char*       copyName;
     char*       volumePath;                     // path of the block device (volume)
     char*       prevCopyMetaDirPath;            // [optional] only be needed for increment backup
     char*	    outputCopyDataDirPath;
@@ -134,6 +138,7 @@ struct VOLUMEPROTECT_API VolumeBackupConf_C {
 
 struct VOLUMEPROTECT_API VolumeRestoreConf_C {
     char*       volumePath;                     // path of the block device (volume)
+    char*       copyName;
     char*	    copyDataDirPath;
     char*	    copyMetaDirPath;
     bool        enableCheckpoint { true };      // start from checkpoint if exists

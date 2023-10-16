@@ -105,6 +105,7 @@ struct VolumeTaskSharedConfig {
     std::string     lastestChecksumBinPath;
     std::string     prevChecksumBinPath;
     std::string     checkpointFilePath;
+    bool            skipEmptyBlock;
 };
 
 

@@ -40,14 +40,14 @@ struct VolumeCopyMountConfig {
     // only used for *unix mount to sepecify filesystem type (option "-t", eg: ext4, xfs, btrfs...)
     std::string     mountFsType;
     // only used for *unix mount to sepecify mount options (option "-o", eg: "ro,loop,noatime")
-    std::string     mountOptions;      
+    std::string     mountOptions;
 };
 
 /**
  * Define a inner logger to track the errors occured in mount/umount routines.
  * This should be necessary, for this module may be provided as an independent dynamic lib for extensions
  * like CPython or JNI to invoke, inner logger may track and save the error info for debugging without
- * 3rd logger module being used.  
+ * 3rd logger module being used.
  */
 class VOLUMEPROTECT_API InnerErrorLoggerTrait {
 public:
@@ -82,8 +82,6 @@ public:
     );
 
     virtual ~VolumeCopyMountProvider() = default;
-
-    virtual bool IsMountSupported();
 
     virtual bool Mount();
 

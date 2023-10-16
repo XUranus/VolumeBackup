@@ -46,7 +46,7 @@ MESSAGE("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
 
 INCLUDE_DIRECTORIES(
     "include"
-    "include/native" 
+    "include/native"
     "dependency/minijson"
     "dependency/minilogger"
 )

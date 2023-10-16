@@ -103,6 +103,18 @@ VolumeBlockWriter::VolumeBlockWriter(const VolumeBlockWriterParam& param)
     m_dataWriter(param.dataWriter)
 {}
 
+bool VolumeBlockWriter::NeedToWrite(uint8_t* buffer, int length) const
+{
+    if (!m_sharedConfig->skipEmptyBlock) {
+        return true;
+    }
+    if (buffer[0] == 0 && !::memcmp(buffer, buffer + 1, length - 1)) {
+        // is all zero
+        return true;
+    }
+    return false;
+}
+
 void VolumeBlockWriter::MainThread()
 {
     VolumeConsumeBlock consumeBlock {};
@@ -129,7 +141,8 @@ void VolumeBlockWriter::MainThread()
 
         DBGLOG("write block[%llu] (%p, %llu, %u) writerOffset = %llu",
             index, buffer, consumeBlock.volumeOffset, length, writerOffset);
-        if (!m_dataWriter->Write(writerOffset, buffer, length, errorCode)) {
+        if (NeedToWrite(buffer, length) &&
+            !m_dataWriter->Write(writerOffset, buffer, length, errorCode)) {
             ERRLOG("write %d bytes at %llu failed, error code = %u", length, writerOffset, errorCode);
             m_sharedContext->allocator->bfree(buffer);
             ++m_sharedContext->counter->blockesWriteFailed;

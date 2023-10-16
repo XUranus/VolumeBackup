@@ -51,7 +51,7 @@ static std::unordered_map<int, std::string> g_statusStringTable {
  *                  |------volumecopy.meta.json
  *                  |------raspberry.1.meta.bin
  *                  |------raspberry.2.sha256.meta.bin
- * 
+ *
  * For Windows OS, *.vhd, *.vhdx are also supported and it's handled similar to image format
  * volumecopy.meta.json saves meta data (format, sessions) of the copy and it's critical for the copy to mount or restore
  */
@@ -113,7 +113,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
         ERRLOG("restore copy directory not prepared");
         return nullptr;
     }
-    
+
     // 3. read copy meta json and validate
     VolumeCopyMeta volumeCopyMeta {};
     if (!util::ReadVolumeCopyMeta(restoreConfig.copyMetaDirPath, restoreConfig.copyName, volumeCopyMeta)) {
@@ -192,6 +192,8 @@ void* BuildBackupTask(VolumeBackupConf_C cBackupConf)
 {
     VolumeBackupConfig backupConfig {};
     backupConfig.backupType = static_cast<BackupType>(cBackupConf.backupType);
+    backupConfig.copyFormat = static_cast<CopyFormat>(cBackupConf.copyFormat);
+    backupConfig.copyName = StringFromCStr(cBackupConf.copyName);
     backupConfig.volumePath = StringFromCStr(cBackupConf.volumePath);
     backupConfig.prevCopyMetaDirPath = StringFromCStr(cBackupConf.prevCopyMetaDirPath);
     backupConfig.outputCopyDataDirPath = StringFromCStr(cBackupConf.outputCopyDataDirPath);
@@ -206,7 +208,9 @@ void* BuildBackupTask(VolumeBackupConf_C cBackupConf)
 }
 
 void* BuildRestoreTask(VolumeRestoreConf_C cRestoreConf)
-{   VolumeRestoreConfig restoreConfig {};
+{
+    VolumeRestoreConfig restoreConfig {};
+    restoreConfig.copyName = StringFromCStr(cRestoreConf.copyName);
     restoreConfig.volumePath = StringFromCStr(cRestoreConf.volumePath);
     restoreConfig.copyDataDirPath = StringFromCStr(cRestoreConf.copyDataDirPath);
     restoreConfig.copyMetaDirPath = StringFromCStr(cRestoreConf.copyMetaDirPath);

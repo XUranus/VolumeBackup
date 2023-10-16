@@ -148,7 +148,7 @@ bool TaskResourceManager::AttachCopyResource()
     switch (static_cast<int>(m_copyFormat)) {
         case static_cast<int>(CopyFormat::BIN) :
         case static_cast<int>(CopyFormat::IMAGE): {
-            // binary fragment copy or image copy do not need to be attached 
+            // binary fragment copy or image copy do not need to be attached
             return true;
         }
 #ifdef _WIN32
@@ -186,7 +186,7 @@ bool TaskResourceManager::DetachCopyResource()
     switch (static_cast<int>(m_copyFormat)) {
         case static_cast<int>(CopyFormat::BIN) :
         case static_cast<int>(CopyFormat::IMAGE): {
-            // binary fragment copy or image copy do not need to be dettached 
+            // binary fragment copy or image copy do not need to be dettached
             return true;
         }
 #ifdef _WIN32

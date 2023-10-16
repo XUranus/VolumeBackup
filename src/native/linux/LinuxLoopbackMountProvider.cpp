@@ -72,14 +72,9 @@ LinuxLoopbackMountProvider::LinuxLoopbackMountProvider(const LinuxLoopbackMountP
     m_mountOptions(params.mountOptions)
 {}
 
-bool LinuxLoopbackMountProvider::IsMountSupported()
-{
-    return true;
-}
-
 std::string LinuxLoopbackMountProvider::GetMountRecordPath() const
 {
-    return m_outputDirPath + SEPARATOR + m_copyName + IMAGE_COPY_MOUNT_RECORD_FILE_SUFFIX; 
+    return m_outputDirPath + SEPARATOR + m_copyName + IMAGE_COPY_MOUNT_RECORD_FILE_SUFFIX;
 }
 
 // mount using *nix loopback device

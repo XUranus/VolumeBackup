@@ -34,8 +34,6 @@ public:
         const VolumeCopyMeta& volumeCopyMeta);
 
     LinuxLoopbackMountProvider(const LinuxLoopbackMountProviderParams& params);
-    
-    bool IsMountSupported() override;
 
     bool Mount() override;
 

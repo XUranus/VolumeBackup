@@ -374,7 +374,7 @@ bool fsapi::IsMountPoint(const std::string& dirPath)
         if (std::string(entry->mnt_dir) == dirPath) {
             mounted = true;
             break;
-        } 
+        }
     }
     ::endmntent(mountsFile);
     return mounted;
@@ -393,7 +393,7 @@ std::string fsapi::GetMountDevicePath(const std::string& mountTargetPath)
         if (std::string(entry->mnt_dir) == mountTargetPath) {
             devicePath = entry->mnt_fsname;
             break;
-        } 
+        }
     }
     ::endmntent(mountsFile);
     return devicePath;

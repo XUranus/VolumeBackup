@@ -44,7 +44,7 @@ DEFINE_GUID(PARTITION_MSFT_RESERVED_GUID,
  * |<===== 17KB =====>|<======== 16MB ========>|<======= ${volume size} ======>|<===== 17KB =====>|<====== 2MB ======>|
  * |                  |                                                                                               |
  * |<-----------------|------------------------  Gpt.UsableLength  -------------------------------------------------->|
- *                    | 
+ *                    |
  *                    |
  *          Gpt.StartingUsableOffset
  */
@@ -63,7 +63,7 @@ namespace {
     constexpr int NUM4 = 4;
 
     constexpr uint64_t VIRTUAL_DISK_BLOCK_SIZE_PADDING = 2 * ONE_MB;
-    
+
     constexpr uint64_t VIRTUAL_DISK_FOOTER_RESERVE = 2 * ONE_MB;
     // windows GPT partition header take at least 17KB for at both header and footer
     constexpr uint64_t VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM = 17 * ONE_KB;
@@ -154,7 +154,7 @@ Win32RawDataReader::Win32RawDataReader(const std::string& path, int flag, uint64
     );
     if (m_handle == INVALID_HANDLE_VALUE) {
         return;
-    } 
+    }
     if (!::DeviceIoControl(
         m_handle,
         FSCTL_ALLOW_EXTENDED_DASD_IO,
@@ -299,13 +299,13 @@ static bool GetAllAttachedVirtualDiskFilePathsW(std::vector<std::wstring>& wFile
         if (pathListBuffer == NULL) {
             errorCode = ERROR_OUTOFMEMORY;
             return false;
-        } 
+        }
     } while (opStatus == ERROR_INSUFFICIENT_BUFFER);
-    
+
     if (pathListBuffer == NULL || pathListBuffer[0] == NULL)  { // There are no loopback mounted virtual disks
         return true;
     }
-    // The pathList is a MULTI_SZ.  
+    // The pathList is a MULTI_SZ.
     pathList = pathListBuffer;
     pathListSizeRemaining = (size_t) pathListSizeInBytes;
     while ((pathListSizeRemaining >= sizeof(pathList[0])) && (*pathList != 0)) {
@@ -794,7 +794,7 @@ static bool InitMsrPartitionAndDataPartition(
     layout->Gpt.UsableLength.QuadPart =
         VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM * NUM2 + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM + volumeSize;
     layout->Gpt.MaxPartitionCount = VIRTUAL_DISK_MAX_GPT_PARTITION_COUNT;
-    
+
     layout->PartitionEntry[NUM0].PartitionStyle = PARTITION_STYLE_GPT;
     layout->PartitionEntry[NUM0].StartingOffset.QuadPart = VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM;
     layout->PartitionEntry[NUM0].PartitionLength.QuadPart = VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
@@ -805,7 +805,7 @@ static bool InitMsrPartitionAndDataPartition(
     layout->PartitionEntry[NUM0].Gpt.PartitionId = msrPartitionGUID;
     layout->PartitionEntry[NUM0].Gpt.Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER; //0;
     wcscpy_s(layout->PartitionEntry[NUM0].Gpt.Name, VIRTUAL_DISK_GPT_MSR_PARTITION_NAMEW);
-    
+
     layout->PartitionEntry[NUM1].PartitionStyle = PARTITION_STYLE_GPT;
     layout->PartitionEntry[NUM1].StartingOffset.QuadPart =
         VIRTUAL_DISK_GPT_PARTITION_TABLE_SIZE_MININUM + VIRTUAL_DISK_MSR_PARTITION_SIZE_MININUM;
@@ -849,7 +849,7 @@ bool rawio::win32::InitVirtualDiskGPT(
         // failed to open physical drive
         return false;
     }
- 
+
     GET_VIRTUAL_DISK_INFO diskInfo = { 0 };
     diskInfo.Version = GET_VIRTUAL_DISK_INFO_IDENTIFIER;
     ULONG diskInfoSize = sizeof(GET_VIRTUAL_DISK_INFO);
@@ -910,7 +910,7 @@ static bool ListWin32LocalVolumePathW(std::vector<std::wstring>& wVolumeDevicePa
     }
     wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
     while (::FindNextVolumeW(handle, wVolumeNameBuffer, MAX_PATH)) {
-        wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));        
+        wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
     }
     ::FindVolumeClose(handle);
     handle = INVALID_HANDLE_VALUE;
@@ -976,7 +976,7 @@ static bool GetPhysicalDrivePathFromVolumePathW(const std::wstring& wVolumePath,
     return true;
 }
 
-// Get path like \\.\HarddiskVolumeX from \\.\PhysicalDriveX 
+// Get path like \\.\HarddiskVolumeX from \\.\PhysicalDriveX
 static bool GetVolumePathsFromPhysicalDrivePathW(
     const std::wstring& wPhysicalDrive,
     std::vector<std::wstring>& wVolumePathList)
@@ -1025,7 +1025,7 @@ bool rawio::win32::GetVolumeGuidNameByVolumeDevicePath(
     }
     wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
     while (::FindNextVolumeW(handle, wVolumeNameBuffer, MAX_PATH)) {
-        wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));        
+        wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
     }
     ::FindVolumeClose(handle);
     handle = INVALID_HANDLE_VALUE;

@@ -152,6 +152,7 @@ VolumeTaskSession VolumeBackupTask::NewVolumeTaskSession(
     session.sharedConfig->copyFilePath = copyFilePath;
     session.sharedConfig->checkpointFilePath = writerBitmapPath;
     session.sharedConfig->checkpointEnabled = m_backupConfig->enableCheckpoint;
+    session.sharedConfig->skipEmptyBlock = m_backupConfig->skipEmptyBlock;
     return session;
 }
 
