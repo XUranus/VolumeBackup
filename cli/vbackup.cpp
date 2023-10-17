@@ -1,3 +1,4 @@
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -15,9 +16,69 @@ using namespace volumeprotect;
 using namespace xuranus::getopt;
 using namespace xuranus::minilogger;
 
+struct CliArgs {
+    std::string     volumePath;
+    std::string     copyName;
+    CopyFormat      copyFormat;
+    std::string     copyDataDirPath;
+    std::string     copyMetaDirPath;
+    std::string     prevCopyMetaDirPath;
+    LoggerLevel     logLevel             { LoggerLevel::DEBUG };
+    bool            isRestore            { false };
+    bool            printHelp            { false };
+};
+
 static void PrintHelp()
 {
-    std::cout << "vbkup -v volume -n name -f format -d datadir -m metadir [-p prevmetadir]" << std::endl;
+    printf("Volume Backup Cli\n");
+    printf("==============================================================\n");
+    printf("Options:\n");
+    printf("-v | --volume=     \t  specify volume path\n");
+    printf("-n | --name=       \t  specify copy name\n");
+#ifdef _WIN32
+    printf("-f | --format=     \t  specify copy format [BIN, IMAGE, VHD_FIXED, VHD_DYNAMIC, VHDX_FIXED, VHDX_DYNAMIC]\n");
+#else
+    printf("-f | --format=     \t  specify copy format [BIN, IMAGE]\n");
+#endif
+    printf("-d | --data=       \t  specify copy data directory\n");
+    printf("-m | --meta=       \t  specify copy meta directory\n");
+    printf("-p | --prevmeta=   \t  specify previous copy meta directory\n");
+    printf("-r | --restore     \t  used when performing restore operation\n");
+    printf("-l | --loglevel=   \t  specify logger level [INFO, DEBUG]\n");
+    printf("-h | --help        \t  print help\n");
+}
+
+static CopyFormat ParseCopyFormat(const std::string& copyFormat)
+{
+    CopyFormat copyFormatEnum = CopyFormat::BIN;
+    if (copyFormat == "BIN") {
+        copyFormatEnum = CopyFormat::BIN;
+    } else if (copyFormat == "IMAGE") {
+        copyFormatEnum = CopyFormat::IMAGE;
+#ifdef _WIN32
+    } else if (copyFormat == "VHD_FIXED") {
+        copyFormatEnum = CopyFormat::VHD_FIXED;
+    } else if (copyFormat == "VHD_DYNAMIC") {
+        copyFormatEnum = CopyFormat::VHD_DYNAMIC;
+    } else if (copyFormat == "VHDX_FIXED") {
+        copyFormatEnum = CopyFormat::VHDX_FIXED;
+    } else if (copyFormat == "VHDX_DYNAMIC") {
+        copyFormatEnum = CopyFormat::VHDX_DYNAMIC;
+#endif
+    } else {
+        std::cerr << "invalid copy format input: " << copyFormat << std::endl;
+        assert(false);
+    }
+    return copyFormatEnum;
+}
+
+static LoggerLevel ParseLoggerLevel(const std::string& loggerLevelStr)
+{
+    LoggerLevel loggerLevel = LoggerLevel::DEBUG;
+    if (loggerLevelStr == "INFO") {
+        loggerLevel = LoggerLevel::INFO;
+    }
+    return loggerLevel;
 }
 
 static void PrintTaskStatistics(const TaskStatistics& statistics)
@@ -30,36 +91,116 @@ static void PrintTaskStatistics(const TaskStatistics& statistics)
         statistics.bytesToWrite, statistics.bytesWritten);
 }
 
-int ExecVolumeBackup(
-    BackupType backupType,
-    CopyFormat copyFormat,
-    const std::string& copyName,
-    const std::string& volumePath,
-    const std::string& prevCopyMetaDirPath,
-    const std::string& outputCopyDataDirPath,
-    const std::string& outputCopyMetaDirPath)
+static CliArgs ParseCliArgs(int argc, const char** argv)
+{
+    CliArgs cliAgrs;
+    GetOptionResult result = GetOption(
+        argv + 1, argc - 1,
+        "v:n:f:d:m:p:h:r:l:",
+        {"--volume=", "--name=", "--format", "--data=", "--meta=",
+        "--prevmeta=", "--help", "--restore", "--loglevel="});
+    for (const OptionResult opt: result.opts) {
+        if (opt.option == "v" || opt.option == "volume") {
+            cliAgrs.volumePath = opt.value;
+        } else if (opt.option == "n" || opt.option == "name") {
+            cliAgrs.copyName = opt.value;
+        } else if (opt.option == "f" || opt.option == "format") {
+            cliAgrs.copyFormat = ParseCopyFormat(opt.value);
+        } else if (opt.option == "d" || opt.option == "data") {
+            cliAgrs.copyDataDirPath = opt.value;
+        } else if (opt.option == "m" || opt.option == "meta") {
+            cliAgrs.copyMetaDirPath = opt.value;
+        } else if (opt.option == "p" || opt.option == "prevmeta") {
+            cliAgrs.prevCopyMetaDirPath = opt.value;
+        } else if (opt.option == "r" || opt.option == "restore") {
+            cliAgrs.isRestore = true;
+        } else if (opt.option == "l" || opt.option == "loglevel") {
+            cliAgrs.logLevel = ParseLoggerLevel(opt.value);
+        } else if (opt.option == "h" || opt.option == "help") {
+            cliAgrs.printHelp = true;
+        }
+    }
+    return cliAgrs;
+}
+
+static void PrintCliArgs(const CliArgs& cliArgs)
+{
+    static std::unordered_map<int, std::string> g_copyFormatStringTable {
+        { static_cast<int>(CopyFormat::BIN), "BIN" },
+        { static_cast<int>(CopyFormat::IMAGE), "IMAGE" },
+#ifdef _WIN32
+        { static_cast<int>(CopyFormat::VHD_FIXED), "VHD_FIXED" },
+        { static_cast<int>(CopyFormat::VHD_DYNAMIC), "VHD_DYNAMIC" },
+        { static_cast<int>(CopyFormat::VHDX_FIXED), "VHDX_FIXED" },
+        { static_cast<int>(CopyFormat::VHDX_DYNAMIC), "VHDX_DYNAMIC" },
+#endif
+    };
+    std::cout << "VolumePath: " << cliArgs.volumePath << std::endl;
+    std::cout << "CopyName: " << cliArgs.copyName << std::endl;
+    std::cout << "CopyFormat: " << g_copyFormatStringTable[static_cast<int>(cliArgs.copyFormat)] << std::endl;
+    std::cout << "CopyDataDirPath: " << cliArgs.copyDataDirPath << std::endl;
+    std::cout << "CopyMetaDirPath: " << cliArgs.copyMetaDirPath << std::endl;
+    std::cout << "PrevCopyMetaDirPath: " << cliArgs.prevCopyMetaDirPath << std::endl;
+}
+
+static bool ValidateCliArgs(const CliArgs& cliArgs)
+{
+    return !cliArgs.volumePath.empty()
+        && !cliArgs.copyDataDirPath.empty()
+        && !cliArgs.copyMetaDirPath.empty()
+        && !cliArgs.copyName.empty();
+}
+
+void InitLogger(const CliArgs& cliArgs)
+{
+    Logger::GetInstance()->SetLogLevel(cliArgs.logLevel);
+    using namespace xuranus::minilogger;
+    LoggerConfig conf {};
+    conf.target = LoggerTarget::FILE;
+    conf.archiveFilesNumMax = 10;
+    conf.fileName = "vbackup.log";
+#ifdef __linux__
+    conf.logDirPath = "/tmp/LoggerTest";
+#endif
+#ifdef _WIN32
+    conf.logDirPath = R"(C:\LoggerTest)";
+#endif
+    Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
+    if (!Logger::GetInstance()->Init(conf)) {
+        std::cerr << "Init logger failed" << std::endl;
+    }
+    return;
+}
+
+static int ExecVolumeBackup(const CliArgs& cliArgs)
 {
     uint32_t hasherWorkerNum = fsapi::ProcessorsNum();
-    std::cout << "using " << hasherWorkerNum << " processing units" << std::endl;
-
     VolumeBackupConfig backupConfig {};
-    backupConfig.copyFormat = copyFormat;
-    backupConfig.copyName = copyName;
-    backupConfig.backupType = backupType;
-    backupConfig.volumePath = volumePath;
-    backupConfig.prevCopyMetaDirPath = prevCopyMetaDirPath;
-    backupConfig.outputCopyDataDirPath = outputCopyDataDirPath;
-    backupConfig.outputCopyMetaDirPath = outputCopyMetaDirPath;
+    backupConfig.copyFormat = cliArgs.copyFormat;
+    backupConfig.copyName = cliArgs.copyName;
+    backupConfig.volumePath = cliArgs.volumePath;
+    backupConfig.prevCopyMetaDirPath = cliArgs.prevCopyMetaDirPath;
+    backupConfig.outputCopyDataDirPath = cliArgs.copyDataDirPath;
+    backupConfig.outputCopyMetaDirPath = cliArgs.copyMetaDirPath;
     backupConfig.blockSize = DEFAULT_BLOCK_SIZE;
     backupConfig.sessionSize = 3 * ONE_GB;
     backupConfig.hasherNum = hasherWorkerNum;
     backupConfig.hasherEnabled = true;
     backupConfig.enableCheckpoint = true;
 
+    if (backupConfig.prevCopyMetaDirPath.empty()) {
+        std::cout << "----- Perform Full Backup -----" << std::endl;
+        backupConfig.backupType = BackupType::FULL;
+    } else {
+        std::cout << "----- Perform Forever Increment Backup -----" << std::endl;
+        backupConfig.backupType = BackupType::FOREVER_INC;
+    }
+    
+    std::cout << "using " << hasherWorkerNum << " processing units" << std::endl;
     std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildBackupTask(backupConfig);
     if (task == nullptr) {
         std::cerr << "failed to build backup task" << std::endl;
-        return 1;
+        return -1;
     }
     task->Start();
     uint64_t prevWrittenBytes = 0;
@@ -76,57 +217,19 @@ int ExecVolumeBackup(
     return 0;
 }
 
-int ExecVolumeForeverIncrementBackup(
-    const std::string&  volumePath,
-    CopyFormat          copyFormat,
-    const std::string&  copyName,
-    const std::string&  prevCopyMetaDirPath,
-    const std::string&  copyDataDirPath,
-    const std::string&  copyMetaDirPath)
+static int ExecVolumeRestore(const CliArgs& cliAgrs)
 {
-    return ExecVolumeBackup(
-        BackupType::FOREVER_INC,
-        copyFormat,
-        copyName,
-        volumePath,
-        prevCopyMetaDirPath,
-        copyDataDirPath,
-        copyMetaDirPath);
-}
-
-int ExecVolumeFullBackup(
-    const std::string&  volumePath,
-    CopyFormat          copyFormat,
-    const std::string&  copyName,
-    const std::string&  copyDataDirPath,
-    const std::string&  copyMetaDirPath)
-{
-    return ExecVolumeBackup(
-        BackupType::FULL,
-        copyFormat,
-        copyName,
-        volumePath,
-        "",
-        copyDataDirPath,
-        copyMetaDirPath);
-}
-
-int ExecVolumeRestore(
-    const std::string& 	volumePath,
-    const std::string&  copyName,
-    const std::string&	copyDataDirPath,
-    const std::string&	copyMetaDirPath)
-{
+    std::cout << "----- Perform Copy Restore -----" << std::endl;
     VolumeRestoreConfig restoreConfig {};
-    restoreConfig.copyName = copyName;
-    restoreConfig.volumePath = volumePath;
-    restoreConfig.copyDataDirPath = copyDataDirPath;
-    restoreConfig.copyMetaDirPath = copyMetaDirPath;
+    restoreConfig.copyName = cliAgrs.copyName;
+    restoreConfig.volumePath = cliAgrs.volumePath;
+    restoreConfig.copyDataDirPath = cliAgrs.copyDataDirPath;
+    restoreConfig.copyMetaDirPath = cliAgrs.copyMetaDirPath;
 
     std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildRestoreTask(restoreConfig);
     if (task == nullptr) {
         std::cerr << "failed to build restore task" << std::endl;
-        return 1;
+        return -1;
     }
     task->Start();
     uint64_t prevWrittenBytes = 0;
@@ -145,108 +248,23 @@ int ExecVolumeRestore(
 
 int main(int argc, const char** argv)
 {
-    std::cout << "=== vbackup cli ===" << std::endl;
-    std::string volumePath;
-    std::string copyName;
-    std::string copyFormat;
-    std::string copyDataDirPath;
-    std::string copyMetaDirPath;
-    std::string prevCopyMetaDirPath;
-    std::string logLevel = "DEBUG";
-    bool isRestore = false;
-
-    GetOptionResult result = GetOption(
-        argv + 1, argc - 1,
-        "v:n:f:d:m:p:h:r:l:",
-        {"--volume=", "--name=", "--format", "--data=", "--meta=", "--prevmeta=", "--help", "--restore", "--loglevel="});
-    for (const OptionResult opt: result.opts) {
-        if (opt.option == "v" || opt.option == "volume") {
-            volumePath = opt.value;
-        } else if (opt.option == "n" || opt.option == "name") {
-            copyName = opt.value;
-        } else if (opt.option == "f" || opt.option == "format") {
-            copyFormat = opt.value;
-        } else if (opt.option == "d" || opt.option == "data") {
-            copyDataDirPath = opt.value;
-        } else if (opt.option == "m" || opt.option == "meta") {
-            copyMetaDirPath = opt.value;
-        } else if (opt.option == "p" || opt.option == "prevmeta") {
-            prevCopyMetaDirPath = opt.value;
-        } else if (opt.option == "r") {
-            isRestore = true;
-        } else if (opt.option == "l" || opt.option == "loglevel") {
-            logLevel = opt.value;
-        } else if (opt.option == "h") {
-            PrintHelp();
-            return 0;
-        }
-    }
-
-    if (volumePath.empty() || copyDataDirPath.empty() || copyMetaDirPath.empty()) {
+    std::cout << "----- Volume Backup Cli -----" << std::endl;
+    CliArgs cliArgs  = ParseCliArgs(argc, argv);
+    PrintCliArgs(cliArgs);
+    if (ValidateCliArgs(cliArgs)) {
         PrintHelp();
-        return 1;
+        return -1;
     }
-    std::cout << "VolumePath: " << volumePath << std::endl;
-    std::cout << "CopyName: " << copyName << std::endl;
-    std::cout << "CopyFormat: " << copyFormat << std::endl;
-    std::cout << "CopyDataDirPath: " << copyDataDirPath << std::endl;
-    std::cout << "CopyMetaDirPath: " << copyMetaDirPath << std::endl;
-    std::cout << "PrevCopyMetaDirPath: " << prevCopyMetaDirPath << std::endl;
-    std::cout << "LogLevel: " << logLevel << std::endl;
-
-    CopyFormat copyFormatEnum = CopyFormat::BIN;
-    if (copyFormat == "BIN") {
-        copyFormatEnum = CopyFormat::BIN;
-    } else if (copyFormat == "IMAGE") {
-        copyFormatEnum = CopyFormat::IMAGE;
-#ifdef _WIN32
-    } else if (copyFormat == "VHD_FIXED") {
-        copyFormatEnum = CopyFormat::VHD_FIXED;
-    } else if (copyFormat == "VHD_DYNAMIC") {
-        copyFormatEnum = CopyFormat::VHD_DYNAMIC;
-    } else if (copyFormat == "VHDX_FIXED") {
-        copyFormatEnum = CopyFormat::VHDX_FIXED;
-    } else if (copyFormat == "VHDX_DYNAMIC") {
-        copyFormatEnum = CopyFormat::VHDX_DYNAMIC;
-#endif
+    if (cliArgs.printHelp) {
+        PrintHelp();
+        return 0;
     }
+    InitLogger(cliArgs);
 
-    if (logLevel == "INFO") {
-        Logger::GetInstance()->SetLogLevel(LoggerLevel::INFO);
-    } else if (logLevel == "DEBUG") {
-        Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
+    if (cliArgs.isRestore) {
+        ExecVolumeRestore(cliArgs);
     } else {
-        std::cerr << "invalid logger level: " << logLevel << std::endl;
-        return 1;
-    }
-
-    using namespace xuranus::minilogger;
-    LoggerConfig conf {};
-    conf.target = LoggerTarget::FILE;
-    conf.archiveFilesNumMax = 10;
-    conf.fileName = "vbackup.log";
-#ifdef __linux__
-    conf.logDirPath = "/tmp/LoggerTest";
-#endif
-#ifdef _WIN32
-    conf.logDirPath = R"(C:\LoggerTest)";
-#endif
-    Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
-    if (!Logger::GetInstance()->Init(conf)) {
-        std::cerr << "Init logger failed" << std::endl;
-    }
-
-    if (isRestore) {
-        std::cout << "Doing copy restore" << std::endl;
-        ExecVolumeRestore(volumePath, copyName, copyDataDirPath, copyMetaDirPath);
-    } else if (prevCopyMetaDirPath.empty()) {
-        std::cout << "Doing full backup" << std::endl;
-        ExecVolumeFullBackup(
-            volumePath, copyFormatEnum, copyName, copyDataDirPath, copyMetaDirPath);
-    } else {
-        std::cout << "Doing increment backup" << std::endl;
-        ExecVolumeForeverIncrementBackup(
-            volumePath, copyFormatEnum, copyName, prevCopyMetaDirPath, copyDataDirPath, copyMetaDirPath);
+        ExecVolumeBackup(cliArgs);
     }
     Logger::GetInstance()->Destroy();
     return 0;

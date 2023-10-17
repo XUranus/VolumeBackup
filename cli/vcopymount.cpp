@@ -16,7 +16,6 @@
 #include <memory>
 #include <string>
 #include "GetOption.h"
-#include "Json.h"
 #include "Logger.h"
 #include "VolumeCopyMountProvider.h"
 
@@ -25,6 +24,20 @@ using namespace xuranus::getopt;
 using namespace xuranus::minilogger;
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
+
+struct CliArgs {
+    std::string     copyName;
+    std::string     copyDataDirPath;
+    std::string     copyMetaDirPath;
+    std::string     mountTargetPath;
+    std::string     outputDirPath;
+    std::string     mountFsType;
+    std::string     mountOptions;
+    std::string     mountRecordJsonFilePath;
+    bool            isMount                     { false };
+    bool            isUmount                    { false };
+    bool            printHelp                   { false };
+};
 
 static void PrintHelp()
 {
@@ -81,54 +94,8 @@ static bool UmountCopy(const std::string& mountRecordJsonFilePath)
     return true;
 }
 
-int main(int argc, const char** argv)
+static void InitLogger()
 {
-    std::cout << "=== vcopymount ===" << std::endl;
-    std::string copyName;
-    std::string copyDataDirPath;
-    std::string copyMetaDirPath;
-    std::string mountTargetPath;
-    std::string outputDirPath;
-    std::string mountFsType;
-    std::string mountOptions;
-
-    std::string mountRecordJsonFilePath;
-    bool isMount = false;
-    bool isUmount = false;
-
-    GetOptionResult result = GetOption(
-        argv + 1,
-        argc - 1,
-        "n:m:d:ht:o:",
-        {
-            "--name=", "--meta=","--data=", "--target=",
-            "--mount", "--umount=", "--output=", "--type=", "--option=" });
-    for (const OptionResult opt: result.opts) {
-        if (opt.option == "n" || opt.option == "name") {
-            copyName = opt.value;
-        } else if (opt.option == "d" || opt.option == "data") {
-            copyDataDirPath = opt.value;
-        } else if (opt.option == "m" || opt.option == "meta") {
-            copyMetaDirPath = opt.value;
-        } else if (opt.option == "target") {
-            mountTargetPath = opt.value;
-        } else if (opt.option == "mount") {
-            isMount = true;
-        } else if (opt.option == "umount") {
-            isUmount = true;
-            mountRecordJsonFilePath = opt.value;
-        } else if (opt.option == "output") {
-            outputDirPath = opt.value;
-        } else if (opt.option == "t" || opt.option == "type") {
-            mountFsType = opt.value;
-        } else if (opt.option == "o" || opt.option == "option") {
-            mountOptions = opt.value;
-        } else if (opt.option == "h") {
-            PrintHelp();
-            return 0;
-        }
-    }
-
     using namespace xuranus::minilogger;
     LoggerConfig conf {};
     conf.target = LoggerTarget::STDOUT;
@@ -136,21 +103,67 @@ int main(int argc, const char** argv)
     if (!Logger::GetInstance()->Init(conf)) {
         std::cerr << "Init logger failed" << std::endl;
     }
+}
 
-    if (isMount) {
+static CliArgs ParseCliArgs(int argc, const char** argv)
+{
+    CliArgs cliArgs {};
+    GetOptionResult result = GetOption(
+        argv + 1,
+        argc - 1,
+        "n:m:d:ht:o:",
+        {
+            "--name=", "--meta=","--data=", "--target=", "--help",
+            "--mount", "--umount=", "--output=", "--type=", "--option="});
+    for (const OptionResult opt: result.opts) {
+        if (opt.option == "n" || opt.option == "name") {
+            cliArgs.copyName = opt.value;
+        } else if (opt.option == "d" || opt.option == "data") {
+            cliArgs.copyDataDirPath = opt.value;
+        } else if (opt.option == "m" || opt.option == "meta") {
+            cliArgs.copyMetaDirPath = opt.value;
+        } else if (opt.option == "target") {
+            cliArgs.mountTargetPath = opt.value;
+        } else if (opt.option == "mount") {
+            cliArgs.isMount = true;
+        } else if (opt.option == "umount") {
+            cliArgs.isUmount = true;
+            cliArgs.mountRecordJsonFilePath = opt.value;
+        } else if (opt.option == "output") {
+            cliArgs.outputDirPath = opt.value;
+        } else if (opt.option == "t" || opt.option == "type") {
+            cliArgs.mountFsType = opt.value;
+        } else if (opt.option == "o" || opt.option == "option") {
+            cliArgs.mountOptions = opt.value;
+        } else if (opt.option == "h" || opt.option == "help") {
+            cliArgs.printHelp = true;
+        }
+    }
+    return cliArgs;
+}
+
+int main(int argc, const char** argv)
+{
+    std::cout << "----- Volume Copy Mount Cli ----" << std::endl;
+    InitLogger();
+    CliArgs cliArgs = ParseCliArgs(argc, argv);
+    if (cliArgs.printHelp) {
+        PrintHelp();
+        return 0;
+    }
+    if (cliArgs.isMount) {
         return !MountCopy(VolumeCopyMountConfig {
-            outputDirPath,
-            copyName,
-            copyMetaDirPath,
-            copyDataDirPath,
-            mountTargetPath,
-            mountFsType,
-            mountOptions
+            cliArgs.outputDirPath,
+            cliArgs.copyName,
+            cliArgs.copyMetaDirPath,
+            cliArgs.copyDataDirPath,
+            cliArgs.mountTargetPath,
+            cliArgs.mountFsType,
+            cliArgs.mountOptions
         });
     }
-    if (isUmount) {
-        return !UmountCopy(mountRecordJsonFilePath);
+    if (cliArgs.isUmount) {
+        return !UmountCopy(cliArgs.mountRecordJsonFilePath);
     }
-    PrintHelp();
     return 0;
 }

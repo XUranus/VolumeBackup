@@ -35,6 +35,7 @@ using namespace volumeprotect::fsapi;
 namespace {
     constexpr auto DEFAULT_PROCESSORS_NUM = 4;
     constexpr auto DEFAULT_MKDIR_MASK = 0755;
+    const int MNTENT_BUFFER_MAX = 4096;
 
 #ifdef _WIN32
     constexpr auto SEPARATOR = "\\";
@@ -368,9 +369,10 @@ bool fsapi::IsMountPoint(const std::string& dirPath)
         ERRLOG("failed to open /proc/mounts, errno %u", errno);
         return false;
     }
-    struct mntent* entry = nullptr;
-    while ((entry = ::getmntent(mountsFile)) != nullptr) {
-        if (std::string(entry->mnt_dir) == dirPath) {
+    struct mntent entry {};
+    char mntentBuffer[MNTENT_BUFFER_MAX] = { 0 };
+    while (::getmntent_r(mountsFile, &entry, mntentBuffer, MNTENT_BUFFER_MAX) != nullptr) {
+        if (std::string(entry.mnt_dir) == dirPath) {
             mounted = true;
             break;
         }
@@ -387,10 +389,11 @@ std::string fsapi::GetMountDevicePath(const std::string& mountTargetPath)
         ERRLOG("failed to open /proc/mounts, errno %u", errno);
         return "";
     }
-    struct mntent* entry = nullptr;
-    while ((entry = ::getmntent(mountsFile)) != nullptr) {
-        if (std::string(entry->mnt_dir) == mountTargetPath) {
-            devicePath = entry->mnt_fsname;
+    struct mntent entry {};
+    char mntentBuffer[MNTENT_BUFFER_MAX] = { 0 };
+    while (::getmntent_r(mountsFile, &entry, mntentBuffer, MNTENT_BUFFER_MAX) != nullptr) {
+        if (std::string(entry.mnt_dir) == mountTargetPath) {
+            devicePath = entry.mnt_fsname;
             break;
         }
     }
