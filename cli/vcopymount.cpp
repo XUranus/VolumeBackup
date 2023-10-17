@@ -165,5 +165,6 @@ int main(int argc, const char** argv)
     if (cliArgs.isUmount) {
         return !UmountCopy(cliArgs.mountRecordJsonFilePath);
     }
+    PrintHelp();
     return 0;
 }

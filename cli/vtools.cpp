@@ -259,7 +259,10 @@ VolumeInfo GetVolumeInfoLinux(const std::string& volumePath)
 
 int PrintHelp()
 {
-    std::cout << "Usage: voltool -v [path]" << std::endl;
+    ::printf("vtools [options...]   \t util for getting local volume information\n");
+    ::printf("[ -v | --volume= ]    \t query specified volume information\n");
+    ::printf("[ -l | --list ]       \t list all local volumes\n");
+    ::printf("[ -h | --help ]       \t show help\n");
     return 0;
 }
 
