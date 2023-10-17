@@ -3,11 +3,7 @@
 
 #ifdef __linux__
 
-#include "VolumeProtectMacros.h"
-// external logger/json library
-#include "Json.h"
 #include "VolumeUtils.h"
-
 #include "VolumeCopyMountProvider.h"
 
 namespace volumeprotect {

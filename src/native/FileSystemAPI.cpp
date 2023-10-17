@@ -28,7 +28,6 @@
 #include <fstream>
 #include "Logger.h"
 #include "native/FileSystemAPI.h"
-#include "native/RawIO.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::fsapi;

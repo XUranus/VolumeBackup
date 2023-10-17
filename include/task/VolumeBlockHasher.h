@@ -1,7 +1,6 @@
 #ifndef VOLUMEBACKUP_BLOCK_HASHER_HEADER
 #define VOLUMEBACKUP_BLOCK_HASHER_HEADER
 
-#include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
 
 namespace volumeprotect {

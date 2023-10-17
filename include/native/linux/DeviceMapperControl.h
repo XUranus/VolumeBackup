@@ -2,7 +2,11 @@
 #define VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 
 #ifdef __linux__
-#include "VolumeProtectMacros.h"
+
+#include <cstdint>
+#include <string>
+#include <vector>
+#include <memory>
 
 namespace volumeprotect {
 namespace devicemapper {

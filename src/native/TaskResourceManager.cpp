@@ -1,4 +1,5 @@
 #include "native/TaskResourceManager.h"
+#include "common/VolumeUtils.h"
 #include "Logger.h"
 #include "native/RawIO.h"
 #include "native/FileSystemAPI.h"
@@ -13,6 +14,7 @@
 
 using namespace volumeprotect;
 using namespace volumeprotect::rawio;
+using namespace volumeprotect::util;
 
 namespace {
     constexpr auto DUMMY_SESSION_INDEX = 0;

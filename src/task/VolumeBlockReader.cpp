@@ -1,6 +1,5 @@
 #include "Logger.h"
 #include "native/RawIO.h"
-#include "native/FileSystemAPI.h"
 #include "VolumeBlockReader.h"
 
 using namespace volumeprotect;

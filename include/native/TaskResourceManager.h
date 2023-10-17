@@ -1,11 +1,7 @@
 #ifndef VOLUMEBACKUP_TASK_RESOURCE_MANAGER_HEADER
 #define VOLUMEBACKUP_TASK_RESOURCE_MANAGER_HEADER
 
-#include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
-#include "VolumeProtectTaskContext.h"
-#include "VolumeUtils.h"
-#include "native/RawIO.h"
 
 namespace volumeprotect {
 

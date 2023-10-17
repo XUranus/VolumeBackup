@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <memory>
 #include <thread>
 
 #include <unistd.h>
@@ -391,7 +392,7 @@ bool devicemapper::GetDevicePathByName(const std::string& name, std::string& dmD
         // DM_DEV_STATUS failed for name
         return false;
     }
-    uint32_t devNum = ::minor(io.dev);
+    uint32_t devNum = minor(io.dev);
     dmDevicePath = DM_DEVICE_PATH_PREFIX + std::to_string(devNum);
     return true;
 }

@@ -3,7 +3,8 @@
 
 #ifdef __linux__
 
-#include "VolumeProtectMacros.h"
+#include <string>
+#include <cstdint>
 
 namespace volumeprotect {
 namespace loopback {

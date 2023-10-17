@@ -1,7 +1,6 @@
 #ifndef VOLUMEBACKUP_BACKUPTASK_HEADER
 #define VOLUMEBACKUP_BACKUPTASK_HEADER
 
-#include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
 #include "native/TaskResourceManager.h"

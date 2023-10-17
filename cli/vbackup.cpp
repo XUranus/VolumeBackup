@@ -1,4 +1,3 @@
-#include "native/RawIO.h"
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -7,19 +6,10 @@
 #include <ostream>
 #include <string>
 
-#ifdef __linux__
-#include <getopt.h>
-#include <unistd.h>
-#endif
-
 #include "GetOption.h"
 #include "native/FileSystemAPI.h"
-#include "native/win32/Win32RawIO.h"
 #include "VolumeProtector.h"
 #include "Logger.h"
-
-
-#include "native/TaskResourceManager.h"
 
 using namespace volumeprotect;
 using namespace xuranus::getopt;

@@ -5,7 +5,6 @@
 #include "VolumeBlockReader.h"
 #include "VolumeBlockWriter.h"
 #include "BlockingQueue.h"
-#include "native/FileSystemAPI.h"
 #include "VolumeRestoreTask.h"
 
 using namespace volumeprotect;

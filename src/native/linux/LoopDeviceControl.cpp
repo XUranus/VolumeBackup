@@ -9,7 +9,6 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <unistd.h>
-
 #include <string>
 #include <memory>
 

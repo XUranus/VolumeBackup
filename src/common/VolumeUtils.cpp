@@ -1,4 +1,3 @@
-#include "Logger.h"
 #include "VolumeUtils.h"
 #include <string>
 

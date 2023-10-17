@@ -1,9 +1,5 @@
 #ifdef __linux__
 
-#include "native/linux/LinuxLoopbackMountProvider.h"
-#include "VolumeCopyMountProvider.h"
-#include "Logger.h"
-
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/mount.h>
@@ -15,6 +11,9 @@
 
 #include "native/FileSystemAPI.h"
 #include "native/linux/LoopDeviceControl.h"
+#include "VolumeCopyMountProvider.h"
+#include "Logger.h"
+#include "native/linux/LinuxLoopbackMountProvider.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::util;

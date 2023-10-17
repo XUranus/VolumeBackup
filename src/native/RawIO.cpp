@@ -6,7 +6,6 @@
 #include <fstream>
 #include <memory>
 #include "Logger.h"
-#include "VolumeUtils.h"
 #include "native/RawIO.h"
 
 using namespace volumeprotect;

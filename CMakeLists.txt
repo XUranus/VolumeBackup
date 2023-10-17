@@ -22,6 +22,8 @@ IF(${CMAKE_HOST_WIN32})
         GLOB_RECURSE
         VOLUMEPROTECTPROTECT_SOURCES
         "src/*.cpp"
+        "src/common/*.cpp"
+        "src/task*.cpp"
         "src/native/*.cpp"
         "src/native/win32/*.cpp"
     )
@@ -30,6 +32,8 @@ ELSE()
         GLOB_RECURSE
         VOLUMEPROTECTPROTECT_SOURCES
         "src/*.cpp"
+        "src/common/*.cpp"
+        "src/task*.cpp"
         "src/native/*.cpp"
         "src/native/linux/*.cpp"
     )
@@ -39,6 +43,9 @@ FILE(
     GLOB_RECURSE
     VOLUMEPROTECTPROTECT_HEADERS
     "include/*.h"
+    "include/common/*.h"
+    "include/task/*.h"
+    "include/native/*.h"
 )
 
 MESSAGE("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
@@ -46,6 +53,8 @@ MESSAGE("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
 
 INCLUDE_DIRECTORIES(
     "include"
+    "include/common"
+    "include/task"
     "include/native"
     "dependency/minijson"
     "dependency/minilogger"

@@ -3,7 +3,6 @@
 #ifndef VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
 
-#include "VolumeProtectMacros.h"
 // external logger/json library
 #include "Json.h"
 #include "VolumeUtils.h"
