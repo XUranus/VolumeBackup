@@ -248,9 +248,7 @@ static int ExecVolumeRestore(const CliArgs& cliAgrs)
 
 int main(int argc, const char** argv)
 {
-    std::cout << "----- Volume Backup Cli -----" << std::endl;
     CliArgs cliArgs  = ParseCliArgs(argc, argv);
-    PrintCliArgs(cliArgs);
     if (ValidateCliArgs(cliArgs)) {
         PrintHelp();
         return -1;
@@ -259,6 +257,8 @@ int main(int argc, const char** argv)
         PrintHelp();
         return 0;
     }
+    std::cout << "----- Volume Backup Cli -----" << std::endl;
+    PrintCliArgs(cliArgs);
     InitLogger(cliArgs);
 
     if (cliArgs.isRestore) {

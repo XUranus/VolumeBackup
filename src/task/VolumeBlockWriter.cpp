@@ -109,9 +109,9 @@ bool VolumeBlockWriter::NeedToWrite(uint8_t* buffer, int length) const
     }
     if (buffer[0] == 0 && !::memcmp(buffer, buffer + 1, length - 1)) {
         // is all zero
-        return true;
+        return false;
     }
-    return false;
+    return true;
 }
 
 void VolumeBlockWriter::MainThread()
