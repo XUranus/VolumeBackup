@@ -249,7 +249,7 @@ static int ExecVolumeRestore(const CliArgs& cliAgrs)
 int main(int argc, const char** argv)
 {
     CliArgs cliArgs  = ParseCliArgs(argc, argv);
-    if (ValidateCliArgs(cliArgs)) {
+    if (!ValidateCliArgs(cliArgs)) {
         PrintHelp();
         return -1;
     }

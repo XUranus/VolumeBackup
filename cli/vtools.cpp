@@ -36,6 +36,14 @@
 
 using namespace xuranus::getopt;
 
+namespace {
+    // NT kernel space device path starts with "\Device" while user space device path starts with "\\."
+    constexpr auto WKERNEL_SPACE_DEVICE_PATH_PREFIX = LR"(\Device)";
+    constexpr auto WUSER_SPACE_DEVICE_PATH_PREFIX = LR"(\\.)";
+    constexpr auto WDEVICE_PHYSICAL_DRIVE_PREFIX = LR"(\\.\PhysicalDrive)";
+    constexpr auto WDEVICE_HARDDISK_VOLUME_PREFIX = LR"(\\.\HarddiskVolume)";
+}
+
 class SystemApiException : public std::exception {
 public:
     // Constructor
@@ -282,16 +290,129 @@ int PrintVolumeInfo(const std::string& volumePath)
     return 0;
 }
 
+#ifdef _WIN32
+std::vector<std::wstring> GetWin32VolumePathListW(const std::wstring& wVolumeName)
+{
+    /* https://learn.microsoft.com/en-us/windows/_WIN32/fileio/displaying-volume-paths */
+    if (wVolumeName.size() < 4 ||
+        wVolumeName[0] != L'\\' ||
+        wVolumeName[1] != L'\\' ||
+        wVolumeName[2] != L'?' ||
+        wVolumeName[3] != L'\\' ||
+        wVolumeName.back() != L'\\') { /* illegal volume name */
+        return {};
+    }
+    std::vector<std::wstring> wPathList;
+    PWCHAR devicePathNames = nullptr;
+    DWORD charCount = MAX_PATH + 1;
+    bool success = false;
+    while (true) {
+        devicePathNames = (PWCHAR) new BYTE[charCount * sizeof(WCHAR)];
+        if (!devicePathNames) { /* failed to malloc on heap */
+            return {};
+        }
+        success = ::GetVolumePathNamesForVolumeNameW(
+            wVolumeName.c_str(),
+            devicePathNames,
+            charCount,
+            &charCount
+        );
+        if (success || ::GetLastError() != ERROR_MORE_DATA) {
+            break;
+        }
+        delete[] devicePathNames;
+        devicePathNames = nullptr;
+    }
+    if (success) {
+        for (PWCHAR nameIdx = devicePathNames;
+            nameIdx[0] != L'\0';
+            nameIdx += ::wcslen(nameIdx) + 1) {
+            wPathList.push_back(std::wstring(nameIdx));
+        }
+    }
+    if (devicePathNames != nullptr) {
+        delete[] devicePathNames;
+        devicePathNames = nullptr;
+    }
+    return wPathList;
+}
+
+
+int PrintWin32VolumeList()
+{
+    WCHAR wVolumeNameBuffer[MAX_PATH] = L"";
+    std::vector<std::wstring> wVolumesNames;
+    HANDLE handle = ::FindFirstVolumeW(wVolumeNameBuffer, MAX_PATH);
+    if (handle == INVALID_HANDLE_VALUE) {
+        ::FindVolumeClose(handle);
+        /* find failed */
+        return false;
+    }
+    wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
+    while (::FindNextVolumeW(handle, wVolumeNameBuffer, MAX_PATH)) {
+        wVolumesNames.push_back(std::wstring(wVolumeNameBuffer));
+    }
+    ::FindVolumeClose(handle);
+    handle = INVALID_HANDLE_VALUE;
+    int i = 0;
+    for (const std::wstring& wVolumeName : wVolumesNames) {
+        if (wVolumeName.size() < 4 ||
+            wVolumeName[0] != L'\\' ||
+            wVolumeName[1] != L'\\' ||
+            wVolumeName[2] != L'?' ||
+            wVolumeName[3] != L'\\' ||
+            wVolumeName.back() != L'\\') { // illegal volume name
+            continue;
+        }
+        std::wcout << L"Name: " << wVolumeName << std::endl;
+        std::wstring wVolumeParam = wVolumeName;
+        wVolumeParam.pop_back(); // QueryDosDeviceW does not allow a trailing backslash
+        wVolumeParam = wVolumeParam.substr(4);
+        WCHAR wDeviceNameBuffer[MAX_PATH] = L"";
+        DWORD charCount = ::QueryDosDeviceW(wVolumeParam.c_str(), wDeviceNameBuffer, ARRAYSIZE(wDeviceNameBuffer));
+        if (charCount == 0) {
+            std::wcout << std::endl;
+            continue;
+        }
+        // convert kernel path to user path
+        std::wstring wVolumeDevicePath = wDeviceNameBuffer;
+        auto pos = wVolumeDevicePath.find(WKERNEL_SPACE_DEVICE_PATH_PREFIX);
+        if (pos == 0) {
+            wVolumeDevicePath = WUSER_SPACE_DEVICE_PATH_PREFIX +
+                wVolumeDevicePath.substr(std::wstring(WKERNEL_SPACE_DEVICE_PATH_PREFIX).length());
+        }
+        std::wcout << L"Path: " << wVolumeDevicePath << std::endl;
+        std::vector<std::wstring> wVolumePathList = GetWin32VolumePathListW(wVolumeName);
+        for (const std::wstring& wPath : wVolumePathList) {
+            std::wcout << wPath << std::endl;
+        }
+        std::wcout << std::endl;
+    }
+    return true;
+}
+#endif
+
+int PrintVolumeList()
+{
+#ifdef _WIN32
+    return PrintWin32VolumeList();
+#else
+    return 0;
+#endif
+}
+
 int main(int argc, char** argv)
 {
     GetOptionResult result = GetOption(
         const_cast<const char**>(argv) + 1,
         argc - 1,
-        "v:h",
-        { "volume=", "help" });
+        "v:hl",
+        { "volume=", "help", "list"});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "h" || opt.option == "help") {
             return PrintHelp();
+        } else if (opt.option == "l" || opt.option == "list") {
+            return PrintVolumeList();
         } else if (opt.option == "v" || opt.option == "volume") {
             return PrintVolumeInfo(opt.value);
         }
