@@ -1,10 +1,10 @@
 # VolumeBackup
-Volume backup/restore util for Windows and Linux
+Volume backup/restore library and cli tools for Windows and Linux
 
  - [X] **FULL BACKUP** and **FOREVER INCREMENT BACKUP** support
  - [X] `*.img`,`*.vhd`,`*.vhdx` copy format support
- - [X] Volume copy mount support
- - [X] Checkpoint support
+ - [X] volume copy mount support
+ - [X] checkpoint support
 
 ## Require
  - CXX 11
@@ -16,7 +16,7 @@ clone this repository and it's dependency recusively:
 ```bash
 git clone git@github.com:XUranus/VolumeBackup.git --recursive
 ```
-build library and executable:
+build library `volumebackup` and executable cli tools `vbackup`,`vcopymount` and `vtools`:
 ```bash
 mkdir build && cd build
 cmake .. && cmake --build .
@@ -33,7 +33,7 @@ cmake --build .
 make volumebackup_coverage_test
 ```
 
-build JNI volume copy mount extension `libvolumemount_jni.so`:
+build JNI volume copy mount extension library `libvolumemount_jni.so`:
 ```bash
 cmake .. -DJNI_INCLUDE=your_jni_headers_directory_path && cmake --build .
 ```
@@ -70,11 +70,12 @@ Specify a volume path and output data/meta directory to store copy and it's meta
 ```
 vbackup --volume=\\.\HarddiskVolume3 --data=D:\volumecopy\data --meta=D:\volumecopy\meta --name=diskC
 ```
-If you had backuped a copy fully, you can specify the meta directory of last full copy to perform forever increment copy basing at the last copy data:
+If you have backuped a copy fully, you can specify the meta directory of last full copy to perform forever increment backup using path of previous full copy data (previous full backup copy data will be covered this time):
 ```
 vbackup --volume=\\.\HarddiskVolume3 --data=D:\volumecopy\data --meta=D:\volumecopy\meta2 --name=diskC --prevmeta=D:\volumecopy\meta
 ```
-(the previous full copy data will be covered)
+
+> For the sake of data consistency, a umounted volume or a snapshot volume is recommend to be used for backup. On Windows, you can use VSS(Volume Shadow Service) to create a shadow copy, the volume path would be in the form of `\\.\HarddiskVolumeShadowCopyX`, while on Linux, you and use LVM(Logical Volume Management) to create volume snapshot, the path to backup may be look like `\dev\mapper\snap-xxxxx-xxxxx-xxxxx-xxxxx`.
 
 3. Use `vcopymount` to mount a volume copy
 ```
