@@ -1,24 +1,28 @@
-CMAKE_MINIMUM_REQUIRED (VERSION 3.14)
-SET(Project volumebackup)
-PROJECT(${Project} C CXX)
-SET(SOURCE_DIR ${${Project}_SOURCE_DIR})
+cmake_minimum_required (VERSION 3.14)
+set(Project volumebackup)
+project(${Project} C CXX)
+set(SOURCE_DIR ${${Project}_SOURCE_DIR})
 
-MESSAGE("Project = ${Project}")
-MESSAGE("SOURCE_DIR = ${SOURCE_DIR}")
-MESSAGE("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
-MESSAGE("COVERAGE = ${COVERAGE}")
+message("Project = ${Project}")
+message("SOURCE_DIR = ${SOURCE_DIR}")
+message("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+message("COVERAGE = ${COVERAGE}")
+
+message (STATUS "Build documentation open")
+include ("docs/BuildDoxygen.cmake")
+build_doxygen()
 
 # supress MSVC/GCC warnings
-IF(${CMAKE_HOST_WIN32})
-    SET(CMAKE_CXX_FLAGS_DEBUG "/MTd /Zi /Ob0 /Od /RTC1")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
-ELSE()
+if(${CMAKE_HOST_WIN32})
+    set(CMAKE_CXX_FLAGS_DEBUG "/MTd /Zi /Ob0 /Od /RTC1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
+else()
     ADD_COMPILE_OPTIONS(-Wno-format-security)
-ENDIF()
+endif()
 
-IF(${CMAKE_HOST_WIN32})
-    FILE(
+if(${CMAKE_HOST_WIN32})
+    file(
         GLOB_RECURSE
         VOLUMEPROTECTPROTECT_SOURCES
         "src/*.cpp"
@@ -27,8 +31,8 @@ IF(${CMAKE_HOST_WIN32})
         "src/native/*.cpp"
         "src/native/win32/*.cpp"
     )
-ELSE()
-    FILE(
+else()
+    file(
         GLOB_RECURSE
         VOLUMEPROTECTPROTECT_SOURCES
         "src/*.cpp"
@@ -37,7 +41,7 @@ ELSE()
         "src/native/*.cpp"
         "src/native/linux/*.cpp"
     )
-ENDIF()
+endif()
 
 FILE(
     GLOB_RECURSE
@@ -48,10 +52,10 @@ FILE(
     "include/native/*.h"
 )
 
-MESSAGE("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
-MESSAGE("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
+message("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
+message("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
 
-INCLUDE_DIRECTORIES(
+include_directories(
     "include"
     "include/common"
     "include/task"
@@ -60,34 +64,34 @@ INCLUDE_DIRECTORIES(
     "dependency/minilogger"
 )
 
-ADD_SUBDIRECTORY(dependency/minijson)
-ADD_SUBDIRECTORY(dependency/minilogger)
+add_subdirectory(dependency/minijson)
+add_subdirectory(dependency/minilogger)
 
-IF (NOT "${JNI_INCLUDE}" STREQUAL "")
-    MESSAGE("COMPILE JNI EXTENSION, INCLUDE ${JNI_INCLUDE}")
-    ADD_SUBDIRECTORY(extension/java)
-ENDIF()
+if (NOT "${JNI_INCLUDE}" STREQUAL "")
+    message("COMPILE JNI EXTENSION, INCLUDE ${JNI_INCLUDE}")
+    add_subdirectory(extension/java)
+endif()
 
 # build a dynamic library
-MESSAGE("Build libvolumebackup dynamic library ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}")
-SET(VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET ${Project})
-ADD_LIBRARY(
+message("Build libvolumebackup dynamic library ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}")
+set(VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET ${Project})
+add_library(
     ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
     SHARED
     ${VOLUMEPROTECTPROTECT_SOURCES} ${VOLUMEPROTECTPROTECT_HEADERS}
 )
-SET_PROPERTY(
+set_property(
     TARGET ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
     PROPERTY CXX_STANDARD 11
 )
 # to generate export library when build dynamic library, pass LIBRARY_EXPORT macro
-TARGET_COMPILE_DEFINITIONS(
+target_compile_definitions(
     ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
     PRIVATE -DLIBRARY_EXPORT
 )
 # link again dynamic libs
-IF(${CMAKE_HOST_WIN32})
-    TARGET_LINK_LIBRARIES(
+if(${CMAKE_HOST_WIN32})
+    target_link_libraries(
         ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
         minijson
         minilogger
@@ -97,20 +101,20 @@ IF(${CMAKE_HOST_WIN32})
         uuid
         Rpcrt4
     )
-ELSE()
-    TARGET_LINK_LIBRARIES(
+else()
+    target_link_libraries(
         ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
         minijson
         minilogger
         # third part dependency (linux gcc)
         uuid
     )
-ENDIF()
+endif()
 
 
 # build a static library
-MESSAGE("Build libvolumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
-SET(VOLUMEPROTECT_STATIC_LIBRARY_TARGET ${Project}_static)
+message("Build libvolumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
+set(VOLUMEPROTECT_STATIC_LIBRARY_TARGET ${Project}_static)
 ADD_LIBRARY(
     ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
     STATIC
@@ -121,7 +125,7 @@ SET_PROPERTY(
     PROPERTY CXX_STANDARD 11
 )
 # link againt static libs
-IF(${CMAKE_HOST_WIN32})
+if(${CMAKE_HOST_WIN32})
     TARGET_LINK_LIBRARIES(
         ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
         minijson_static
@@ -140,20 +144,20 @@ ELSE()
         # third part dependency (linux gcc)
         uuid
     )
-ENDIF()
+endif()
 
 # set -DCMAKE_BUILD_TYPE=Debug to enable LLT, set -DCOVERAGE=ON to enable code coverage
 IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
     # these config must be put at the level of source code in order to append compile flags
     IF ("${COVERAGE}" STREQUAL "lcov" OR "${COVERAGE}" STREQUAL "gcovr")
-        MESSAGE("code coverage is enabled, COVERAGE = ${COVERAGE}, append coverage compiler flags")
+        message("code coverage is enabled, COVERAGE = ${COVERAGE}, append coverage compiler flags")
         INCLUDE(${SOURCE_DIR}/test/CodeCoverage.cmake)
         APPEND_COVERAGE_COMPILER_FLAGS()
-    ENDIF()
+    endif()
 
     ENABLE_TESTING()
-    ADD_SUBDIRECTORY("test")
-ENDIF()
+    add_subdirectory("test")
+endif()
 
 # build executable tools
 ADD_EXECUTABLE (vbackup
@@ -170,7 +174,7 @@ SET_PROPERTY(TARGET vbackup PROPERTY CXX_STANDARD 11)
 SET_PROPERTY(TARGET vtools PROPERTY CXX_STANDARD 11)
 
 # link vbackup executable
-IF(${CMAKE_HOST_WIN32})
+if(${CMAKE_HOST_WIN32})
     TARGET_LINK_LIBRARIES(
         vbackup
         volumebackup_static
@@ -190,7 +194,7 @@ ELSE()
         minijson_static
         minilogger_static
     )
-ENDIF()
+endif()
 
 # build vtools executable
 TARGET_LINK_LIBRARIES(
