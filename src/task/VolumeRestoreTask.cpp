@@ -8,7 +8,8 @@
 #include "VolumeRestoreTask.h"
 
 using namespace volumeprotect;
-using namespace volumeprotect::util;
+using namespace volumeprotect::task;
+using namespace volumeprotect::common;
 
 namespace {
     constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
@@ -84,7 +85,7 @@ bool VolumeRestoreTask::Prepare()
         uint64_t sessionSize = segment.length;
         int sessionIndex = segment.index;
         INFOLOG("Size = %llu sessionOffset %d sessionSize %d", volumeSize, sessionOffset, sessionSize);
-        std::string copyFilePath = util::GetCopyDataFilePath(
+        std::string copyFilePath = common::GetCopyDataFilePath(
             m_restoreConfig->copyDataDirPath, m_volumeCopyMeta->copyName, copyFormat, sessionIndex);
         VolumeTaskSession session {};
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();

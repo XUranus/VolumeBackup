@@ -19,7 +19,7 @@ namespace {
 
 using namespace volumeprotect;
 
-std::string util::GetChecksumBinPath(
+std::string common::GetChecksumBinPath(
     const std::string&  copyMetaDirPath,
     const std::string&  copyName,
     int                 sessionIndex)
@@ -28,7 +28,7 @@ std::string util::GetChecksumBinPath(
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
-std::string util::GetCopyDataFilePath(
+std::string common::GetCopyDataFilePath(
     const std::string&  copyDataDirPath,
     const std::string&  copyName,
     CopyFormat          copyFormat,
@@ -52,7 +52,7 @@ std::string util::GetCopyDataFilePath(
     return copyDataDirPath + SEPARATOR + filename;
 }
 
-std::string util::GetWriterBitmapFilePath(
+std::string common::GetWriterBitmapFilePath(
     const std::string&  copyMetaDirPath,
     const std::string&  copyName,
     int                 sessionIndex)
@@ -61,13 +61,13 @@ std::string util::GetWriterBitmapFilePath(
     return copyMetaDirPath + SEPARATOR + filename;
 }
 
-std::string util::GetFileName(const std::string& fullpath)
+std::string common::GetFileName(const std::string& fullpath)
 {
     auto pos = fullpath.rfind(SEPARATOR);
     return pos == std::string::npos ? fullpath : fullpath.substr(pos + 1);
 }
 
-std::string util::GetParentDirectoryPath(const std::string& fullpath)
+std::string common::GetParentDirectoryPath(const std::string& fullpath)
 {
     std::string parentDirPath = fullpath;
     while (!parentDirPath.empty() && parentDirPath.back() == SEPARATOR[0]) {
@@ -77,7 +77,7 @@ std::string util::GetParentDirectoryPath(const std::string& fullpath)
     return pos == std::string::npos ? "" : fullpath.substr(0, pos);
 }
 
-bool util::WriteVolumeCopyMeta(
+bool common::WriteVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     const std::string& copyName,
     const VolumeCopyMeta& volumeCopyMeta)
@@ -86,7 +86,7 @@ bool util::WriteVolumeCopyMeta(
     return JsonSerialize(volumeCopyMeta, filepath);
 }
 
-bool util::ReadVolumeCopyMeta(
+bool common::ReadVolumeCopyMeta(
     const std::string& copyMetaDirPath,
     const std::string& copyName,
     VolumeCopyMeta& volumeCopyMeta)

@@ -10,7 +10,8 @@
 #include "VolumeBackupTask.h"
 
 using namespace volumeprotect;
-using namespace volumeprotect::util;
+using namespace volumeprotect::common;
+using namespace volumeprotect::task;
 
 namespace {
     constexpr auto TASK_CHECK_SLEEP_INTERVAL = std::chrono::seconds(1);
@@ -97,13 +98,13 @@ bool VolumeBackupTask::Prepare()
             sessionSize = m_volumeSize - sessionOffset;
         }
         volumeCopyMeta.segments.emplace_back(CopySegment {
-            util::GetFileName(util::GetCopyDataFilePath(
+            common::GetFileName(common::GetCopyDataFilePath(
                 m_backupConfig->outputCopyDataDirPath,
                 m_backupConfig->copyName,
                 m_backupConfig->copyFormat,
                 sessionIndex
             )),
-            util::GetFileName(util::GetChecksumBinPath(
+            common::GetFileName(common::GetChecksumBinPath(
                 m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, sessionIndex
             )),
             sessionIndex,
@@ -125,16 +126,16 @@ bool VolumeBackupTask::Prepare()
 VolumeTaskSession VolumeBackupTask::NewVolumeTaskSession(
     uint64_t sessionOffset, uint64_t sessionSize, int sessionIndex) const
 {
-    std::string lastestChecksumBinPath = util::GetChecksumBinPath(
+    std::string lastestChecksumBinPath = common::GetChecksumBinPath(
         m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, sessionIndex);
-    std::string copyFilePath = util::GetCopyDataFilePath(
+    std::string copyFilePath = common::GetCopyDataFilePath(
         m_backupConfig->outputCopyDataDirPath, m_backupConfig->copyName, m_backupConfig->copyFormat, sessionIndex);
-    std::string writerBitmapPath = util::GetWriterBitmapFilePath(
+    std::string writerBitmapPath = common::GetWriterBitmapFilePath(
         m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, sessionIndex);
     // for increment backup, set previous checksum bin path
     std::string prevChecksumBinPath = "";
     if (IsIncrementBackup()) {
-        prevChecksumBinPath = util::GetChecksumBinPath(
+        prevChecksumBinPath = common::GetChecksumBinPath(
             m_backupConfig->prevCopyMetaDirPath, m_backupConfig->copyName, sessionIndex);
     }
 
@@ -322,7 +323,7 @@ bool VolumeBackupTask::LoadSessionPreviousCopyChecksum(std::shared_ptr<VolumeTas
 bool VolumeBackupTask::SaveVolumeCopyMeta(
     const std::string& copyMetaDirPath, const std::string& copyName, const VolumeCopyMeta& volumeCopyMeta) const
 {
-    return util::WriteVolumeCopyMeta(copyMetaDirPath, copyName, volumeCopyMeta);
+    return common::WriteVolumeCopyMeta(copyMetaDirPath, copyName, volumeCopyMeta);
 }
 
 bool VolumeBackupTask::ValidateIncrementBackup() const
@@ -334,7 +335,7 @@ bool VolumeBackupTask::ValidateIncrementBackup() const
         return false;
     }
     VolumeCopyMeta volumeCopyMeta {};
-    if (!util::ReadVolumeCopyMeta(m_backupConfig->prevCopyMetaDirPath, m_backupConfig->copyName, volumeCopyMeta)) {
+    if (!common::ReadVolumeCopyMeta(m_backupConfig->prevCopyMetaDirPath, m_backupConfig->copyName, volumeCopyMeta)) {
         ERRLOG("failed to read previous copy meta in %s", m_backupConfig->prevCopyMetaDirPath.c_str());
         return false;
     }

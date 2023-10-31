@@ -16,7 +16,7 @@
 #include "native/linux/LinuxLoopbackMountProvider.h"
 
 using namespace volumeprotect;
-using namespace volumeprotect::util;
+using namespace volumeprotect::common;
 using namespace volumeprotect::mount;
 using namespace volumeprotect::fsapi;
 
@@ -111,7 +111,7 @@ bool LinuxLoopbackMountProvider::Mount()
     mountRecord.mountFsType = m_mountFsType;
     mountRecord.mountOptions = m_mountOptions;
     std::string filepath = GetMountRecordPath();
-    if (!util::JsonSerialize(mountRecord, filepath)) {
+    if (!common::JsonSerialize(mountRecord, filepath)) {
         RECORD_INNER_ERROR("failed to save image copy mount record to %s, errno %u", filepath.c_str(), errno);
         PosixLoopbackMountRollback(loopDevicePath);
         return false;
@@ -140,7 +140,7 @@ bool LinuxLoopbackMountProvider::PosixLoopbackMountRollback(const std::string& l
 std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(const std::string& mountRecordJsonFilePath, const std::string& outputDirPath)
 {
     LinuxImageCopyMountRecord mountRecord {};
-    if (!util::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
+    if (!common::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };

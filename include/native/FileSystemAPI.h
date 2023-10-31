@@ -4,6 +4,10 @@
 #include "VolumeProtectMacros.h"
 
 namespace volumeprotect {
+/**
+ * @brief native filesystem api wrapper
+ */
+namespace fsapi {
 
 class SystemApiException : public std::exception {
 public:
@@ -13,8 +17,6 @@ public:
 private:
     std::string m_message;
 };
-
-namespace fsapi {
 
 bool        IsFileExists(const std::string& path);
 

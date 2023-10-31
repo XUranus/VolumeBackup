@@ -9,7 +9,7 @@
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
 using namespace volumeprotect::rawio;
-using namespace volumeprotect::util;
+using namespace volumeprotect::common;
 using namespace volumeprotect::fsapi;
 
 namespace {
@@ -83,7 +83,7 @@ bool Win32VirtualDiskMountProvider::Mount()
     mountRecord.copyFormat = static_cast<int>(m_copyFormat);
     mountRecord.mountTargetPath = m_mountTargetPath;
     mountRecord.virtualDiskFilePath = m_virtualDiskFilePath;
-    if (!util::JsonSerialize(mountRecord, filepath)) {
+    if (!common::JsonSerialize(mountRecord, filepath)) {
         RECORD_INNER_ERROR("failed to save image copy mount record to %s, errno %u", filepath.c_str(), errno);
         return false;
     }
@@ -140,7 +140,7 @@ std::unique_ptr<Win32VirtualDiskUmountProvider> Win32VirtualDiskUmountProvider::
     const std::string& mountRecordJsonFilePath)
 {
     Win32VirtualDiskCopyMountRecord mountRecord {};
-    if (!util::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
+    if (!common::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };

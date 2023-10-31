@@ -5,6 +5,7 @@
 #include "native/RawIO.h"
 
 namespace volumeprotect {
+namespace task {
 
 enum class SourceType
 {
@@ -25,7 +26,9 @@ struct VolumeBlockReaderParam {
 
 };
 
-// read m_sourceLength bytes from block device/copy from m_baseOffset
+/**
+ * @brief Independent routine to keep reading block from volume or copy file and then push to queue
+ */
 class VolumeBlockReader : public StatefulTask {
 public:
     // build a reader reading from volume (block device)
@@ -52,13 +55,19 @@ public:
 
 private:
     void MainThread();
+
     uint64_t InitCurrentIndex() const;
 
     void BlockingPushForward(const VolumeConsumeBlock& consumeBlock) const;
+    
     bool SkipReadingBlock() const;
+    
     bool IsReadCompleted() const;
+
     void RevertNextBlock();
+
     uint8_t* FetchBlockBuffer(std::chrono::seconds timeout) const;
+
     bool ReadBlock(uint8_t* buffer, uint32_t& nBytesReaded);
 
 private:
@@ -78,6 +87,8 @@ private:
     bool        m_pause         { false };
 
 };
+
+}
 }
 
 #endif

@@ -6,6 +6,7 @@
 #include "VolumeBlockHasher.h"
 
 using namespace volumeprotect;
+using namespace volumeprotect::task;
 
 namespace {
     constexpr uint64_t NUM2 = 2;

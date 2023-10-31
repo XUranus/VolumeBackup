@@ -5,12 +5,17 @@
 #include "native/FileSystemAPI.h"
 
 using namespace volumeprotect;
-using namespace volumeprotect::util;
+using namespace volumeprotect::common;
+using namespace volumeprotect::task;
+using namespace volumeprotect::fsapi;
 
 namespace {
     constexpr auto VOLUME_NAME_LEN_MAX = 32;
 }
 
+/**
+ * @brief mapping from TaskStatus enum to literal
+ */
 static std::unordered_map<int, std::string> g_statusStringTable {
     { static_cast<int>(TaskStatus::INIT), "INIT" },
     { static_cast<int>(TaskStatus::RUNNING), "RUNNING" },
@@ -115,7 +120,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
 
     // 3. read copy meta json and validate
     VolumeCopyMeta volumeCopyMeta {};
-    if (!util::ReadVolumeCopyMeta(restoreConfig.copyMetaDirPath, restoreConfig.copyName, volumeCopyMeta)) {
+    if (!common::ReadVolumeCopyMeta(restoreConfig.copyMetaDirPath, restoreConfig.copyName, volumeCopyMeta)) {
         ERRLOG("failed to read copy meta json from dir: %s", restoreConfig.copyMetaDirPath.c_str());
         return nullptr;
     }

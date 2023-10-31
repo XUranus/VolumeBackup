@@ -43,7 +43,6 @@ BlockingQueue<T>::BlockingQueue(std::size_t maxSize)
 
 /**
  * @brief blocking push an item, invoker thread will be blocked if queue is full
- *
  * @tparam T
  * @param v
  * @return true if push successfully
@@ -65,7 +64,6 @@ bool BlockingQueue<T>::BlockingPush(const T &v)
 
 /**
  * @brief blocking pop an item from queue, invoker thread will be blocked if queue is empty
- *
  * @tparam T
  * @param v
  * @return true if item is poped successfully
@@ -87,8 +85,8 @@ bool BlockingQueue<T>::BlockingPop(T &v)
 }
 
 /**
- * @brief to mark the queue to finished, no more item should be pushed anymore and BlockingPop may return false once empty
- *
+ * @brief to mark the queue to finished
+ * No more item should be pushed anymore and BlockingPop may return false once empty
  * @tparam T
  */
 template<typename T>
@@ -102,7 +100,6 @@ void BlockingQueue<T>::Finish()
 
 /**
  * @brief try to push an item (non-blocking)
- *
  * @tparam T
  * @param v
  * @return true if push successfully
@@ -122,7 +119,6 @@ bool BlockingQueue<T>::TryBlockingPush(const T& v)
 
 /**
  * @brief try to pop an item (non-blocking)
- *
  * @tparam T
  * @param v
  * @return true if pop successfully

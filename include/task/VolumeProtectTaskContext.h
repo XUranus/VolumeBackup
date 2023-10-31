@@ -5,12 +5,15 @@
 #include "BlockingQueue.h"
 
 namespace volumeprotect {
+namespace task {
 
 class VolumeBlockReader;
 class VolumeBlockWriter;
 class VolumeBlockHasher;
 
-// commpound struct used for hash/writer consuming
+/**
+ * @brief Struct to describle a volume data block in memory, used for hash/writer consuming
+ */
 struct VolumeConsumeBlock {
     uint8_t*        ptr;
     uint64_t        index;
@@ -18,7 +21,9 @@ struct VolumeConsumeBlock {
     uint32_t        length;
 };
 
-// a fixed block allocator
+/**
+ * @brief A fixed memory block allocator to improve `malloc` performance
+ */
 class VolumeBlockAllocator {
 public:
     VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum);
@@ -34,6 +39,9 @@ private:
     std::mutex  m_mutex;
 };
 
+/**
+ * @brief Used for concurrent data statistics for a session
+ */
 struct SessionCounter {
     std::atomic<uint64_t>   bytesToRead             { 0 };
     std::atomic<uint64_t>   bytesRead               { 0 };
@@ -44,7 +52,9 @@ struct SessionCounter {
     std::atomic<uint64_t>   blockesWriteFailed      { 0 };
 };
 
-// store the checksum table of previous/latest hashing checksum
+/**
+ * @brief Manage the checksum table of previous/latest hashing checksum
+ */
 struct BlockHashingContext {
     uint64_t    lastestSize     { 0 }; // size in bytes
     uint64_t    previousSize    { 0 };
@@ -78,7 +88,7 @@ private:
 };
 
 /**
- * Split a logical volume into multiple sessions
+ * Split a logical volume into multiple sessions.
  * Sach session(default 1TB) corresponding to a SHA256 checksum binary file(8MB) and a data slice file(1TB)
  * Each backup/restore task involves one or more sessions represented by struct VolumeTaskSession
  *
@@ -88,6 +98,9 @@ private:
  * 0         sessionOffset   sessionOffset + sessionSize
  */
 
+/**
+ * @brief A immutable configuration struct for a backup/restore session
+ */
 struct VolumeTaskSharedConfig {
     // immutable fields (common)
     uint64_t        sessionOffset;
@@ -109,7 +122,7 @@ struct VolumeTaskSharedConfig {
 
 
 /**
- * @brief snapshot of bitmap of a task
+ * @brief Snapshot of bitmap of a task
  */
 struct CheckpointSnapshot {
     uint64_t    bitmapBufferBytesLength;     // mark single buffer length in bytes, all bitmap buffer share same length
@@ -123,6 +136,9 @@ struct CheckpointSnapshot {
     bool SaveTo(const std::string& filepath) const;
 };
 
+/**
+ * @brief Manage context of a volume backup/restore task.
+ */
 struct VolumeTaskSharedContext {
     // bitmap to implement checkpoint
     std::shared_ptr<Bitmap>                             processedBitmap         { nullptr };
@@ -202,5 +218,8 @@ private:
 private:
     std::chrono::steady_clock::time_point   m_lastUpdate { std::chrono::steady_clock::now() };
 };
+
 }
+}
+
 #endif

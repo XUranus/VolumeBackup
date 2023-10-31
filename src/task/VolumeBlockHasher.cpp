@@ -13,6 +13,7 @@ namespace {
 }
 
 using namespace volumeprotect;
+using namespace volumeprotect::task;
 
 VolumeBlockHasher::~VolumeBlockHasher()
 {

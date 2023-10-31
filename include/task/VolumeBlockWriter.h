@@ -5,6 +5,7 @@
 #include "native/RawIO.h"
 
 namespace volumeprotect {
+namespace task {
 
 enum class TargetType {
     VOLUME = 0,
@@ -22,6 +23,9 @@ struct VolumeBlockWriterParam {
     std::shared_ptr<rawio::RawDataWriter>         dataWriter;
 };
 
+/**
+ * @brief Independent routine to keep consuming block from queue and perform write operation to volume of copy file
+ */
 class VolumeBlockWriter : public StatefulTask {
 public:
     // build a writer writing to copy file
@@ -61,6 +65,7 @@ private:
     std::shared_ptr<volumeprotect::rawio::RawDataWriter>    m_dataWriter    { nullptr };
 };
 
+}
 }
 
 #endif

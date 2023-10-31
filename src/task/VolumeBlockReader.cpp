@@ -3,6 +3,7 @@
 #include "VolumeBlockReader.h"
 
 using namespace volumeprotect;
+using namespace volumeprotect::task;
 using namespace volumeprotect::rawio;
 
 namespace {

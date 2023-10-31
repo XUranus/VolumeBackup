@@ -7,7 +7,11 @@
 #include "VolumeUtils.h"
 
 namespace volumeprotect {
+namespace task {
 
+/**
+ * @brief Control control volume backup procedure
+ */
 class VolumeBackupTask
     : public VolumeProtectTask, public TaskStatisticTrait, public VolumeTaskCheckpointTrait {
 public:
@@ -55,6 +59,7 @@ protected:
     std::shared_ptr<TaskResourceManager> m_resourceManager;
 };
 
+}
 }
 
 #endif

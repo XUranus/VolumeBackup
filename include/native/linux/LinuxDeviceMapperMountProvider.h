@@ -23,7 +23,6 @@ struct LinuxDeviceMapperMountProviderParams {
     std::string                 mountOptions;
 };
 
-
 struct CopySliceTarget {
     std::string         copyFilePath;
     uint64_t            volumeOffset;
@@ -70,7 +69,7 @@ struct LinuxDeviceMapperCopyMountRecord {
 };
 
 /**
- * LinuxDeviceMapperMountProvider provide api to mount volume copy with CopyFormat::BIN on Linux system
+ * @brief LinuxDeviceMapperMountProvider provide api to mount volume copy with CopyFormat::BIN on Linux system.
  * This provider need a output directory to store mount record and checkpoint file for each mount task.
  *
  * For a copy contains only one session, LinuxDeviceMapperMountProvider will create a loopback device from the file
@@ -80,7 +79,7 @@ struct LinuxDeviceMapperCopyMountRecord {
  *
  * To ensure robust:
  * For each created dm device, a "dmDeviceName.dm.record" file will be created,
- * and for each attached loop device, a "loopX.loop.record" file will be created.
+ *    and for each attached loop device, a "loopX.loop.record" file will be created.
  * These files will be used to track residual device if mount task is partial failed.
  * RollbackClearResidue method will be called to try to clear the residual device. if moun is failed.
  */

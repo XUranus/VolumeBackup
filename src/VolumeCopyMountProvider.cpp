@@ -18,7 +18,7 @@
 
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
-using namespace volumeprotect::util;
+using namespace volumeprotect::common;
 using namespace volumeprotect::fsapi;
 
 // used to read common 'copyFormat' field from all record json
@@ -71,7 +71,7 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::Build(
     const VolumeCopyMountConfig& mountConfig)
 {
     VolumeCopyMeta volumeCopyMeta {};
-    if (!util::ReadVolumeCopyMeta(mountConfig.copyMetaDirPath, mountConfig.copyName, volumeCopyMeta)) {
+    if (!common::ReadVolumeCopyMeta(mountConfig.copyMetaDirPath, mountConfig.copyName, volumeCopyMeta)) {
         ERRLOG("failed to read volume copy meta from %s, copy name %s",
             mountConfig.copyMetaDirPath.c_str(), mountConfig.copyName.c_str());
         return nullptr;
@@ -130,10 +130,10 @@ std::unique_ptr<VolumeCopyUmountProvider> VolumeCopyUmountProvider::Build(
         ERRLOG("umount json record file %s not exists", mountRecordJsonFilePath.c_str());
         return nullptr;
     }
-    std::string outputDirPath = util::GetParentDirectoryPath(mountRecordJsonFilePath);
+    std::string outputDirPath = common::GetParentDirectoryPath(mountRecordJsonFilePath);
 
     VolumeCopyMountRecordCommon mountRecord {};
-    if (!util::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
+    if (!common::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };

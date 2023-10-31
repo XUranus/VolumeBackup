@@ -4,28 +4,24 @@
 #include "VolumeProtector.h"
 
 namespace volumeprotect {
+namespace task {
+
 
 /**
- * TaskResourceManager is used to prepare resource for Backup/Restore tasks, including:
- *  1. Create copy file on disk for backup
- *  2. Init virtual disk partition info for Backup
- *  3. Attach virtual disk for Backup & Restore
- *  4. Detach virtual disk for Backup & Restore (when destroyed)
- **/
-
-// params to build BackupTaskResourceManager
+ * @brief Params struct used to build BackupTaskResourceManager
+ */
 struct BackupTaskResourceManagerParams {
     CopyFormat          copyFormat;
     BackupType          backupType;
     std::string         copyDataDirPath;
     std::string         copyName;
     uint64_t            volumeSize;
-    uint64_t            maxSessionSize;     // only used to create fragment copy for CopyFormat::BIN
-
-
+    uint64_t            maxSessionSize;     ///> only used to create fragment copy for CopyFormat::BIN
 };
 
-// params to build RestoreTaskResourceManager
+/**
+ * @brief Params struct used to build RestoreTaskResourceManager
+ */
 struct RestoreTaskResourceManagerParams {
     CopyFormat                  copyFormat;
     std::string                 copyDataDirPath;
@@ -34,10 +30,15 @@ struct RestoreTaskResourceManagerParams {
 };
 
 /**
- * Base class for BackupTaskResourceManager and RestoreTaskResourceManager.
+ * @brief Base class for BackupTaskResourceManager and RestoreTaskResourceManager.
  * Provide TaskResourceManager builder and RAII resource management.
  * PrepareCopyResource() need to be invoked before backup/restore task start.
- */
+ * TaskResourceManager is used to prepare resource for Backup/Restore tasks, including:
+ *  1. Create copy file on disk for backup
+ *  2. Init virtual disk partition info for Backup
+ *  3. Attach virtual disk for Backup & Restore
+ *  4. Detach virtual disk for Backup & Restore (when destroyed)
+ **/
 class TaskResourceManager {
 public:
     static std::unique_ptr<TaskResourceManager> BuildBackupTaskResourceManager(
@@ -110,7 +111,7 @@ private:
 };
 
 
-
+}
 }
 
 #endif

@@ -13,6 +13,7 @@
 #include "Logger.h"
 
 using namespace volumeprotect;
+using namespace volumeprotect::task;
 using namespace xuranus::getopt;
 using namespace xuranus::minilogger;
 

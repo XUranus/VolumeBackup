@@ -4,6 +4,7 @@
 #include "VolumeProtectTaskContext.h"
 
 namespace volumeprotect {
+namespace task {
 
 enum class  HasherForwardMode {
     // direct move block to write queue after block checksum is computed
@@ -23,6 +24,9 @@ struct VolumeBlockHasherParam {
     uint32_t                    singleChecksumSize              { 0 };
 };
 
+/**
+ * @brief Independent routine to keep consuming block from queue and do checksum calculation
+ */
 class VolumeBlockHasher : public StatefulTask {
 public:
     ~VolumeBlockHasher();
@@ -61,6 +65,7 @@ private:
     std::shared_ptr<VolumeTaskSharedContext>    m_sharedContext;
 };
 
+}
 }
 
 #endif

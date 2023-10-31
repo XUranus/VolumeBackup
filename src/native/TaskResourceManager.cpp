@@ -14,7 +14,8 @@
 
 using namespace volumeprotect;
 using namespace volumeprotect::rawio;
-using namespace volumeprotect::util;
+using namespace volumeprotect::task;
+using namespace volumeprotect::common;
 
 namespace {
     constexpr auto DUMMY_SESSION_INDEX = 0;
@@ -39,7 +40,7 @@ static std::vector<std::pair<std::string, uint64_t>> SplitFragmentBinaryBackupCo
             sessionSize = volumeSize - sessionOffset;
         }
         sessionOffset += sessionSize;
-        std::string fragmentFilePath = util::GetCopyDataFilePath(
+        std::string fragmentFilePath = common::GetCopyDataFilePath(
             copyDataDirPath, copyName, CopyFormat::BIN, sessionIndex);
         fragmentFiles.emplace_back(fragmentFilePath, sessionSize);
     }
@@ -92,25 +93,25 @@ static bool CreateVirtualDiskBackupCopy(
     std::string physicalDrivePath;
     switch (static_cast<int>(copyFormat)) {
         case static_cast<int>(CopyFormat::VHD_FIXED): {
-            virtualDiskFilePath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = common::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
             result = rawio::win32::CreateFixedVHDFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHD_DYNAMIC): {
-            virtualDiskFilePath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = common::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
             result = rawio::win32::CreateDynamicVHDFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHDX_FIXED): {
-            virtualDiskFilePath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = common::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
             result = rawio::win32::CreateFixedVHDXFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
         }
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC): {
-            virtualDiskFilePath = util::GetCopyDataFilePath(
+            virtualDiskFilePath = common::GetCopyDataFilePath(
                 copyDataDirPath, copyName, copyFormat, DUMMY_SESSION_INDEX);
             result = rawio::win32::CreateDynamicVHDXFile(virtualDiskFilePath, volumeSize, errorCode);
             break;
@@ -159,7 +160,7 @@ bool TaskResourceManager::AttachCopyResource()
         case static_cast<int>(CopyFormat::VHDX_FIXED) :
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
             ErrCodeType errorCode = ERROR_SUCCESS;
-            std::string virtualDiskFilePath = util::GetCopyDataFilePath(
+            std::string virtualDiskFilePath = common::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
             // need to check if attached ahead, attached virtual disk should not be attached again
             if (!rawio::win32::VirtualDiskAttached(virtualDiskFilePath) &&
@@ -196,7 +197,7 @@ bool TaskResourceManager::DetachCopyResource()
         case static_cast<int>(CopyFormat::VHD_DYNAMIC) :
         case static_cast<int>(CopyFormat::VHDX_FIXED) :
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) : {
-            std::string virtualDiskFilePath = util::GetCopyDataFilePath(
+            std::string virtualDiskFilePath = common::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
             ErrCodeType errorCode = 0;
             if (rawio::win32::VirtualDiskAttached(virtualDiskFilePath) &&
@@ -257,7 +258,7 @@ bool BackupTaskResourceManager::CreateBackupCopyResource()
             return CreateFragmentBinaryBackupCopy(m_copyName, m_copyDataDirPath, m_volumeSize, m_maxSessionSize);
         }
         case static_cast<int>(CopyFormat::IMAGE): {
-            std::string imageFilePath = util::GetCopyDataFilePath(
+            std::string imageFilePath = common::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
             ErrCodeType errorCode = 0;
             bool result = rawio::TruncateCreateFile(imageFilePath, m_volumeSize, errorCode);
@@ -329,7 +330,7 @@ bool BackupTaskResourceManager::ResourceExists()
         case static_cast<int>(CopyFormat::VHDX_DYNAMIC) :
 #endif
         case static_cast<int>(CopyFormat::IMAGE): {
-            std::string filePath = util::GetCopyDataFilePath(
+            std::string filePath = common::GetCopyDataFilePath(
                 m_copyDataDirPath, m_copyName, m_copyFormat, DUMMY_SESSION_INDEX);
             return fsapi::IsFileExists(filePath);
         }

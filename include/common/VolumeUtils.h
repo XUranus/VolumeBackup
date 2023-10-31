@@ -10,7 +10,7 @@
 #include <string>
 
 namespace volumeprotect {
-
+    
 // volume data in [offset, offset + length) store in the file
 struct CopySegment {
     std::string                 copyDataFile;           // name of the copy file
@@ -48,7 +48,10 @@ struct VolumeCopyMeta {
     SERIALIZE_SECTION_END
 };
 
-namespace util {
+/**
+ * @brief common utils
+ */
+namespace common {
 
 std::string GetChecksumBinPath(
     const std::string&  copyMetaDirPath,

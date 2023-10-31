@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 using namespace volumeprotect::mount;
-using namespace volumeprotect::util;
+using namespace volumeprotect::common;
 using namespace volumeprotect::fsapi;
 using namespace volumeprotect;
 
@@ -140,7 +140,7 @@ bool LinuxDeviceMapperMountProvider::Mount()
         uint64_t volumeOffset = segment.offset;
         uint64_t size = segment.length;
         int sessionIndex = segment.index;
-        std::string copyFilePath = util::GetCopyDataFilePath(
+        std::string copyFilePath = common::GetCopyDataFilePath(
             m_copyDataDirPath, m_copyName, CopyFormat::BIN, sessionIndex);
         std::string loopDevicePath;
         if (!AttachReadOnlyLoopDevice(copyFilePath, loopDevicePath)) {
@@ -173,7 +173,7 @@ bool LinuxDeviceMapperMountProvider::Mount()
     }
     // save mount record json to cache directory
     std::string filepath = GetMountRecordPath();
-    if (!util::JsonDeserialize(mountRecord, filepath)) {
+    if (!common::JsonDeserialize(mountRecord, filepath)) {
         RECORD_INNER_ERROR("failed to save mount record to %s, errno %u", filepath.c_str(), errno);
         RollbackClearResidue();
         return false;
@@ -366,7 +366,7 @@ std::unique_ptr<LinuxDeviceMapperUmountProvider> LinuxDeviceMapperUmountProvider
     const std::string& mountRecordJsonFilePath, const std::string& outputDirPath)
 {
     LinuxDeviceMapperCopyMountRecord mountRecord {};
-    if (!util::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
+    if (!common::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
         ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };

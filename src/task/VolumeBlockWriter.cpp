@@ -4,6 +4,7 @@
 #include "VolumeBlockWriter.h"
 
 using namespace volumeprotect;
+using namespace volumeprotect::task;
 using namespace volumeprotect::rawio;
 
 // build a writer writing to copy file
