@@ -25,6 +25,17 @@ using namespace xuranus::minilogger;
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
 
+static const char* g_helpMessage =
+    "Usage: vcopymount --mount | --umount [option]\n"
+    "Options:\n"
+    "--name    <name>      name of the copy to be mount\n"
+    "--data    <path>      copy data dir path\n"
+    "--meta    <path>      copy meta dir path\n"
+    "--output  <path>      output dir path to ouput checkpoint\n"
+    "--target  <path>      dir target to mount to\n"
+    "--type    <fs>        mount fs type, ex: ext4, xfs...\n"
+    "--option  <option>    mount fs option args\n";
+
 struct CliArgs {
     std::string     copyName;
     std::string     copyDataDirPath;
@@ -41,15 +52,7 @@ struct CliArgs {
 
 static void PrintHelp()
 {
-    std::cout << "Usage: vcopymount --mount | --umount [option]" << std::endl;
-    std::cout << "Options:" << std::endl;
-    std::cout << "--name    <name>      name of the copy to be mount" << std::endl;
-    std::cout << "--data    <path>      copy data dir path" << std::endl;
-    std::cout << "--meta    <path>      copy meta dir path" << std::endl;
-    std::cout << "--output  <path>      output dir path to ouput checkpoint" << std::endl;
-    std::cout << "--target  <path>      dir target to mount to" << std::endl;
-    std::cout << "--type    <fs>        mount fs type, ex: ext4, xfs..." << std::endl;
-    std::cout << "--option  <option>    mount fs option args" << std::endl;
+    ::printf("%s\n", g_helpMessage);
 }
 
 static bool MountCopy(const VolumeCopyMountConfig& mountConfig)

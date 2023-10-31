@@ -18,7 +18,7 @@ if(${CMAKE_HOST_WIN32})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
 else()
-    ADD_COMPILE_OPTIONS(-Wno-format-security)
+    add_compile_options(-Wno-format-security)
 endif()
 
 if(${CMAKE_HOST_WIN32})
@@ -43,7 +43,7 @@ else()
     )
 endif()
 
-FILE(
+file(
     GLOB_RECURSE
     VOLUMEPROTECTPROTECT_HEADERS
     "include/*.h"
@@ -115,18 +115,18 @@ endif()
 # build a static library
 message("Build libvolumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
 set(VOLUMEPROTECT_STATIC_LIBRARY_TARGET ${Project}_static)
-ADD_LIBRARY(
+add_library(
     ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
     STATIC
     ${VOLUMEPROTECTPROTECT_SOURCES} ${VOLUMEPROTECTPROTECT_HEADERS}
 )
-SET_PROPERTY(
+set_property(
     TARGET ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
     PROPERTY CXX_STANDARD 11
 )
-# link againt static libs
+# link against static libs
 if(${CMAKE_HOST_WIN32})
-    TARGET_LINK_LIBRARIES(
+    target_link_libraries(
         ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
         minijson_static
         minilogger_static
@@ -136,8 +136,8 @@ if(${CMAKE_HOST_WIN32})
         uuid
         Rpcrt4
     )
-ELSE()
-    TARGET_LINK_LIBRARIES(
+else()
+    target_link_libraries(
         ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
         minijson_static
         minilogger_static
@@ -147,44 +147,44 @@ ELSE()
 endif()
 
 # set -DCMAKE_BUILD_TYPE=Debug to enable LLT, set -DCOVERAGE=ON to enable code coverage
-IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     # these config must be put at the level of source code in order to append compile flags
-    IF ("${COVERAGE}" STREQUAL "lcov" OR "${COVERAGE}" STREQUAL "gcovr")
+    if ("${COVERAGE}" STREQUAL "lcov" OR "${COVERAGE}" STREQUAL "gcovr")
         message("code coverage is enabled, COVERAGE = ${COVERAGE}, append coverage compiler flags")
-        INCLUDE(${SOURCE_DIR}/test/CodeCoverage.cmake)
+        include(${SOURCE_DIR}/test/CodeCoverage.cmake)
         APPEND_COVERAGE_COMPILER_FLAGS()
     endif()
 
-    ENABLE_TESTING()
+    enable_testing()
     add_subdirectory("test")
 endif()
 
 # build executable tools
-ADD_EXECUTABLE (vbackup
+add_executable (vbackup
     "cli/vbackup.cpp"
     "cli/GetOption.cpp"
 )
 
-ADD_EXECUTABLE (vtools
+add_executable (vtools
     "cli/vtools.cpp"
     "cli/GetOption.cpp"
 )
 
-SET_PROPERTY(TARGET vbackup PROPERTY CXX_STANDARD 11)
-SET_PROPERTY(TARGET vtools PROPERTY CXX_STANDARD 11)
+set_property(TARGET vbackup PROPERTY CXX_STANDARD 11)
+set_property(TARGET vtools PROPERTY CXX_STANDARD 11)
 
 # link vbackup executable
 if(${CMAKE_HOST_WIN32})
-    TARGET_LINK_LIBRARIES(
+    target_link_libraries(
         vbackup
         volumebackup_static
         # third part dependency provided by XUranus
         minijson_static
         minilogger_static
     )
-ELSE()
+else()
     # require linux-utils
-    TARGET_LINK_LIBRARIES(
+    target_link_libraries(
         vbackup
         volumebackup
         # openssl
@@ -197,19 +197,19 @@ ELSE()
 endif()
 
 # build vtools executable
-TARGET_LINK_LIBRARIES(
+target_link_libraries(
     vtools
 )
 
 # build vcopymount executable
-ADD_EXECUTABLE (vcopymount
+add_executable (vcopymount
     "cli/vcopymount.cpp"
     "cli/GetOption.cpp"
 )
 
-SET_PROPERTY(TARGET vcopymount PROPERTY CXX_STANDARD 11)
+set_property(TARGET vcopymount PROPERTY CXX_STANDARD 11)
 
-TARGET_LINK_LIBRARIES(
+target_link_libraries(
     vcopymount
     volumebackup_static
     # third part dependency provided by XUranus

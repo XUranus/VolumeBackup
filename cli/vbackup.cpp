@@ -16,6 +16,24 @@ using namespace volumeprotect;
 using namespace xuranus::getopt;
 using namespace xuranus::minilogger;
 
+static const char* g_helpMessage =
+    "Volume Backup Cli\n"
+    "==============================================================\n"
+    "Options:\n"
+    "-v | --volume=     \t  specify volume path\n"
+    "-n | --name=       \t  specify copy name\n"
+#ifdef _WIN32
+    "-f | --format=     \t  specify copy format [BIN, IMAGE, VHD_FIXED, VHD_DYNAMIC, VHDX_FIXED, VHDX_DYNAMIC]\n"
+#else
+    "-f | --format=     \t  specify copy format [BIN, IMAGE]\n"
+#endif
+    "-d | --data=       \t  specify copy data directory\n"
+    "-m | --meta=       \t  specify copy meta directory\n"
+    "-p | --prevmeta=   \t  specify previous copy meta directory\n"
+    "-r | --restore     \t  used when performing restore operation\n"
+    "-l | --loglevel=   \t  specify logger level [INFO, DEBUG]\n"
+    "-h | --help        \t  print help\n";
+
 struct CliArgs {
     std::string     volumePath;
     std::string     copyName;
@@ -30,22 +48,7 @@ struct CliArgs {
 
 static void PrintHelp()
 {
-    printf("Volume Backup Cli\n");
-    printf("==============================================================\n");
-    printf("Options:\n");
-    printf("-v | --volume=     \t  specify volume path\n");
-    printf("-n | --name=       \t  specify copy name\n");
-#ifdef _WIN32
-    printf("-f | --format=     \t  specify copy format [BIN, IMAGE, VHD_FIXED, VHD_DYNAMIC, VHDX_FIXED, VHDX_DYNAMIC]\n");
-#else
-    printf("-f | --format=     \t  specify copy format [BIN, IMAGE]\n");
-#endif
-    printf("-d | --data=       \t  specify copy data directory\n");
-    printf("-m | --meta=       \t  specify copy meta directory\n");
-    printf("-p | --prevmeta=   \t  specify previous copy meta directory\n");
-    printf("-r | --restore     \t  used when performing restore operation\n");
-    printf("-l | --loglevel=   \t  specify logger level [INFO, DEBUG]\n");
-    printf("-h | --help        \t  print help\n");
+    ::printf("%s\n", g_helpMessage);
 }
 
 static CopyFormat ParseCopyFormat(const std::string& copyFormat)

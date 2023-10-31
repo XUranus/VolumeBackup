@@ -11,6 +11,7 @@
 
 #include "GetOption.h"
 
+#include <cstdio>
 #include <iostream>
 #include <cstdint>
 #include <vector>
@@ -43,6 +44,12 @@ namespace {
     constexpr auto WDEVICE_PHYSICAL_DRIVE_PREFIX = LR"(\\.\PhysicalDrive)";
     constexpr auto WDEVICE_HARDDISK_VOLUME_PREFIX = LR"(\\.\HarddiskVolume)";
 }
+
+static const char* g_helpMessage =
+    "vtools [options...]    util for getting local volume information\n"
+    "[ -v | --volume= ]     query specified volume information\n"
+    "[ -l | --list ]        list all local volumes\n"
+    "[ -h | --help ]        show help\n";
 
 class SystemApiException : public std::exception {
 public:
@@ -259,10 +266,7 @@ VolumeInfo GetVolumeInfoLinux(const std::string& volumePath)
 
 int PrintHelp()
 {
-    ::printf("vtools [options...]   \t util for getting local volume information\n");
-    ::printf("[ -v | --volume= ]    \t query specified volume information\n");
-    ::printf("[ -l | --list ]       \t list all local volumes\n");
-    ::printf("[ -h | --help ]       \t show help\n");
+    ::printf("%s\n", g_helpMessage);
     return 0;
 }
 
