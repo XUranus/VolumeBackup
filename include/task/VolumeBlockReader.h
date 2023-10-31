@@ -59,9 +59,9 @@ private:
     uint64_t InitCurrentIndex() const;
 
     void BlockingPushForward(const VolumeConsumeBlock& consumeBlock) const;
-    
+
     bool SkipReadingBlock() const;
-    
+
     bool IsReadCompleted() const;
 
     void RevertNextBlock();

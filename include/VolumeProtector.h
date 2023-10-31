@@ -146,15 +146,15 @@ public:
 
     /**
      * @brief Builder function to build a backup task using specified backup config
-     * @param backupConfig 
+     * @param backupConfig
      * @return a valid `std::unique_ptr<VolumeProtectTask>` ptr if succeed
      * @return `nullptr` if failed
      */
     static std::unique_ptr<VolumeProtectTask> BuildBackupTask(const VolumeBackupConfig& backupConfig);
-    
+
     /**
      * @brief Builder function to build a restore task using specified backup config
-     * @param backupConfig 
+     * @param backupConfig
      * @return a valid `std::unique_ptr<VolumeProtectTask>` ptr if succeed
      * @return `nullptr` if failed
      */
@@ -171,26 +171,26 @@ extern "C" {
 // C style definitions of structs and functions to provide interface for cpython extension
 
 struct VOLUMEPROTECT_API VolumeBackupConf_C {
-    int         backupType;                     // type of target copy to be generated
+    int         backupType;                     ///< type of target copy to be generated
     int         copyFormat;
     char*       copyName;
-    char*       volumePath;                     // path of the block device (volume)
-    char*       prevCopyMetaDirPath;            // [optional] only be needed for increment backup
+    char*       volumePath;                     ///< path of the block device (volume)
+    char*       prevCopyMetaDirPath;            ///< [optional] only be needed for increment backup
     char*	    outputCopyDataDirPath;
     char*	    outputCopyMetaDirPath;
-    uint32_t    blockSize;                      // [optional] default blocksize used for computing sha256
-    uint64_t    sessionSize;                    // default sesson size used to split session
-    uint32_t    hasherNum;                      // hasher worker count, set to the num of processors
-    bool        hasherEnabled;                  // if set to false, won't compute sha256
-    bool        enableCheckpoint;               // start from checkpoint if exists
+    uint32_t    blockSize;                      ///< [optional] default blocksize used for computing sha256
+    uint64_t    sessionSize;                    ///< default sesson size used to split session
+    uint32_t    hasherNum;                      ///< hasher worker count, set to the num of processors
+    bool        hasherEnabled;                  ///< if set to false, won't compute sha256
+    bool        enableCheckpoint;               ///< start from checkpoint if exists
 };
 
 struct VOLUMEPROTECT_API VolumeRestoreConf_C {
-    char*       volumePath;                     // path of the block device (volume)
+    char*       volumePath;                     ///< path of the block device (volume)
     char*       copyName;
     char*	    copyDataDirPath;
     char*	    copyMetaDirPath;
-    bool        enableCheckpoint { true };      // start from checkpoint if exists
+    bool        enableCheckpoint { true };      ///< start from checkpoint if exists
 };
 
 enum VOLUMEPROTECT_API TaskStatus_C {

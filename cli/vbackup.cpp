@@ -199,7 +199,7 @@ static int ExecVolumeBackup(const CliArgs& cliArgs)
         std::cout << "----- Perform Forever Increment Backup -----" << std::endl;
         backupConfig.backupType = BackupType::FOREVER_INC;
     }
-    
+
     std::cout << "using " << hasherWorkerNum << " processing units" << std::endl;
     std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildBackupTask(backupConfig);
     if (task == nullptr) {

@@ -57,7 +57,7 @@ struct SessionCopyRawIOParam {
 
 /**
  * @brief Builder function to build a copy file reader from specified param
- * @param param 
+ * @param param
  * @return a valid `std::shared_ptr<RawDataReader>` ptr if succeed
  * @return `nullptr` if failed
 */
@@ -65,7 +65,7 @@ std::shared_ptr<RawDataReader> OpenRawDataCopyReader(const SessionCopyRawIOParam
 
 /**
  * @brief Builder function to build a copy file writer from specified param
- * @param param 
+ * @param param
  * @return a valid `std::shared_ptr<RawDataWriter>` ptr if succeed
  * @return `nullptr` if failed
 */
@@ -73,7 +73,7 @@ std::shared_ptr<RawDataWriter> OpenRawDataCopyWriter(const SessionCopyRawIOParam
 
 /**
  * @brief Builder function to build a volume reader using given volume path
- * @param param 
+ * @param param
  * @return a valid `std::shared_ptr<RawDataReader>` ptr if succeed
  * @return `nullptr` if failed
 */
@@ -81,7 +81,7 @@ std::shared_ptr<RawDataReader> OpenRawDataVolumeReader(const std::string& volume
 
 /**
  * @brief Builder function to build a volume writer using given volume path
- * @param param 
+ * @param param
  * @return a valid `std::shared_ptr<RawDataWriter>` ptr if succeed
  * @return `nullptr` if failed
 */

@@ -81,7 +81,7 @@ class VOLUMEPROTECT_API VolumeCopyMountProvider : public InnerErrorLoggerTrait {
 public:
     /**
      * @brief Builder function to load target copy mount provider, depending on which CopyFormat specified.
-     * @param mountConfig 
+     * @param mountConfig
      * @return a valid `std::unique_ptr<VolumeCopyMountProvider>` ptr if succeed
      * @return `nullptr` if failed
      */
@@ -117,7 +117,7 @@ class VOLUMEPROTECT_API VolumeCopyUmountProvider : public InnerErrorLoggerTrait 
 public:
     /**
      * @brief Builder function to build a corresponding umount provider from specified json record file
-     * @param mountRecordJsonFilePath 
+     * @param mountRecordJsonFilePath
      * @return a valid `std::unique_ptr<VolumeCopyUmountProvider>` ptr if succeed
      * @return `nullptr` if failed
      */

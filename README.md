@@ -59,13 +59,13 @@ VolumeSize:             254792433664
 VolumeSerialNumber:     3430564453
 MaximumComponentLength: 255
 FileSystemName:         NTFS
-FileSystemFlags:        65482495   
+FileSystemFlags:        65482495
 ```
 
 > this is what a Windows environment will output, for Linux system, volume path should be like `/dev/xxxx`
 
 2. Use **vbackup** to backup volume.
-   
+
 Specify a volume path and output data/meta directory to store copy and it's meta info (can be same directory), a customed copy name is also required:
 ```
 vbackup --volume=\\.\HarddiskVolume3 --data=D:\volumecopy\data --meta=D:\volumecopy\meta --name=diskC
