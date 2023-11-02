@@ -803,7 +803,7 @@ static bool InitMsrPartitionAndDataPartition(
     layout->PartitionEntry[NUM0].IsServicePartition = FALSE;
     layout->PartitionEntry[NUM0].Gpt.PartitionType = PARTITION_MSFT_RESERVED_GUID;
     layout->PartitionEntry[NUM0].Gpt.PartitionId = msrPartitionGUID;
-    layout->PartitionEntry[NUM0].Gpt.Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER; //0;
+    layout->PartitionEntry[NUM0].Gpt.Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER;
     wcscpy_s(layout->PartitionEntry[NUM0].Gpt.Name, VIRTUAL_DISK_GPT_MSR_PARTITION_NAMEW);
 
     layout->PartitionEntry[NUM1].PartitionStyle = PARTITION_STYLE_GPT;

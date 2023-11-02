@@ -57,7 +57,7 @@ static std::unordered_map<int, std::string> g_statusStringTable {
  *                  |------raspberry.2.sha256.meta.bin
  *
  * For Windows OS, *.vhd, *.vhdx are also supported and it's handled similar to image format
- * volumecopy.meta.json saves meta data (format, sessions) of the copy and it's critical for the copy to mount or restore
+ * volumecopy.meta.json saves meta data (format, sessions) of the copy and it's critical for the copy to mount/restore
  */
 
 std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const VolumeBackupConfig& backupConfig)

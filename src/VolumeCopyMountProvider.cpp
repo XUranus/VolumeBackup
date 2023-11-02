@@ -111,7 +111,8 @@ std::unique_ptr<VolumeCopyMountProvider> VolumeCopyMountProvider::Build(
     return nullptr;
 }
 
-bool VolumeCopyMountProvider::Mount() {
+bool VolumeCopyMountProvider::Mount()
+{
     RECORD_INNER_ERROR("base class does not support mount, need implementation from derived class");
     return false;
 }

@@ -49,7 +49,8 @@ std::unique_ptr<Win32VirtualDiskMountProvider> Win32VirtualDiskMountProvider::Bu
         ERRLOG("illegal volume copy meta, image file segments list empty");
         return nullptr;
     }
-    std::string virtualDiskFilePath = volumeCopyMountConfig.copyDataDirPath + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
+    std::string virtualDiskFilePath = volumeCopyMountConfig.copyDataDirPath
+        + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
     return exstd::make_unique<Win32VirtualDiskMountProvider>(
         volumeCopyMountConfig.outputDirPath,
         volumeCopyMountConfig.copyName,

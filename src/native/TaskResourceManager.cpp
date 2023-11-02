@@ -53,8 +53,8 @@ static bool CreateFragmentBinaryBackupCopy(
     uint64_t            volumeSize,
     uint64_t            defaultSessionSize)
 {
-    std::vector<std::pair<std::string, uint64_t>> fragmentFiles;
-    fragmentFiles = SplitFragmentBinaryBackupCopy(copyName, copyDataDirPath, volumeSize, defaultSessionSize);
+    std::vector<std::pair<std::string, uint64_t>> fragmentFiles
+        = SplitFragmentBinaryBackupCopy(copyName, copyDataDirPath, volumeSize, defaultSessionSize);
     for (const auto& tup : fragmentFiles) {
         ErrCodeType errorCode = 0;
         std::string fragmentFilePath = tup.first;

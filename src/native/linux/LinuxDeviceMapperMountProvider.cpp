@@ -255,7 +255,8 @@ bool LinuxDeviceMapperMountProvider::LoadResidualDmDeviceList(std::vector<std::s
             return filename.find(DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX) != std::string::npos;
         });
     for (std::string& dmDeviceName : dmDeviceNameList) {
-        dmDeviceName = dmDeviceName.substr(0, dmDeviceName.length() - DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX.length());
+        dmDeviceName = dmDeviceName.substr(
+        	0, dmDeviceName.length() - DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX.length());
     }
     return true;
 }

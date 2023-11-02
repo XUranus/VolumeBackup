@@ -55,7 +55,8 @@ std::unique_ptr<LinuxLoopbackMountProvider> LinuxLoopbackMountProvider::Build(
         ERRLOG("illegal volume copy meta, image file segments list empty");
         return nullptr;
     }
-    params.imageFilePath = volumeCopyMountConfig.copyDataDirPath + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
+    params.imageFilePath = volumeCopyMountConfig.copyDataDirPath +
+        SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
@@ -137,11 +138,14 @@ bool LinuxLoopbackMountProvider::PosixLoopbackMountRollback(const std::string& l
     return true;
 }
 
-std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(const std::string& mountRecordJsonFilePath, const std::string& outputDirPath)
+std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(
+	const std::string& mountRecordJsonFilePath,
+	const std::string& outputDirPath)
 {
     LinuxImageCopyMountRecord mountRecord {};
     if (!common::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
-        ERRLOG("unabled to open copy mount record %s to read, errno %u", mountRecordJsonFilePath.c_str(), errno);
+        ERRLOG("unabled to open copy mount record %s to read, errno %u",
+            mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };
     return exstd::make_unique<LinuxLoopbackUmountProvider>(outputDirPath, mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
@@ -155,7 +159,9 @@ LinuxLoopbackUmountProvider::LinuxLoopbackUmountProvider(
 bool LinuxLoopbackUmountProvider::Umount()
 {
     // 1. umount filesystem
-    if (!m_mountTargetPath.empty() && fsapi::IsMountPoint(m_mountTargetPath) && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
+    if (!m_mountTargetPath.empty()
+        && fsapi::IsMountPoint(m_mountTargetPath)
+        && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
         RECORD_INNER_ERROR("failed to umount target %s, errno %u", m_mountTargetPath.c_str(), errno);
         return false;
     }
