@@ -1,3 +1,11 @@
+/**
+ * @file Win32VirtualDiskMountProvider.h
+ * @brief This file defines the volume copy mount API for VHD/VHDX format on Windows.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifdef _WIN32
 
 #ifndef VOLUMEBACKUP_WIN32_VIRTUALDISK_MOUNT_PROVIDER_HEADER
@@ -52,7 +60,7 @@ class Win32VirtualDiskUmountProvider : public VolumeCopyUmountProvider {
 public:
     static std::unique_ptr<Win32VirtualDiskUmountProvider> Build(const std::string& mountRecordJsonFilePath);
 
-    Win32VirtualDiskUmountProvider(const std::string& virtualDiskFilePath);
+    explicit Win32VirtualDiskUmountProvider(const std::string& virtualDiskFilePath);
 
     bool Umount() override;
 

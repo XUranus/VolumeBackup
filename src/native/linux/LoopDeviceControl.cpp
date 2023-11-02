@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifdef __linux__
 
 #include "native/linux/LoopDeviceControl.h"

@@ -1,3 +1,11 @@
+/**
+ * @file TaskResourceManager.h
+ * @brief Provide a set of interface to manage attachment and detachment for copy resource.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_TASK_RESOURCE_MANAGER_HEADER
 #define VOLUMEBACKUP_TASK_RESOURCE_MANAGER_HEADER
 
@@ -5,7 +13,6 @@
 
 namespace volumeprotect {
 namespace task {
-
 
 /**
  * @brief Params struct used to build BackupTaskResourceManager
@@ -74,7 +81,7 @@ protected:
 // BackupTaskResourceManager is inited before backup task start
 class BackupTaskResourceManager : public TaskResourceManager {
 public:
-    BackupTaskResourceManager(const BackupTaskResourceManagerParams& param);
+    explicit BackupTaskResourceManager(const BackupTaskResourceManagerParams& param);
 
     ~BackupTaskResourceManager();
 
@@ -97,7 +104,7 @@ private:
 // RestoreTaskResourceManager is inited before restore task start
 class RestoreTaskResourceManager : public TaskResourceManager {
 public:
-    RestoreTaskResourceManager(const RestoreTaskResourceManagerParams& param);
+    explicit RestoreTaskResourceManager(const RestoreTaskResourceManagerParams& param);
 
     ~RestoreTaskResourceManager();
 

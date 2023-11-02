@@ -1,3 +1,11 @@
+/**
+ * @file VolumeProtectTaskContext.h
+ * @brief Common context for both backup task and restore task.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 #define VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 
@@ -28,8 +36,8 @@ class VolumeBlockAllocator {
 public:
     VolumeBlockAllocator(uint32_t blockSize, uint32_t blockNum);
     ~VolumeBlockAllocator();
-    uint8_t*    bmalloc();
-    void        bfree(uint8_t* ptr);
+    uint8_t*    BlockAlloc();
+    void        BlockFree(uint8_t* ptr);
 
 private:
     uint8_t*    m_pool;

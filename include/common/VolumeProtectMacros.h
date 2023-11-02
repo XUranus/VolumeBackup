@@ -1,3 +1,11 @@
+/**
+ * @file VolumeProtectMacros.h
+ * @brief This file is used as a PCH, and define some utils missing in STL of CXX11.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_PROTECT_MACROS_HEADER
 #define VOLUMEBACKUP_PROTECT_MACROS_HEADER
 

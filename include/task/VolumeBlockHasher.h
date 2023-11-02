@@ -34,12 +34,11 @@ public:
     static std::shared_ptr<VolumeBlockHasher>  BuildHasher(
         std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
         std::shared_ptr<VolumeTaskSharedContext> sharedContext,
-        HasherForwardMode mode
-    );
+        HasherForwardMode mode);
 
     bool Start();
 
-    VolumeBlockHasher(const VolumeBlockHasherParam& param);
+    explicit VolumeBlockHasher(const VolumeBlockHasherParam& param);
 
 private:
     void WorkerThread(uint32_t workerID);

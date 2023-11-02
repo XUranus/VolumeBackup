@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include <cerrno>
 #include <cstdio>
 
@@ -304,8 +310,7 @@ bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filen
         NULL,
         CREATE_ALWAYS,
         FILE_FLAG_BACKUP_SEMANTICS,
-        NULL
-    );
+        NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         return false;
     }

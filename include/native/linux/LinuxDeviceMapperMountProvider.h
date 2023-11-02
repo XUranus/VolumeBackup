@@ -89,7 +89,7 @@ public:
         const VolumeCopyMountConfig& volumeCopyMountConfig,
         const VolumeCopyMeta& volumeCopyMeta);
 
-    LinuxDeviceMapperMountProvider(const LinuxDeviceMapperMountProviderParams& params);
+    explicit LinuxDeviceMapperMountProvider(const LinuxDeviceMapperMountProviderParams& params);
 
     virtual ~LinuxDeviceMapperMountProvider() = default;
 

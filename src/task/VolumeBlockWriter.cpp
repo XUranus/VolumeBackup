@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include "Logger.h"
 #include "VolumeProtector.h"
 #include "native/RawIO.h"
@@ -144,14 +150,14 @@ void VolumeBlockWriter::MainThread()
         if (NeedToWrite(buffer, length) &&
             !m_dataWriter->Write(writerOffset, buffer, length, errorCode)) {
             ERRLOG("write %d bytes at %llu failed, error code = %u", length, writerOffset, errorCode);
-            m_sharedContext->allocator->bfree(buffer);
+            m_sharedContext->allocator->BlockFree(buffer);
             ++m_sharedContext->counter->blockesWriteFailed;
             // writer should not return (otherwise writer queue may block reader)
         }
 
         m_sharedContext->writtenBitmap->Set(index);
         m_sharedContext->processedBitmap->Set(index);
-        m_sharedContext->allocator->bfree(buffer);
+        m_sharedContext->allocator->BlockFree(buffer);
         m_sharedContext->counter->bytesWritten += length;
     }
     if (m_status == TaskStatus::SUCCEED && m_sharedContext->counter->blockesWriteFailed != 0) {

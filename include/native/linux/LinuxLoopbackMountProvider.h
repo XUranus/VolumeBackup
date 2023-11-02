@@ -1,3 +1,11 @@
+/**
+ * @file LinuxLoopbackMountProvider.h
+ * @brief This file defines the volume copy mount API for image format on linux.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_LINUX_IMAGE_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_LINUX_IMAGE_MOUNT_PROVIDER_HEADER
 
@@ -29,7 +37,7 @@ public:
         const VolumeCopyMountConfig& volumeCopyMountConfig,
         const VolumeCopyMeta& volumeCopyMeta);
 
-    LinuxLoopbackMountProvider(const LinuxLoopbackMountProviderParams& params);
+    explicit LinuxLoopbackMountProvider(const LinuxLoopbackMountProviderParams& params);
 
     bool Mount() override;
 

@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifdef _WIN32
 
 #include "native/win32/Win32VirtualDiskMountProvider.h"

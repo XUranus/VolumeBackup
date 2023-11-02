@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifdef __linux__
 
 #include "native/linux/LinuxDeviceMapperMountProvider.h"
@@ -287,8 +293,7 @@ bool LinuxDeviceMapperMountProvider::CreateReadOnlyDmDevice(
         uint64_t startSector = copySlice.volumeOffset / sectorSize;
         uint64_t sectorsCount = copySlice.size / sectorSize;
         dmTable.AddTarget(std::make_shared<devicemapper::DmTargetLinear>(
-            blockDevicePath, startSector, sectorsCount, 0
-        ));
+            blockDevicePath, startSector, sectorsCount, 0));
     }
     if (!devicemapper::CreateDevice(dmDeviceName, dmTable, dmDevicePath)) {
         RECORD_INNER_ERROR("failed to create dm device, errno %u", errno);

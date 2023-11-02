@@ -1,3 +1,11 @@
+/**
+ * @file RawIO.h
+ * @brief Volume block level I/O API, common base for Win32RawIO and PosixRawIO.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_NATIVE_RAW_IO_HEADER
 #define VOLUMEBACKUP_NATIVE_RAW_IO_HEADER
 

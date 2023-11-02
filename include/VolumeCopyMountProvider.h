@@ -1,3 +1,11 @@
+/**
+ * @file VolumeCopyMountProvider.h
+ * @brief Volume copy mount facade for various copy format.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_VOLUME_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_VOLUME_COPY_MOUNT_PROVIDER_HEADER
 
@@ -86,8 +94,7 @@ public:
      * @return `nullptr` if failed
      */
     static std::unique_ptr<VolumeCopyMountProvider> Build(
-        const VolumeCopyMountConfig& mountConfig
-    );
+        const VolumeCopyMountConfig& mountConfig);
 
     virtual ~VolumeCopyMountProvider() = default;
 
@@ -122,8 +129,7 @@ public:
      * @return `nullptr` if failed
      */
     static std::unique_ptr<VolumeCopyUmountProvider> Build(
-        const std::string mountRecordJsonFilePath
-    );
+        const std::string mountRecordJsonFilePath);
 
     virtual ~VolumeCopyUmountProvider() = default;
 

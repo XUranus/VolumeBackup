@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include "Logger.h"
 #include "VolumeProtectTaskContext.h"
 #include "native/FileSystemAPI.h"
@@ -36,31 +42,31 @@ VolumeBlockAllocator::~VolumeBlockAllocator()
     }
 }
 
-uint8_t* VolumeBlockAllocator::bmalloc()
+uint8_t* VolumeBlockAllocator::BlockAlloc()
 {
     std::lock_guard<std::mutex> lk(m_mutex);
     for (int i = 0; i < static_cast<int>(m_blockNum); i++) {
         if (!m_allocTable[i]) {
             m_allocTable[i] = true;
             uint8_t* ptr = m_pool + (m_blockSize * i);
-            DBGLOG("bmalloc index = %d, address = %p", i, ptr);
+            DBGLOG("BlockAlloc index = %d, address = %p", i, ptr);
             return ptr;
         }
     }
     return nullptr;
 }
 
-void VolumeBlockAllocator::bfree(uint8_t* ptr)
+void VolumeBlockAllocator::BlockFree(uint8_t* ptr)
 {
     std::lock_guard<std::mutex> lk(m_mutex);
     uint64_t index = (ptr - m_pool) / static_cast<uint64_t>(m_blockSize);
-    DBGLOG("bfree address = %p, index = %llu", ptr, index);
+    DBGLOG("BlockFree address = %p, index = %llu", ptr, index);
     if ((ptr - m_pool) % m_blockSize == 0) {
         m_allocTable[index] = false;
         return;
     }
     // reach err here
-    throw std::runtime_error("bfree error: bad address");
+    throw std::runtime_error("BlockFree error: bad address");
 }
 
 // implement BlockHashingContext...
@@ -185,13 +191,11 @@ bool VolumeTaskSession::IsTerminated() const
     DBGLOG("check session terminated, readerTask: %d, hasherTask: %d, writerTask: %d",
         readerTask == nullptr ? TaskStatus::SUCCEED : readerTask->GetStatus(),
         hasherTask == nullptr ? TaskStatus::SUCCEED : hasherTask->GetStatus(),
-        writerTask == nullptr ? TaskStatus::SUCCEED : writerTask->GetStatus()
-    );
+        writerTask == nullptr ? TaskStatus::SUCCEED : writerTask->GetStatus());
     return (
         (readerTask == nullptr || readerTask->IsTerminated()) &&
         (hasherTask == nullptr || hasherTask->IsTerminated()) &&
-        (writerTask == nullptr || writerTask->IsTerminated())
-    );
+        (writerTask == nullptr || writerTask->IsTerminated()));
 }
 
 bool VolumeTaskSession::IsFailed() const
@@ -199,13 +203,11 @@ bool VolumeTaskSession::IsFailed() const
     DBGLOG("check session failed, readerTask: %d, hasherTask: %d, writerTask: %d",
         readerTask == nullptr ? TaskStatus::SUCCEED : readerTask->GetStatus(),
         hasherTask == nullptr ? TaskStatus::SUCCEED : hasherTask->GetStatus(),
-        writerTask == nullptr ? TaskStatus::SUCCEED : writerTask->GetStatus()
-    );
+        writerTask == nullptr ? TaskStatus::SUCCEED : writerTask->GetStatus());
     return (
         (readerTask != nullptr && readerTask->IsFailed()) ||
         (hasherTask != nullptr && hasherTask->IsFailed()) ||
-        (writerTask != nullptr && writerTask->IsFailed())
-    );
+        (writerTask != nullptr && writerTask->IsFailed()));
 }
 
 void VolumeTaskSession::Abort() const

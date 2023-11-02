@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # coding=utf-8
-
+#
+# @copyright Copyright 2023 XUranus. All rights reserved.
+# @license This project is released under the Apache License.
+# @author XUranus(2257238649wdx@gmail.com)
+#
 # python api wrapper for VolumeBackup using ctypes
 import ctypes
 from ctypes import *

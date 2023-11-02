@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include "Logger.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
@@ -102,11 +108,9 @@ bool VolumeBackupTask::Prepare()
                 m_backupConfig->outputCopyDataDirPath,
                 m_backupConfig->copyName,
                 m_backupConfig->copyFormat,
-                sessionIndex
-            )),
+                sessionIndex)),
             common::GetFileName(common::GetChecksumBinPath(
-                m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, sessionIndex
-            )),
+                m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, sessionIndex)),
             sessionIndex,
             sessionOffset,
             sessionSize

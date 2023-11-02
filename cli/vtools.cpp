@@ -322,8 +322,7 @@ std::vector<std::wstring> GetWin32VolumePathListW(const std::wstring& wVolumeNam
             wVolumeName.c_str(),
             devicePathNames,
             charCount,
-            &charCount
-        );
+            &charCount);
         if (success || ::GetLastError() != ERROR_MORE_DATA) {
             break;
         }

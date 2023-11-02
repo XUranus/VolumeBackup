@@ -1,13 +1,7 @@
-/*
- * ================================================================
- *   Copyright (C) 2023 XUranus All rights reserved.
- *
- *   File:         vcopymount.cpp
- *   Author:       XUranus
- *   Date:         2023-08-23
- *   Description:  a command line tool to mount/umount copy
- *                 generated from volumebackup using dm linear mapper
- * ==================================================================
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
  */
 
 #include <cstdint>

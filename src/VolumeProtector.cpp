@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
 #include "VolumeRestoreTask.h"
@@ -160,8 +166,7 @@ bool StatefulTask::IsTerminated() const
     return (
         m_status == TaskStatus::SUCCEED ||
         m_status == TaskStatus::ABORTED ||
-        m_status == TaskStatus::FAILED
-    );
+        m_status == TaskStatus::FAILED);
 }
 
 std::string StatefulTask::GetStatusString() const

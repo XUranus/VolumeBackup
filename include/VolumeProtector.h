@@ -1,4 +1,12 @@
 
+/**
+ * @file VolumeProtector.h
+ * @brief Volume backup/restore facade.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_PROTECT_FACADE_HEADER
 #define VOLUMEBACKUP_PROTECT_FACADE_HEADER
 

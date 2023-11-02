@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include "Logger.h"
 #include "VolumeProtector.h"
 #include "VolumeProtectTaskContext.h"
@@ -108,18 +114,15 @@ bool VolumeRestoreTask::InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTas
 {
     session->readerTask = VolumeBlockReader::BuildCopyReader(
         session->sharedConfig,
-        session->sharedContext
-    );
+        session->sharedContext);
     if (session->readerTask == nullptr) {
         ERRLOG("restore session failed to init reader task");
         return false;
     }
-
     // 4. check and init writer
     session->writerTask = VolumeBlockWriter::BuildVolumeWriter(
         session->sharedConfig,
-        session->sharedContext
-    );
+        session->sharedContext);
     if (session->writerTask == nullptr) {
         ERRLOG("restore session failed to init writer task");
         return false;

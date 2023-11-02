@@ -45,7 +45,7 @@ public:
     ~VolumeBlockReader();
 
     // provide to gmock or builder, not recommended to use
-    VolumeBlockReader(const VolumeBlockReaderParam& param);
+    explicit VolumeBlockReader(const VolumeBlockReaderParam& param);
 
     // block reading for updating checkpoint
     void Pause();

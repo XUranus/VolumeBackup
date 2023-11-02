@@ -31,20 +31,18 @@ public:
     // build a writer writing to copy file
     static std::shared_ptr<VolumeBlockWriter> BuildCopyWriter(
         std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
-        std::shared_ptr<VolumeTaskSharedContext> sharedContext
-    );
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext);
 
     // build a writer writing to volume
     static std::shared_ptr<VolumeBlockWriter> BuildVolumeWriter(
         std::shared_ptr<VolumeTaskSharedConfig> sharedConfig,
-        std::shared_ptr<VolumeTaskSharedContext> sharedContext
-    );
+        std::shared_ptr<VolumeTaskSharedContext> sharedContext);
 
     bool Start();
 
     ~VolumeBlockWriter();
 
-    VolumeBlockWriter(const VolumeBlockWriterParam& param);
+    explicit VolumeBlockWriter(const VolumeBlockWriterParam& param);
 
     bool Flush();
 

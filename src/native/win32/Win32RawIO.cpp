@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifdef _WIN32
 
 #define UNICODE /* foring using WCHAR on windows */
@@ -150,8 +156,7 @@ Win32RawDataReader::Win32RawDataReader(const std::string& path, int flag, uint64
         NULL,
         OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS,
-        NULL
-    );
+        NULL);
     if (m_handle == INVALID_HANDLE_VALUE) {
         return;
     }
@@ -219,8 +224,7 @@ Win32RawDataWriter::Win32RawDataWriter(const std::string& path, int flag, uint64
         NULL,
         OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS,
-        NULL
-    );
+        NULL);
 }
 
 bool Win32RawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode)
@@ -448,8 +452,7 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
         NULL,
         CREATE_ALWAYS,
         FILE_FLAG_BACKUP_SEMANTICS,
-        NULL
-    );
+        NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         errorCode = static_cast<ErrCodeType>(::GetLastError());
         return false;
@@ -517,8 +520,7 @@ static DWORD CreateVirtualDiskFile(const std::string& filePath, uint64_t maxinum
         0,
         &createParams,
         nullptr,
-        &hVhdFile
-    );
+        &hVhdFile);
     if (hVhdFile != INVALID_HANDLE_VALUE) {
         ::CloseHandle(hVhdFile);
     }
@@ -647,9 +649,7 @@ static bool OpenWin32VirtualDiskW(
         accessMask,
         OPEN_VIRTUAL_DISK_FLAG_NONE,
         &openParameters,
-        &hVirtualDiskFile
-    );
-
+        &hVirtualDiskFile);
     return errorCode == ERROR_SUCCESS;
 }
 
@@ -759,8 +759,7 @@ bool rawio::win32::DetachVirtualDiskCopy(const std::string& virtualDiskFilePath,
     DWORD opStatus = ::DetachVirtualDisk(
         hVirtualDiskFile,
         DETACH_VIRTUAL_DISK_FLAG_NONE,
-        0
-    );
+        0);
     if (opStatus != ERROR_SUCCESS) {
         // failed to detach
         errorCode = opStatus;

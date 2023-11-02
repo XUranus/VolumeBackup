@@ -1,3 +1,11 @@
+/**
+ * @file DeviceMapperControl.h
+ * @brief Linux DeviceMapper utilities wrapper.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 #define VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 
@@ -12,8 +20,8 @@ namespace volumeprotect {
 namespace devicemapper {
 
 /**
- * reference url:
- * https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/include/libdm/dm_target.h
+ * @brief Device mapper table, code referenced from AOSP
+ * @link https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/include/libdm/dm_target.h
  */
 class DmTarget {
 public:
@@ -66,7 +74,7 @@ private:
 
 class DmTable {
 public:
-    bool    AddTarget(std::shared_ptr<DmTarget> target);
+    bool AddTarget(std::shared_ptr<DmTarget> target);
 
     /**
      * Returns the string represntation of the table that is ready to be passed into the kernel
@@ -102,12 +110,10 @@ enum class DmDeviceStatus {
     ACTIVE
 };
 
-/*
- * reference url:
- * https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/dm.cpp
+/**
+ * @brief Create dm device and activate with specified dm table and name, return dm device path
+ * @link https://android.googlesource.com/platform/system/core/+/refs/heads/main/fs_mgr/libdm/dm.cpp
  */
-
-// create dm device and activate with specified dm table and name, return dm device path
 bool CreateDevice(const std::string& name, const DmTable& dmTable, std::string& path);
 
 bool RemoveDeviceIfExists(const std::string& name);

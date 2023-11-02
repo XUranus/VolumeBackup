@@ -1,12 +1,8 @@
-/*================================================================
-*   Copyright (C) 2023 XUranus All rights reserved.
-*
-*   File:         GetOption.cpp
-*   Author:       XUranus
-*   Date:         2023-06-29
-*   Description:
-*
-================================================================*/
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
 
 #include "GetOption.h"
 

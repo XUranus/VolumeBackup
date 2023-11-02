@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include "Logger.h"
 #include "native/RawIO.h"
 #include "VolumeBlockReader.h"
@@ -227,7 +233,7 @@ uint8_t* VolumeBlockReader::FetchBlockBuffer(std::chrono::seconds timeout) const
 {
     auto start = std::chrono::steady_clock::now();
     while (true) {
-        uint8_t* buffer = m_sharedContext->allocator->bmalloc();
+        uint8_t* buffer = m_sharedContext->allocator->BlockAlloc();
         if (buffer != nullptr) {
             return buffer;
         }

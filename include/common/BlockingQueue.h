@@ -1,3 +1,11 @@
+/**
+ * @file BlockingQueue.h
+ * @brief This file implement a blocking queue for concurrent access by mutiple tasks.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifndef VOLUMEBACKUP_BLOCKING_QUEUE_H
 #define VOLUMEBACKUP_BLOCKING_QUEUE_H
 
@@ -11,7 +19,7 @@
 template<typename T>
 class BlockingQueue {
 public:
-    BlockingQueue(std::size_t maxSize);
+    explicit BlockingQueue(std::size_t maxSize);
 
     bool BlockingPush(const T&);    // blocking push, return false if queue is set to finished
 

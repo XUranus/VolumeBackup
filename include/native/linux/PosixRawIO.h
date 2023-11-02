@@ -1,3 +1,11 @@
+/**
+ * @file PosixRawIO.h
+ * @brief Linux volume block level I/O API.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifdef __linux__
 
 #ifndef VOLUMEBACKUP_NATIVE_POSIX_RAW_IO_HEADER
@@ -14,7 +22,7 @@ namespace posix {
 // PosixRawDataReader can read from any block device or common file at given offset
 class PosixRawDataReader : public RawDataReader {
 public:
-    explicit PosixRawDataReader(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
+    PosixRawDataReader(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
     ~PosixRawDataReader();
     bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
@@ -29,7 +37,7 @@ private:
 // PosixRawDataWriter can write to any block device or common file at give offset
 class PosixRawDataWriter : public RawDataWriter {
 public:
-    explicit PosixRawDataWriter(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
+    PosixRawDataWriter(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
     ~PosixRawDataWriter();
     bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;

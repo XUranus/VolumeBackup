@@ -1,3 +1,11 @@
+/**
+ * @file Win32RawIO.h
+ * @brief Windows volume block level I/O API and Virtualdisk API wrapper.
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #ifdef _WIN32
 
 #ifndef VOLUMEBACKUP_NATIVE_Win32_RAW_IO_HEADER
@@ -27,7 +35,7 @@ namespace win32 {
 // Win32RawDataReader can read from any block device or common file at given offset
 class Win32RawDataReader : public RawDataReader {
 public:
-    explicit Win32RawDataReader(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
+    Win32RawDataReader(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
     ~Win32RawDataReader();
     bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
@@ -42,7 +50,7 @@ private:
 // Win32RawDataWriter can write to any block device or common file at give offset
 class Win32RawDataWriter : public RawDataWriter {
 public:
-    explicit Win32RawDataWriter(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
+    Win32RawDataWriter(const std::string& path, int flag = 0, uint64_t shiftOffset = 0);
     ~Win32RawDataWriter();
     bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
@@ -61,7 +69,7 @@ private:
  */
 class Win32VirtualDiskVolumeRawDataReader : public RawDataReader {
 public:
-    explicit Win32VirtualDiskVolumeRawDataReader(const std::string& virtualDiskFilePath, bool autoDetach = true);
+    Win32VirtualDiskVolumeRawDataReader(const std::string& virtualDiskFilePath, bool autoDetach = true);
     ~Win32VirtualDiskVolumeRawDataReader();
     bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
@@ -79,7 +87,7 @@ private:
  */
 class Win32VirtualDiskVolumeRawDataWriter : public RawDataWriter {
 public:
-    explicit Win32VirtualDiskVolumeRawDataWriter(const std::string& virtualDiskFilePath, bool autoDetach = true);
+    Win32VirtualDiskVolumeRawDataWriter(const std::string& virtualDiskFilePath, bool autoDetach = true);
     ~Win32VirtualDiskVolumeRawDataWriter();
     bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;

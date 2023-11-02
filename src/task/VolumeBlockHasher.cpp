@@ -1,3 +1,9 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
+
 #include "VolumeProtector.h"
 #ifdef __linux__
 #include <openssl/evp.h>
@@ -110,7 +116,7 @@ void VolumeBlockHasher::WorkerThread(uint32_t workerID)
             if (previousHash == lastestHash) {
                 // drop the block and free
                 DBGLOG("block[%llu] checksum remain unchanged, block dropped", index);
-                m_sharedContext->allocator->bfree(consumeBlock.ptr);
+                m_sharedContext->allocator->BlockFree(consumeBlock.ptr);
                 m_sharedContext->processedBitmap->Set(index);
                 continue;
             }

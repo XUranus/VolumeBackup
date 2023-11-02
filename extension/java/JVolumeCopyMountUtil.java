@@ -1,3 +1,8 @@
+/**
+ * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @license This project is released under the Apache License.
+ * @author XUranus(2257238649wdx@gmail.com)
+ */
 
 import java.nio.file.Files;
 import java.nio.file.Path;
