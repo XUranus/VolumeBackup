@@ -36,7 +36,7 @@ bool PosixRawDataReader::Read(uint64_t offset, uint8_t* buffer, int length, ErrC
     ::lseek(m_fd, offset, SEEK_SET);
     int ret = ::read(m_fd, buffer, length);
     if (ret <= 0 || ret != length) {
-        errorCode = static_cast<ErrCodeType>(errno);;
+        errorCode = static_cast<ErrCodeType>(errno);
         return false;
     }
     return true;
@@ -77,7 +77,7 @@ bool PosixRawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, Err
     ::lseek(m_fd, offset, SEEK_SET);
     int ret = ::write(m_fd, buffer, length);
     if (ret <= 0 || ret != length) {
-        errorCode = static_cast<ErrCodeType>(errno);;
+        errorCode = static_cast<ErrCodeType>(errno);
         return false;
     }
     return true;

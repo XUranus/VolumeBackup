@@ -256,7 +256,7 @@ bool LinuxDeviceMapperMountProvider::LoadResidualDmDeviceList(std::vector<std::s
         });
     for (std::string& dmDeviceName : dmDeviceNameList) {
         dmDeviceName = dmDeviceName.substr(
-        	0, dmDeviceName.length() - DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX.length());
+            0, dmDeviceName.length() - DEVICE_MAPPER_DEVICE_CREATION_RECORD_SUFFIX.length());
     }
     return true;
 }

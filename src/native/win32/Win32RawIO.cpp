@@ -484,7 +484,7 @@ bool rawio::TruncateCreateFile(const std::string& path, uint64_t size, ErrCodeTy
 static DWORD CreateVirtualDiskFile(const std::string& filePath, uint64_t maxinumSize, DWORD deviceID, bool dynamic)
 {
     VIRTUAL_STORAGE_TYPE virtualStorageType;
-    virtualStorageType.DeviceId = deviceID;;
+    virtualStorageType.DeviceId = deviceID;
     virtualStorageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
 
     // Specify the VHD parameters

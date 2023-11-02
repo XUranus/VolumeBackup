@@ -55,8 +55,8 @@ std::unique_ptr<LinuxLoopbackMountProvider> LinuxLoopbackMountProvider::Build(
         ERRLOG("illegal volume copy meta, image file segments list empty");
         return nullptr;
     }
-    params.imageFilePath = volumeCopyMountConfig.copyDataDirPath +
-        SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
+    params.imageFilePath = volumeCopyMountConfig.copyDataDirPath
+        + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
@@ -139,8 +139,8 @@ bool LinuxLoopbackMountProvider::PosixLoopbackMountRollback(const std::string& l
 }
 
 std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(
-	const std::string& mountRecordJsonFilePath,
-	const std::string& outputDirPath)
+    const std::string& mountRecordJsonFilePath,
+    const std::string& outputDirPath)
 {
     LinuxImageCopyMountRecord mountRecord {};
     if (!common::JsonDeserialize(mountRecord, mountRecordJsonFilePath)) {
@@ -148,7 +148,10 @@ std::unique_ptr<LinuxLoopbackUmountProvider> LinuxLoopbackUmountProvider::Build(
             mountRecordJsonFilePath.c_str(), errno);
         return nullptr;
     };
-    return exstd::make_unique<LinuxLoopbackUmountProvider>(outputDirPath, mountRecord.mountTargetPath, mountRecord.loopbackDevicePath);
+    return exstd::make_unique<LinuxLoopbackUmountProvider>(
+        outputDirPath,
+        mountRecord.mountTargetPath,
+        mountRecord.loopbackDevicePath);
 }
 
 LinuxLoopbackUmountProvider::LinuxLoopbackUmountProvider(
@@ -166,7 +169,9 @@ bool LinuxLoopbackUmountProvider::Umount()
         return false;
     }
     // 2. detach loopback device
-    if (!m_loopbackDevicePath.empty() && loopback::Attached(m_loopbackDevicePath) && !loopback::Detach(m_loopbackDevicePath)) {
+    if (!m_loopbackDevicePath.empty()
+        && loopback::Attached(m_loopbackDevicePath)
+        && !loopback::Detach(m_loopbackDevicePath)) {
         RECORD_INNER_ERROR("failed to detach loopback device %s, errno %u", m_loopbackDevicePath.c_str(), errno);
         return false;
     }
