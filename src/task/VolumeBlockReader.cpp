@@ -103,7 +103,7 @@ VolumeBlockReader::~VolumeBlockReader()
 }
 
 VolumeBlockReader::VolumeBlockReader(const VolumeBlockReaderParam& param)
- : m_sourceType(param.sourceType),
+    : m_sourceType(param.sourceType),
     m_sourcePath(param.sourcePath),
     m_baseOffset(param.sourceOffset),
     m_sharedConfig(param.sharedConfig),

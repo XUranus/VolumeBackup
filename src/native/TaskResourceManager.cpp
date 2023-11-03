@@ -77,7 +77,6 @@ static bool CreateFragmentBinaryBackupCopy(
 static bool FragmentBinaryBackupCopyExists(std::vector<std::string> fragmentFiles)
 {
     for (const std::string& fragmentFile : fragmentFiles) {
-        ErrCodeType errorCode = 0;
         if (!fsapi::IsFileExists(fragmentFile)) {
             INFOLOG("fragment binary file %s not exists", fragmentFile.c_str());
             return false;
@@ -222,9 +221,9 @@ bool TaskResourceManager::DetachCopyResource()
 // implement BackupTaskResourceManager...
 BackupTaskResourceManager::BackupTaskResourceManager(const BackupTaskResourceManagerParams& param)
     : TaskResourceManager(param.copyFormat, param.copyDataDirPath, param.copyName),
+    m_backupType(param.backupType),
     m_volumeSize(param.volumeSize),
-    m_maxSessionSize(param.maxSessionSize),
-    m_backupType(param.backupType)
+    m_maxSessionSize(param.maxSessionSize)
 {};
 
 BackupTaskResourceManager::~BackupTaskResourceManager()

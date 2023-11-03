@@ -46,7 +46,7 @@ private:
 
 template<typename T>
 BlockingQueue<T>::BlockingQueue(std::size_t maxSize)
- : m_finished(false), m_maxSize(maxSize)
+    : m_finished(false), m_maxSize(maxSize)
 {}
 
 /**

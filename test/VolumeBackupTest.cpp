@@ -28,6 +28,7 @@
 
 using namespace ::testing;
 using namespace volumeprotect;
+using namespace volumeprotect::task;
 
 namespace {
     constexpr auto DEFAULT_MOCK_SESSION_BLOCK_SIZE = 4LLU * ONE_MB;

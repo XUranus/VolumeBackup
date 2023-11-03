@@ -693,7 +693,7 @@ bool rawio::win32::GetVirtualDiskPhysicalDrivePath(
     }
 
     opStatus = ::GetVirtualDiskPhysicalPath(hVirtualDiskFile, &wPhysicalDriveNameLength, wPhysicalDriveName);
-    if(opStatus != ERROR_SUCCESS) { // Unable to retrieve virtual disk path
+    if (opStatus != ERROR_SUCCESS) { // Unable to retrieve virtual disk path
         errorCode = opStatus;
         ::CloseHandle(hVirtualDiskFile);
         return false;

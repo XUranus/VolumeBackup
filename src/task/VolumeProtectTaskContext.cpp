@@ -300,9 +300,9 @@ std::shared_ptr<CheckpointSnapshot> CheckpointSnapshot::LoadFrom(const std::stri
     }
     auto checkpointSnapshot = std::make_shared<CheckpointSnapshot>(bitmapBytes);
     uint64_t offset = 0;
-    memcpy(checkpointSnapshot->processedBitmapBuffer, buffer + offset, sizeof(uint8_t) * bitmapBytes);
+    memcpy(checkpointSnapshot->processedBitmapBuffer,buffer + offset, sizeof(uint8_t) * bitmapBytes);
     offset += bitmapBytes;
-    memcpy(checkpointSnapshot->writtenBitmapBuffer, buffer + offset , sizeof(uint8_t) * bitmapBytes);
+    memcpy(checkpointSnapshot->writtenBitmapBuffer,buffer + offset, sizeof(uint8_t) * bitmapBytes);
     delete[] buffer;
     return checkpointSnapshot;
 }
@@ -472,9 +472,9 @@ bool VolumeTaskCheckpointTrait::RestoreSessionBitmap(std::shared_ptr<VolumeTaskS
         return false;
     }
     session->sharedContext->processedBitmap = std::make_shared<Bitmap>(
-        checkpointSnapshot->processedBitmapBuffer , checkpointSnapshot->bitmapBufferBytesLength);
+        checkpointSnapshot->processedBitmapBuffer ,checkpointSnapshot->bitmapBufferBytesLength);
     session->sharedContext->writtenBitmap = std::make_shared<Bitmap>(
-        checkpointSnapshot->writtenBitmapBuffer , checkpointSnapshot->bitmapBufferBytesLength);
+        checkpointSnapshot->writtenBitmapBuffer ,checkpointSnapshot->bitmapBufferBytesLength);
     checkpointSnapshot->writtenBitmapBuffer = nullptr;
     checkpointSnapshot->processedBitmapBuffer = nullptr;
     DBGLOG("restore session bitmap from %s success", checkpointFilePath.c_str());
