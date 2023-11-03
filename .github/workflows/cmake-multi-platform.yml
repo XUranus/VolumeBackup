@@ -1,6 +1,6 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: CMake on multiple platforms
+name: VolumeBackup Linux/Windows
 
 on:
   push:
@@ -46,6 +46,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: clone submodules
+      # clone dependencies
+      run: >
+        git submodule update --init --recursive --force
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
