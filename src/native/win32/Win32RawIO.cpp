@@ -898,7 +898,7 @@ bool rawio::win32::InitVirtualDiskGPT(
 
     // Wait for volume device prepared
     int retryNum = 0;
-    stdl::string volumeDevicePath;
+    std::string volumeDevicePath;
     while (!rawio::win32::GetCopyVolumeDevicePath(physicalDrivePath, volumeDevicePath, errorCode)
         && retryNum < GET_VOLUME_DEVICE_PATH_MAX_RETRY) {
         retryNum++;
