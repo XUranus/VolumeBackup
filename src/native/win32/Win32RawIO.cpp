@@ -6,14 +6,24 @@
 
 #ifdef _WIN32
 
-#define UNICODE /* foring using WCHAR on windows */
-#define NOGDI
-
 #include <locale>
 #include <codecvt>
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef UNICODE
+#define UNICODE /* foring using WCHAR on windows */
+#endif
+
+#ifndef NOGDI
+#define NOGDI
+#endif
+
 #include <Windows.h>
 #include <VirtDisk.h>
+#include <Rpc.h>
 #include <winioctl.h>
 #include <sddl.h>
 #include <setupapi.h>
@@ -105,6 +115,9 @@ namespace {
     // According to MSDN: an application should wait for the MSR partition arrival
     // before sending the IOCTL_DISK_SET_DRIVE_LAYOUT_EX control code.
     constexpr auto WAIT_FOR_MSR_PARTITION_DURATION_SEC = 2;
+
+    // when partition is created, volume device path may won't ready instantly
+    constexpr auto GET_VOLUME_DEVICE_PATH_MAX_RETRY = 3;
 }
 
 inline wchar_t LowerW(wchar_t ch)
@@ -869,30 +882,29 @@ bool rawio::win32::InitVirtualDiskGPT(
     // Send the IOCTL_DISK_CREATE_DISK control code
     DWORD bytesReturned;
     if (!::DeviceIoControl(
-        hDevice,
-        IOCTL_DISK_CREATE_DISK,
-        &createDisk,
-        sizeof(createDisk),
-        NULL,
-        0,
-        &bytesReturned,
-        NULL)) {
+        hDevice, IOCTL_DISK_CREATE_DISK, &createDisk, sizeof(createDisk), NULL, 0, &bytesReturned, NULL)) {
         // Error: IOCTL_DISK_CREATE_DISK failed
         ::CloseHandle(hDevice);
         return false;
     }
-
     // TODO:: hack, wait for MSR partition arrival
     std::this_thread::sleep_for(std::chrono::seconds(WAIT_FOR_MSR_PARTITION_DURATION_SEC));
-
     // Start init GPT partition
     if (!InitMsrPartitionAndDataPartition(hDevice, diskIdentifier, volumeSize, errorCode)) {
         ::CloseHandle(hDevice);
         return false;
     }
-
     ::CloseHandle(hDevice);
-    return true;
+
+    // Wait for volume device prepared
+    int retryNum = 0;
+    stdl::string volumeDevicePath;
+    while (!rawio::win32::GetCopyVolumeDevicePath(physicalDrivePath, volumeDevicePath, errorCode)
+        && retryNum < GET_VOLUME_DEVICE_PATH_MAX_RETRY) {
+        retryNum++;
+        std::this_thread::sleep_for(std::chrono::seconds(retryNum));
+    }
+    return !volumeDevicePath.empty();
 }
 
 // list all win32 volume paths and convert from kernel path to user path

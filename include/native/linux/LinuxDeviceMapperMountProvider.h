@@ -1,7 +1,7 @@
-#ifdef __linux__
-
 #ifndef VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_LINUX_COPY_MOUNT_PROVIDER_HEADER
+
+#ifdef __linux__
 
 // external logger/json library
 #include "Json.h"

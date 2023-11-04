@@ -21,11 +21,22 @@
 #endif
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN 1
-#define UNICODE /* foring using WCHAR on windows */
-#define NOGDI
+
 #include <locale>
 #include <codecvt>
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef UNICODE
+#define UNICODE /* foring using WCHAR on windows */
+#endif
+
+#ifndef NOGDI
+#define NOGDI
+#endif
+
 #include <Windows.h>
 #include <winioctl.h>
 #endif

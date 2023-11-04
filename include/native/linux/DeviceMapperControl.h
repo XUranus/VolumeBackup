@@ -5,11 +5,10 @@
  * @license This project is released under the Apache License.
  * @author XUranus(2257238649wdx@gmail.com)
  */
+#ifdef __linux__
 
 #ifndef VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
 #define VOLUMEBACKUP_DM_DEVICE_MAPPER_CONTROL_H
-
-#ifdef __linux__
 
 #include <cstdint>
 #include <string>
