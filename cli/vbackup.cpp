@@ -107,7 +107,7 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
     GetOptionResult result = GetOption(
         argv + 1, argc - 1,
         "v:n:f:d:m:p:h:r:l:",
-        {"--volume=", "--name=", "--format", "--data=", "--meta=",
+        {"--volume=", "--name=", "--format=", "--data=", "--meta=",
         "--prevmeta=", "--help", "--restore", "--loglevel="});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "v" || opt.option == "volume") {
