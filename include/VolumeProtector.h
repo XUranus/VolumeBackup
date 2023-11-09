@@ -10,7 +10,7 @@
 #ifndef VOLUMEBACKUP_PROTECT_FACADE_HEADER
 #define VOLUMEBACKUP_PROTECT_FACADE_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include <string>
 
 /**

@@ -346,7 +346,7 @@ bool fsapi::RemoveFile(const std::string& dirPath, const std::string& filename)
 
 uint32_t fsapi::ProcessorsNum()
 {
-#ifdef __linux
+#ifdef __linux__
     auto processorCount = sysconf(_SC_NPROCESSORS_ONLN);
     return processorCount <= 0 ? DEFAULT_PROCESSORS_NUM : processorCount;
 #endif

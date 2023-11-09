@@ -9,7 +9,7 @@
 #ifndef VOLUMEBACKUP_VOLUME_COPY_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_VOLUME_COPY_MOUNT_PROVIDER_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 
 #ifdef _MSC_VER
 

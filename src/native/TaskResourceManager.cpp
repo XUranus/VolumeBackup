@@ -25,6 +25,11 @@ using namespace volumeprotect::common;
 
 namespace {
     constexpr auto DUMMY_SESSION_INDEX = 0;
+#ifdef _WIN32
+    const std::string SEPARTOR = "\\";
+#else
+    const std::string SEPARTOR = "/";
+#endif
 }
 
 // implement static util functions...
@@ -373,7 +378,7 @@ bool RestoreTaskResourceManager::PrepareCopyResource()
 bool RestoreTaskResourceManager::ResourceExists()
 {
     for (const std::string& copyDataFile : m_copyDataFiles) {
-        if (!fsapi::IsFileExists(copyDataFile)) {
+        if (!fsapi::IsFileExists(m_copyDataDirPath + SEPARTOR + copyDataFile)) {
             ERRLOG("restore copy %s, copy data file %s not exists", m_copyName.c_str(), copyDataFile.c_str());
             return false;
         }
