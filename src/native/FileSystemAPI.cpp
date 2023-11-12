@@ -47,6 +47,7 @@
 #include <fstream>
 #include "Logger.h"
 #include "native/FileSystemAPI.h"
+#include "common/VolumeUtils.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::fsapi;
@@ -55,12 +56,6 @@ namespace {
     constexpr auto DEFAULT_PROCESSORS_NUM = 4;
     constexpr auto DEFAULT_MKDIR_MASK = 0755;
     const int MNTENT_BUFFER_MAX = 4096;
-
-#ifdef _WIN32
-    constexpr auto SEPARATOR = "\\";
-#else
-    constexpr auto SEPARATOR = "/";
-#endif
     const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
 }
 
@@ -307,7 +302,7 @@ bool fsapi::IsVolumeExists(const std::string& volumePath)
 
 bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filename)
 {
-    std::string fullpath = dirPath + SEPARATOR + filename;
+    std::string fullpath = common::PathJoin(dirPath, filename);
 #ifdef POSIXAPI
     int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
     if (fd == -1) {
@@ -335,7 +330,7 @@ bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filen
 
 bool fsapi::RemoveFile(const std::string& dirPath, const std::string& filename)
 {
-    std::string fullpath = dirPath + SEPARATOR + filename;
+    std::string fullpath = common::PathJoin(dirPath, filename);
 #ifdef POSIXAPI
     if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
         return false;

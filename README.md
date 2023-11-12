@@ -5,6 +5,7 @@ Volume backup/restore library and cli tools for Windows and Linux
  - [X] `*.img`,`*.vhd`,`*.vhdx` copy format support
  - [X] volume copy mount support
  - [X] checkpoint support
+ - [ ] Qt GUI
 
 <div align="center">
 <img src="https://github.com/XUranus/VolumeBackup/actions/workflows/cmake-multi-platform.yml/badge.svg" alt="VolumeBackup" title="VolumeBackup">&thinsp;

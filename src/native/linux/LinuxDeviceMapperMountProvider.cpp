@@ -10,7 +10,7 @@
 #include "Json.h"
 #include "Logger.h"
 #include "RawIO.h"
-#include "VolumeUtils.h"
+#include "common/VolumeUtils.h"
 #include "native/FileSystemAPI.h"
 #include "native/linux/LoopDeviceControl.h"
 #include "native/linux/DeviceMapperControl.h"
@@ -30,7 +30,6 @@ using namespace volumeprotect::fsapi;
 using namespace volumeprotect;
 
 namespace {
-    const std::string SEPARATOR = "/";
     const int NUM1 = 1;
     const std::string LOOPBACK_DEVICE_PATH_PREFIX = "/dev/loop";
     const std::string BIN_COPY_MOUNT_RECORD_FILE_SUFFIX = ".bin.mount.record.json";
@@ -56,7 +55,7 @@ inline void SaveLoopDeviceCreationRecord(const std::string& outputDirPath, const
 
 inline void SaveDmDeviceCreationRecord(const std::string& outputDirPath, const std::string& dmDeviceName)
 {
-    if (dmDeviceName.find(SEPARATOR) != std::string::npos) {
+    if (dmDeviceName.find_first_of("/\\") != std::string::npos) {
         ERRLOG("save dm device creation record failed, illegal dm device name %s", dmDeviceName.c_str());
         return;
     }
@@ -82,7 +81,7 @@ inline void RemoveLoopDeviceCreationRecord(const std::string& outputDirPath, con
 
 inline void RemoveDmDeviceCreationRecord(const std::string& outputDirPath, const std::string& dmDeviceName)
 {
-    if (dmDeviceName.find(SEPARATOR) != std::string::npos) {
+    if (dmDeviceName.find_first_of("/\\") != std::string::npos) {
         ERRLOG("remove dm device creation record failed, illegal dm device name %s", dmDeviceName.c_str());
         return;
     }
@@ -269,7 +268,7 @@ bool LinuxDeviceMapperMountProvider::LoadResidualDmDeviceList(std::vector<std::s
 
 std::string LinuxDeviceMapperMountProvider::GetMountRecordPath() const
 {
-    return m_outputDirPath + SEPARATOR + m_copyName + BIN_COPY_MOUNT_RECORD_FILE_SUFFIX;
+    return common::PathJoin(m_outputDirPath, m_copyName + BIN_COPY_MOUNT_RECORD_FILE_SUFFIX);
 }
 
 // implement private methods here ...

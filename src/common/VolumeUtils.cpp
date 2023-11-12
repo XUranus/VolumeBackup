@@ -31,7 +31,7 @@ std::string common::GetChecksumBinPath(
     int                 sessionIndex)
 {
     std::string filename = copyName + "." + std::to_string(sessionIndex) + SHA256_CHECKSUM_BINARY_FILENAME_EXTENSION;
-    return copyMetaDirPath + SEPARATOR + filename;
+    return common::PathJoin(copyMetaDirPath, filename);
 }
 
 std::string common::GetCopyDataFilePath(
@@ -55,7 +55,7 @@ std::string common::GetCopyDataFilePath(
         filename = copyName + COPY_DATA_VHDX_FILENAME_EXTENSION;
 #endif
     }
-    return copyDataDirPath + SEPARATOR + filename;
+    return common::PathJoin(copyDataDirPath, filename);
 }
 
 std::string common::GetWriterBitmapFilePath(
@@ -64,12 +64,12 @@ std::string common::GetWriterBitmapFilePath(
     int                 sessionIndex)
 {
     std::string filename = copyName + "." + std::to_string(sessionIndex) + WRITER_BITMAP_FILENAME_EXTENSION;
-    return copyMetaDirPath + SEPARATOR + filename;
+    return common::PathJoin(copyMetaDirPath, filename);
 }
 
 std::string common::GetFileName(const std::string& fullpath)
 {
-    auto pos = fullpath.rfind(SEPARATOR);
+    auto pos = fullpath.find_last_of("/\\");
     return pos == std::string::npos ? fullpath : fullpath.substr(pos + 1);
 }
 
@@ -88,7 +88,7 @@ bool common::WriteVolumeCopyMeta(
     const std::string& copyName,
     const VolumeCopyMeta& volumeCopyMeta)
 {
-    std::string filepath = copyMetaDirPath + SEPARATOR + copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION;
+    std::string filepath = common::PathJoin(copyMetaDirPath, copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION);
     return JsonSerialize(volumeCopyMeta, filepath);
 }
 
@@ -97,6 +97,6 @@ bool common::ReadVolumeCopyMeta(
     const std::string& copyName,
     VolumeCopyMeta& volumeCopyMeta)
 {
-    std::string filepath = copyMetaDirPath + SEPARATOR + copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION;
+    std::string filepath = common::PathJoin(copyMetaDirPath, copyName + VOLUME_COPY_META_JSON_FILENAME_EXTENSION);
     return JsonDeserialize(volumeCopyMeta, filepath);
 }

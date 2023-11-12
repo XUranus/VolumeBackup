@@ -19,6 +19,7 @@
 #include "native/linux/LoopDeviceControl.h"
 #include "VolumeCopyMountProvider.h"
 #include "Logger.h"
+#include "common/VolumeUtils.h"
 #include "native/linux/LinuxLoopbackMountProvider.h"
 
 using namespace volumeprotect;
@@ -27,7 +28,6 @@ using namespace volumeprotect::mount;
 using namespace volumeprotect::fsapi;
 
 namespace {
-    const std::string SEPARATOR = "/";
     const std::string IMAGE_COPY_MOUNT_RECORD_FILE_SUFFIX = ".image.mount.record.json";
     const std::string LOOPBACK_DEVICE_PATH_PREFIX = "/dev/loop";
     const std::string LOOPBACK_DEVICE_CREATION_RECORD_SUFFIX = ".loop.record";
@@ -61,8 +61,9 @@ std::unique_ptr<LinuxLoopbackMountProvider> LinuxLoopbackMountProvider::Build(
         ERRLOG("illegal volume copy meta, image file segments list empty");
         return nullptr;
     }
-    params.imageFilePath = volumeCopyMountConfig.copyDataDirPath
-        + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
+    params.imageFilePath = common::PathJoin(
+        volumeCopyMountConfig.copyDataDirPath,
+        volumeCopyMeta.segments.front().copyDataFile);
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
@@ -80,7 +81,7 @@ LinuxLoopbackMountProvider::LinuxLoopbackMountProvider(const LinuxLoopbackMountP
 
 std::string LinuxLoopbackMountProvider::GetMountRecordPath() const
 {
-    return m_outputDirPath + SEPARATOR + m_copyName + IMAGE_COPY_MOUNT_RECORD_FILE_SUFFIX;
+    return common::PathJoin(m_outputDirPath, m_copyName + IMAGE_COPY_MOUNT_RECORD_FILE_SUFFIX);
 }
 
 // mount using *nix loopback device

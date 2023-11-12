@@ -94,6 +94,27 @@ bool ReadVolumeCopyMeta(
     const std::string& copyName,
     VolumeCopyMeta& volumeCopyMeta);
 
+// base class for recursion
+inline std::string PathJoin()
+{
+    return std::string();
+}
+
+template<typename... Args>
+std::string PathJoin(const std::string& first, Args... args)
+{
+#ifdef _WIN32
+    const std::string SEPARTOR = "\\";
+#else
+    const std::string SEPARTOR = "/";
+#endif
+    std::string path = first;
+    if (sizeof...(args) == 0) {
+        return path;
+    }
+    return path + SEPARTOR + PathJoin(args...);
+}
+
 template<typename T>
 bool JsonSerialize(const T& record, const std::string& filepath)
 {

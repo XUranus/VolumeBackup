@@ -24,13 +24,11 @@ using namespace ::testing;
 using namespace volumeprotect;
 using namespace volumeprotect::mount;
 
-
 namespace {
     const std::string DUMMY_CACHE_DIR = "/dummy/cache";
     const std::string DUMMY_TARGET_DIR = "/dummy/target";
     const std::string DUMMY_META_DIR = "/dummy/meta";
     const std::string DUMMY_DATA_DIR = "/dummy/data";
-    const std::string SEPARATOR = "/";
     const uint64_t ONE_MB = 1024LLU * 1024LLU;
     const uint64_t ONE_GB = 1024LLU * ONE_MB;
 }

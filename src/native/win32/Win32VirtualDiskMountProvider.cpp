@@ -10,6 +10,7 @@
 #include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
 #include "native/win32/Win32RawIO.h"
+#include "common/VolumeUtils.h"
 #include "Logger.h"
 
 using namespace volumeprotect;
@@ -19,7 +20,6 @@ using namespace volumeprotect::common;
 using namespace volumeprotect::fsapi;
 
 namespace {
-    const std::string SEPARATOR = "\\";
     const std::string VIRTUAL_DISK_COPY_MOUNT_RECORD_FILE_SUFFIX = ".vhd.mount.record.json";
 }
 
@@ -55,8 +55,9 @@ std::unique_ptr<Win32VirtualDiskMountProvider> Win32VirtualDiskMountProvider::Bu
         ERRLOG("illegal volume copy meta, image file segments list empty");
         return nullptr;
     }
-    std::string virtualDiskFilePath = volumeCopyMountConfig.copyDataDirPath
-        + SEPARATOR + volumeCopyMeta.segments.front().copyDataFile;
+    std::string virtualDiskFilePath = common::PathJoin(
+        volumeCopyMountConfig.copyDataDirPath,
+        volumeCopyMeta.segments.front().copyDataFile);
     return exstd::make_unique<Win32VirtualDiskMountProvider>(
         volumeCopyMountConfig.outputDirPath,
         volumeCopyMountConfig.copyName,
@@ -128,7 +129,7 @@ bool Win32VirtualDiskMountProvider::Mount()
 
 std::string Win32VirtualDiskMountProvider::GetMountRecordPath() const
 {
-    return m_outputDirPath + SEPARATOR + m_copyName + VIRTUAL_DISK_COPY_MOUNT_RECORD_FILE_SUFFIX;
+    return common::PathJoin(m_outputDirPath, m_copyName + VIRTUAL_DISK_COPY_MOUNT_RECORD_FILE_SUFFIX);
 }
 
 // virtual disk that has been attached need to be detached

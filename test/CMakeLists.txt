@@ -5,8 +5,9 @@ set(${Project} C CXX)
 set(Headers)
 set(
     Sources
-    VolumeBackupTest.cpp
-    VolumeMountTest.cpp
+    "VolumeBackupTest.cpp"
+    "VolumeMountTest.cpp"
+    "CommonUtilTest.cpp"
 )
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -30,7 +31,6 @@ target_link_libraries(${Project} PUBLIC
     volumebackup_static
     GTest::gtest_main
     GTest::gmock_main
-    crypto
 )
 
 add_test(
