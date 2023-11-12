@@ -108,6 +108,7 @@ elseif(${CMAKE_HOST_LINUX})
         minilogger
         # third part dependency (linux gcc)
         uuid
+        crypto
     )
 else()
     target_link_libraries(
@@ -149,6 +150,7 @@ elseif(${CMAKE_HOST_LINUX})
         minilogger_static
         # third part dependency (linux gcc)
         uuid
+        crypto
     )
 else()
     target_link_libraries(
