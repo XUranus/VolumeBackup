@@ -9,7 +9,7 @@
 #ifndef VOLUMEBACKUP_NATIVE_RAW_IO_HEADER
 #define VOLUMEBACKUP_NATIVE_RAW_IO_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include <string>
 

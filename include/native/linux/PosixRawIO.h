@@ -6,12 +6,13 @@
  * @author XUranus(2257238649wdx@gmail.com)
  */
 
-#ifdef __linux__
-
 #ifndef VOLUMEBACKUP_NATIVE_POSIX_RAW_IO_HEADER
 #define VOLUMEBACKUP_NATIVE_POSIX_RAW_IO_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
+
+#ifdef POSIXAPI
+
 #include "RawIO.h"
 
 // Raw I/O Reader/Writer for *unix platform posix API implementation

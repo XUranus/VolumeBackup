@@ -10,12 +10,11 @@
 #include "native/RawIO.h"
 #include "native/FileSystemAPI.h"
 
-#ifdef __linux__
-#include "native/linux/PosixRawIO.h"
-#endif
 
 #ifdef _WIN32
 #include "native/win32/Win32RawIO.h"
+#else
+#include "native/linux/PosixRawIO.h"
 #endif
 
 using namespace volumeprotect;

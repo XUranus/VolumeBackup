@@ -4,6 +4,7 @@
  * @author XUranus(2257238649wdx@gmail.com)
  */
 
+#include "common/VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include <cerrno>
 #include <cstdint>
@@ -23,7 +24,7 @@ using OsPlatformRawDataReader = rawio::win32::Win32RawDataReader;
 using OsPlatformRawDataWriter = rawio::win32::Win32RawDataWriter;
 #endif
 
-#ifdef  __linux__
+#ifdef POSIXAPI
 #include "linux/PosixRawIO.h"
 using OsPlatformRawDataReader = rawio::posix::PosixRawDataReader;
 using OsPlatformRawDataWriter = rawio::posix::PosixRawDataWriter;

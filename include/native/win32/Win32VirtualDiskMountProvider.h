@@ -11,7 +11,7 @@
 #ifndef VOLUMEBACKUP_WIN32_VIRTUALDISK_MOUNT_PROVIDER_HEADER
 #define VOLUMEBACKUP_WIN32_VIRTUALDISK_MOUNT_PROVIDER_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 // external logger/json library
 #include "Json.h"
 #include "VolumeUtils.h"

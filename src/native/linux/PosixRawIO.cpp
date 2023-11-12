@@ -4,7 +4,9 @@
  * @author XUranus(2257238649wdx@gmail.com)
  */
 
-#ifdef __linux__
+#include "common/VolumeProtectMacros.h"
+
+#ifdef POSIXAPI
 
 #include <cerrno>
 #include <cstdio>
@@ -12,7 +14,6 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <linux/fs.h>
 #include <unistd.h>
 #include <dirent.h>
 

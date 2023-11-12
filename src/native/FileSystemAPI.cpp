@@ -4,27 +4,29 @@
  * @author XUranus(2257238649wdx@gmail.com)
  */
 
+#include "common/VolumeProtectMacros.h"
+
 #include <cerrno>
 #include <cstdio>
 
-#ifdef __linux__
-#include <sys/mount.h>
-#include <mntent.h>
-
+#ifdef POSIXAPI
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <linux/fs.h>
 #include <unistd.h>
 #include <dirent.h>
 #endif
 
-#ifdef _WIN32
+#ifdef __linux__
+#include <sys/mount.h>
+#include <mntent.h>
+#include <linux/fs.h>
+#endif
 
+#ifdef _WIN32
 #include <locale>
 #include <codecvt>
-
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -97,7 +99,7 @@ const char* SystemApiException::what() const noexcept
 
 bool fsapi::IsFileExists(const std::string& path)
 {
-#ifdef __linux__
+#ifdef POSIXAPI
     struct stat st;
     return ::stat(path.c_str(), &st) == 0;
 #endif
@@ -110,7 +112,7 @@ bool fsapi::IsFileExists(const std::string& path)
 
 uint64_t fsapi::GetFileSize(const std::string& path)
 {
-#ifdef __linux__
+#ifdef POSIXAPI
     struct stat st;
     return ::stat(path.c_str(), &st) == 0 ? st.st_size : 0;
 #endif
@@ -137,7 +139,8 @@ bool fsapi::IsDirectoryExists(const std::string& path)
         return true;
     }
     return ::CreateDirectoryW(wpath.c_str(), nullptr) != 0;
-#else
+#endif
+#ifdef POSIXAPI
     DIR* dir = ::opendir(path.c_str());
     if (dir) {
         closedir(dir);
@@ -305,7 +308,7 @@ bool fsapi::IsVolumeExists(const std::string& volumePath)
 bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filename)
 {
     std::string fullpath = dirPath + SEPARATOR + filename;
-#ifdef __linux__
+#ifdef POSIXAPI
     int fd = ::open(fullpath.c_str(), O_CREAT | O_WRONLY, 0644);
     if (fd == -1) {
         return false;
@@ -333,7 +336,7 @@ bool fsapi::CreateEmptyFile(const std::string& dirPath, const std::string& filen
 bool fsapi::RemoveFile(const std::string& dirPath, const std::string& filename)
 {
     std::string fullpath = dirPath + SEPARATOR + filename;
-#ifdef __linux__
+#ifdef POSIXAPI
     if (::access(fullpath.c_str(), F_OK) == 0 && ::unlink(fullpath.c_str()) < 0) {
         return false;
     }
@@ -346,7 +349,7 @@ bool fsapi::RemoveFile(const std::string& dirPath, const std::string& filename)
 
 uint32_t fsapi::ProcessorsNum()
 {
-#ifdef __linux__
+#ifdef POSIXAPI
     auto processorCount = sysconf(_SC_NPROCESSORS_ONLN);
     return processorCount <= 0 ? DEFAULT_PROCESSORS_NUM : processorCount;
 #endif

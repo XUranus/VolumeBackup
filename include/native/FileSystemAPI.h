@@ -9,7 +9,7 @@
 #ifndef VOLUMEBACKUP_NATIVE_FILESYSTEM_API_HEADER
 #define VOLUMEBACKUP_NATIVE_FILESYSTEM_API_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 
 namespace volumeprotect {
 /**

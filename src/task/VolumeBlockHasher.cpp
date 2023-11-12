@@ -156,9 +156,9 @@ void VolumeBlockHasher::ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* outp
     EVP_MD_CTX_free(mdctx);
     return;
 }
-#endif
 
-#ifdef _WIN32
+#else
+
 void VolumeBlockHasher::ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* output, uint32_t outputLen)
 {
     // TODO

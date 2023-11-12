@@ -1,4 +1,4 @@
-/**
+    /**
  * @file VolumeProtectMacros.h
  * @brief This file is used as a PCH, and define some utils missing in STL of CXX11.
  * @copyright Copyright 2023 XUranus. All rights reserved.
@@ -54,20 +54,20 @@ using ErrCodeType = int;
     #define VOLUMEPROTECT_API  __attribute__((__visibility__("default")))
 #endif
 
-// check platform macro conflict
-#ifdef __linux__
-#ifdef _WIN32
-static_assert(false, "conflict macro, both __linux__ and _WIN32 defined!");
+// macro POSIXAPI used for Linux/AIX/Solaris/MacOSX, these platform use posix api
+#if defined(__linux__) || defined(__APPLE__) || defined(__sun__) || defined(_AIX)
+#ifndef POSIXAPI
+#define POSIXAPI
 #endif
 #endif
 
-// check if any of the platform macro defined
-#ifndef __linux__
-#ifndef _WIN32
-static_assert(false, "platform unsupported, none of __linux__ and _WIN32 defined!");
-#endif
+#if defined(POSIXAPI) && defined(_WIN32)
+static_assert(false, "both windows platform macro _WIN32 and posix platform macro POSIXAPI defined!")
 #endif
 
+#if !defined(POSIXAPI) && !defined(_WIN32)
+static_assert(false, "none of windows platform macro _WIN32 or posix platform macro POSIXAPI defined"!)
+#endif
 
 // check if make_unique defined
 #ifndef __cpp_lib_make_unique

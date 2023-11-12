@@ -29,7 +29,7 @@
 #include <Windows.h>
 #include <winioctl.h>
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "RawIO.h"
 
 // define customed win32 error codes, starts from 0x80600000

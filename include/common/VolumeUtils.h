@@ -9,7 +9,7 @@
 #ifndef VOLUMEBACKUP_BACKUP_UTIL_H
 #define VOLUMEBACKUP_BACKUP_UTIL_H
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 // external logger/json library
 #include "Json.h"
 #include "Logger.h"

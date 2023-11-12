@@ -169,11 +169,10 @@ void InitLogger(const CliArgs& cliArgs)
     conf.target = LoggerTarget::FILE;
     conf.archiveFilesNumMax = 10;
     conf.fileName = "vbackup.log";
-#ifdef __linux__
-    conf.logDirPath = "/tmp/LoggerTest";
-#endif
 #ifdef _WIN32
     conf.logDirPath = R"(C:\LoggerTest)";
+#else
+    conf.logDirPath = "/tmp/LoggerTest";
 #endif
     Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
     if (!Logger::GetInstance()->Init(conf)) {

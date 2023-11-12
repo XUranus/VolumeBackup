@@ -13,7 +13,7 @@
 #include <mutex>
 #include <condition_variable>
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "Logger.h"
 
 template<typename T>

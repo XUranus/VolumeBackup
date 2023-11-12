@@ -101,13 +101,19 @@ if(${CMAKE_HOST_WIN32})
         uuid
         Rpcrt4
     )
-else()
+elseif(${CMAKE_HOST_LINUX})
     target_link_libraries(
         ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
         minijson
         minilogger
         # third part dependency (linux gcc)
         uuid
+    )
+else()
+    target_link_libraries(
+        ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
+        minijson
+        minilogger
     )
 endif()
 
@@ -136,13 +142,19 @@ if(${CMAKE_HOST_WIN32})
         uuid
         Rpcrt4
     )
-else()
+elseif(${CMAKE_HOST_LINUX})
     target_link_libraries(
         ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
         minijson_static
         minilogger_static
         # third part dependency (linux gcc)
         uuid
+    )
+else()
+    target_link_libraries(
+        ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
+        minijson_static
+        minilogger_static
     )
 endif()
 
@@ -187,8 +199,6 @@ else()
     target_link_libraries(
         vbackup
         volumebackup
-        # openssl
-        crypto
         pthread
         # third part dependency provided by XUranus
         minijson_static
