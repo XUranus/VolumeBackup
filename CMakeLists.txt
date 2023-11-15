@@ -142,6 +142,7 @@ if(${CMAKE_HOST_WIN32})
         setupapi
         uuid
         Rpcrt4
+        crypto
     )
 elseif(${CMAKE_HOST_LINUX})
     target_link_libraries(

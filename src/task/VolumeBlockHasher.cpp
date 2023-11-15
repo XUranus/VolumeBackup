@@ -5,13 +5,10 @@
  */
 
 #include "VolumeProtector.h"
-#ifdef __linux__
 #include <openssl/evp.h>
-#endif
 
 #include "Logger.h"
 #include "VolumeProtectTaskContext.h"
-#include "native/FileSystemAPI.h"
 #include "VolumeBlockHasher.h"
 
 namespace {
@@ -130,7 +127,6 @@ void VolumeBlockHasher::WorkerThread(uint32_t workerID)
     return;
 }
 
-#ifdef __linux__
 void VolumeBlockHasher::ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* output, uint32_t outputLen)
 {
     EVP_MD_CTX *mdctx = nullptr;
@@ -156,14 +152,6 @@ void VolumeBlockHasher::ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* outp
     EVP_MD_CTX_free(mdctx);
     return;
 }
-
-#else
-
-void VolumeBlockHasher::ComputeSHA256(uint8_t* data, uint32_t len, uint8_t* output, uint32_t outputLen)
-{
-    // TODO
-}
-#endif
 
 void VolumeBlockHasher::HandleWorkerTerminate()
 {
