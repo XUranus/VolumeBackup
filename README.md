@@ -20,6 +20,7 @@ Volume backup/restore library and cli tools for Windows and Linux
  - CXX 11
  - MSVC2015+/GCC4.9+
  - Windows/Linux
+ - OpenSSL
 
 ## Build
 clone this repository and it's dependency recusively:

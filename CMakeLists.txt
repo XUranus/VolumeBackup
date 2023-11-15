@@ -8,9 +8,13 @@ message("SOURCE_DIR = ${SOURCE_DIR}")
 message("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 message("COVERAGE = ${COVERAGE}")
 
+# generate doc using doxygen
 message (STATUS "Build documentation open")
 include ("docs/BuildDoxygen.cmake")
 build_doxygen()
+
+# check 3rd dependencies
+find_package(OpenSSL REQUIRED)
 
 # supress MSVC/GCC warnings
 if(${CMAKE_HOST_WIN32})
@@ -108,7 +112,7 @@ elseif(${CMAKE_HOST_LINUX})
         minilogger
         # third part dependency (linux gcc)
         uuid
-        crypto
+        OpenSSL::Crypto
     )
 else()
     target_link_libraries(
@@ -142,7 +146,7 @@ if(${CMAKE_HOST_WIN32})
         setupapi
         uuid
         Rpcrt4
-        crypto
+        OpenSSL::Crypto
     )
 elseif(${CMAKE_HOST_LINUX})
     target_link_libraries(
@@ -151,7 +155,7 @@ elseif(${CMAKE_HOST_LINUX})
         minilogger_static
         # third part dependency (linux gcc)
         uuid
-        crypto
+        OpenSSL::Crypto
     )
 else()
     target_link_libraries(
