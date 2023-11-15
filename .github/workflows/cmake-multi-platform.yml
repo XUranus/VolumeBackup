@@ -64,7 +64,7 @@ jobs:
     - name: Configure openssl on windows
       if: matrix.os == 'windows-latest'
       run: |
-        $env:OPENSSL_ROOT_DIR = "C:\Program Files\OpenSSL"s
+        $env:OPENSSL_ROOT_DIR = "C:\Program Files\OpenSSL"
         $env:OPENSSL_LIBRARY_LIBRARIES = "$(env:OPENSSL_ROOT_DIR)\lib"
         $env:PATH += ";$(env:OPENSSL_ROOT_DIR)\bin"
 
