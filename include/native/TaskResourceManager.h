@@ -23,7 +23,7 @@ struct BackupTaskResourceManagerParams {
     std::string         copyDataDirPath;
     std::string         copyName;
     uint64_t            volumeSize;
-    uint64_t            maxSessionSize;     ///> only used to create fragment copy for CopyFormat::BIN
+    uint64_t            maxSessionSize;     ///< only used to create fragment copy for CopyFormat::BIN
 };
 
 /**

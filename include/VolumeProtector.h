@@ -122,17 +122,17 @@ struct VOLUMEPROTECT_API TaskStatistics {
  */
 class VOLUMEPROTECT_API StatefulTask {
 public:
-    ///> Abort a running task
+    ///< Abort a running task
     void        Abort();
-    ///> Get TaskStatus enum of current task
+    ///< Get TaskStatus enum of current task
     TaskStatus  GetStatus() const;
-    ///> Check if current task is failed
+    ///< Check if current task is failed
     bool        IsFailed() const;
-    ///> Check if current task is terminated (succeed, aborted or failed)
+    ///< Check if current task is terminated (succeed, aborted or failed)
     bool        IsTerminated() const;
-    ///> Get literal string of task status
+    ///< Get literal string of task status
     std::string GetStatusString() const;
-    ///> Throw exception if current task is not started
+    ///< Throw exception if current task is not started
     void        AssertTaskNotStarted();
 
 protected:
@@ -145,9 +145,9 @@ protected:
  */
 class VOLUMEPROTECT_API VolumeProtectTask : public StatefulTask {
 public:
-    ///> Start the task asynchronizely, return true if start succeed
+    ///< Start the task asynchronizely, return true if start succeed
     virtual bool            Start() = 0;
-    ///> Get current statictic info of current running task
+    ///< Get current statictic info of current running task
     virtual TaskStatistics  GetStatistics() const = 0;
 
     virtual ~VolumeProtectTask() = default;

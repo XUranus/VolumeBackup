@@ -57,10 +57,10 @@ public:
  * Used to build reader/writer for each backup restore session to read/write from/to copyfile.
  */
 struct SessionCopyRawIOParam {
-    CopyFormat          copyFormat;     ///> format of the copy to use in current session
-    std::string         copyFilePath;   ///> absolute file path of copy
-    uint64_t            volumeOffset;   ///> volume offset in bytes
-    uint64_t            length;         ///> session size in bytes
+    CopyFormat          copyFormat;     ///< format of the copy to use in current session
+    std::string         copyFilePath;   ///< absolute file path of copy
+    uint64_t            volumeOffset;   ///< volume offset in bytes
+    uint64_t            length;         ///< session size in bytes
 };
 
 /**
