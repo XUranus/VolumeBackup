@@ -112,6 +112,7 @@ elseif(${CMAKE_HOST_LINUX})
         minilogger
         # third part dependency (linux gcc)
         uuid
+        OpenSSL::SSL
         OpenSSL::Crypto
     )
 else()
@@ -147,6 +148,7 @@ if(${CMAKE_HOST_WIN32})
         uuid
         Rpcrt4
         OpenSSL::Crypto
+        OpenSSL::SSL
     )
 elseif(${CMAKE_HOST_LINUX})
     target_link_libraries(
@@ -156,6 +158,7 @@ elseif(${CMAKE_HOST_LINUX})
         # third part dependency (linux gcc)
         uuid
         OpenSSL::Crypto
+        OpenSSL::SSL
     )
 else()
     target_link_libraries(
