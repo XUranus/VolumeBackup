@@ -14,7 +14,9 @@ include ("docs/BuildDoxygen.cmake")
 build_doxygen()
 
 # check 3rd dependencies
-find_package(OpenSSL REQUIRED)
+find_package(
+    OpenSSL 3
+    REQUIRED)
 message(STATUS "OPENSSL_VERSION = ${OPENSSL_VERSION}")
 message(STATUS "OPENSSL_INCLUDE_DIR = ${OPENSSL_INCLUDE_DIR}")
 message(STATUS "OPENSSL_CRYPTO_LIBRARY = ${OPENSSL_CRYPTO_LIBRARY}")
