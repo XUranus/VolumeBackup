@@ -102,6 +102,7 @@ include_directories(
     "include/native"
     "dependency/minijson"
     "dependency/minilogger"
+    ${OPENSSL_INCLUDE_DIR}
 )
 
 add_subdirectory(dependency/minijson)
