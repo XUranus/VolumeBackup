@@ -14,6 +14,15 @@ include ("docs/BuildDoxygen.cmake")
 build_doxygen()
 
 # check 3rd dependencies
+set(
+    CMAKE_PREFIX_PATH
+    "C:/vcpkg/packages/openssl_x64-windows"
+    "C:/vcpkg/packages/openssl"
+    "C:/vcpkg/packages"
+    "C:/vcpkg"
+    ${CMAKE_PREFIX_PATH}
+)
+
 find_package(
     OpenSSL 3
     REQUIRED)
