@@ -33,24 +33,12 @@ message(STATUS "OPENSSL_CRYPTO_LIBRARIES = ${OPENSSL_CRYPTO_LIBRARIES}")
 message(STATUS "OPENSSL_SSL_LIBRARY = ${OPENSSL_SSL_LIBRARY}")
 message(STATUS "OPENSSL_SSL_LIBRARIES = ${OPENSSL_SSL_LIBRARIES}")
 
-
 set(
    SEARCH_DIRS
    "C:/vcpkg/packages/openssl_x64-windows/include"
    "C:/vcpkg/packages/openssl_x64-windows/include/openssl"
    "C:/vcpkg/packages/openssl_x64-windows/include/openssl/evp" 
 )
-find_file(EVP_PATH
-    NAMES "evp.h"
-    PATHS ${SEARCH_DIRS}
-)
-
-# Check if the file is found
-if(EVP_PATH)
-    message("File found: ${EVP_PATH}")
-else()
-    message("Evp File not found.")
-endif()
 
 # supress MSVC/GCC warnings
 if(${CMAKE_HOST_WIN32})
@@ -141,6 +129,8 @@ if(${CMAKE_HOST_WIN32})
         setupapi
         uuid
         Rpcrt4
+        OpenSSL::SSL
+        OpenSSL::Crypto
     )
 elseif(${CMAKE_HOST_LINUX})
     target_link_libraries(
