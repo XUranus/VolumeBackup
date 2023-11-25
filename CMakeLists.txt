@@ -20,6 +20,8 @@ set(
     "C:/vcpkg/packages/openssl"
     "C:/vcpkg/packages"
     "C:/vcpkg"
+    "/usr/local/Cellar/openssl@3"
+    "/usr/local/Cellar/openssl@3/3.1.3"
     ${CMAKE_PREFIX_PATH}
 )
 
@@ -32,13 +34,6 @@ message(STATUS "OPENSSL_CRYPTO_LIBRARY = ${OPENSSL_CRYPTO_LIBRARY}")
 message(STATUS "OPENSSL_CRYPTO_LIBRARIES = ${OPENSSL_CRYPTO_LIBRARIES}")
 message(STATUS "OPENSSL_SSL_LIBRARY = ${OPENSSL_SSL_LIBRARY}")
 message(STATUS "OPENSSL_SSL_LIBRARIES = ${OPENSSL_SSL_LIBRARIES}")
-
-set(
-   SEARCH_DIRS
-   "C:/vcpkg/packages/openssl_x64-windows/include"
-   "C:/vcpkg/packages/openssl_x64-windows/include/openssl"
-   "C:/vcpkg/packages/openssl_x64-windows/include/openssl/evp" 
-)
 
 # supress MSVC/GCC warnings
 if(${CMAKE_HOST_WIN32})
@@ -118,13 +113,9 @@ target_compile_definitions(
     ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
     PRIVATE -DLIBRARY_EXPORT
 )
-# link again dynamic libs
-if(${CMAKE_HOST_WIN32})
-    target_link_libraries(
-        ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
-        minijson
-        minilogger
-        # third part win32 dependency (win32 msvc)
+
+if (${CMAKE_HOST_WIN32})
+    set (VOLUMEPROTECT_LINK_LIBRARIES
         virtDisk
         setupapi
         uuid
@@ -133,23 +124,25 @@ if(${CMAKE_HOST_WIN32})
         OpenSSL::Crypto
     )
 elseif(${CMAKE_HOST_LINUX})
-    target_link_libraries(
-        ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
-        minijson
-        minilogger
-        # third part dependency (linux gcc)
+    set (VOLUMEPROTECT_LINK_LIBRARIES
         uuid
         OpenSSL::SSL
         OpenSSL::Crypto
     )
 else()
-    target_link_libraries(
-        ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
-        minijson
-        minilogger
+    set (VOLUMEPROTECT_LINK_LIBRARIES
+        OpenSSL::SSL
+        OpenSSL::Crypto
     )
 endif()
 
+# link against dynamic libs
+target_link_libraries(
+    ${VOLUMEPROTECT_DYNAMIC_LIBRARY_TARGET}
+    minijson
+    minilogger
+    ${VOLUMEPROTECT_LINK_LIBRARIES}
+)
 
 # build a static library
 message("Build libvolumebackup static library ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}")
@@ -164,36 +157,12 @@ set_property(
     PROPERTY CXX_STANDARD 11
 )
 # link against static libs
-if(${CMAKE_HOST_WIN32})
-    target_link_libraries(
-        ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
-        minijson_static
-        minilogger_static
-        # third part win32 dependency (win32 msvc)
-        virtDisk
-        setupapi
-        uuid
-        Rpcrt4
-        OpenSSL::Crypto
-        OpenSSL::SSL
-    )
-elseif(${CMAKE_HOST_LINUX})
-    target_link_libraries(
-        ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
-        minijson_static
-        minilogger_static
-        # third part dependency (linux gcc)
-        uuid
-        OpenSSL::Crypto
-        OpenSSL::SSL
-    )
-else()
-    target_link_libraries(
-        ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
-        minijson_static
-        minilogger_static
-    )
-endif()
+target_link_libraries(
+    ${VOLUMEPROTECT_STATIC_LIBRARY_TARGET}
+    minijson_static
+    minilogger_static
+    ${VOLUMEPROTECT_LINK_LIBRARIES}
+)
 
 # set -DCMAKE_BUILD_TYPE=Debug to enable LLT, set -DCOVERAGE=ON to enable code coverage
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
