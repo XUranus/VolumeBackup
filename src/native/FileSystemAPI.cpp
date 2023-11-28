@@ -145,6 +145,22 @@ bool fsapi::IsDirectoryExists(const std::string& path)
 #endif
 }
 
+inline bool IsCritialReadError(const std::ifstream& file, const std::string& path)
+{
+    std::ios_base::iostate state = file.rdstate();
+    if (state & std::ios_base::eofbit) {
+        ERRLOG("%s read error : end of file", path.c_str());
+    }
+    if (state & std::ios_base::failbit) {
+        ERRLOG("%s read error : non fatal I/O error", path.c_str());
+    }
+    if (state & std::ios_base::badbit) {
+        ERRLOG("%s read error : fatal error", path.c_str());
+        return true;
+    }
+    return false;
+}
+
 /**
  * @brief read bytes from file
  * @return uint8_t* ptr to data
@@ -169,7 +185,7 @@ uint8_t* fsapi::ReadBinaryBuffer(const std::string& filepath, uint64_t length)
             return nullptr;
         }
         binFile.read(reinterpret_cast<char*>(buffer), length);
-        if (binFile.fail()) {
+        if (binFile.fail() && IsCritialReadError(binFile, filepath)) {
             ERRLOG("failed to read %llu bytes from %s", length, filepath.c_str());
             delete[] buffer;
             binFile.close();
