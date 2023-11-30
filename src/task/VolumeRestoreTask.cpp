@@ -201,6 +201,7 @@ void VolumeRestoreTask::ThreadFunc()
             if (session->IsFailed()) {
                 ERRLOG("session failed");
                 m_status = TaskStatus::FAILED;
+                m_errorCode = session->GetErrorCode();
                 return;
             }
             if (session->IsTerminated())  {

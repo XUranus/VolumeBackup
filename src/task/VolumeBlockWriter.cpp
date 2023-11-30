@@ -5,9 +5,11 @@
  */
 
 #include "Logger.h"
+#include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "native/RawIO.h"
 #include "VolumeBlockWriter.h"
+#include <asm-generic/errno-base.h>
 
 using namespace volumeprotect;
 using namespace volumeprotect::task;
@@ -133,7 +135,6 @@ void VolumeBlockWriter::MainThread()
             m_status = TaskStatus::ABORTED;
             break;
         }
-
         if (!m_sharedContext->writeQueue->BlockingPop(consumeBlock)) {
             // queue has been finished
             m_status = TaskStatus::SUCCEED;
@@ -145,6 +146,13 @@ void VolumeBlockWriter::MainThread()
         uint32_t length = consumeBlock.length;
         uint64_t index = consumeBlock.index;
 
+        if (m_failed) {
+            DBGLOG("block writer has failed, skip any write request");
+            m_sharedContext->allocator->BlockFree(buffer);
+            ++m_sharedContext->counter->blockesWriteFailed;
+            continue;
+        }
+
         DBGLOG("write block[%llu] (%p, %llu, %u) writerOffset = %llu",
             index, buffer, consumeBlock.volumeOffset, length, writerOffset);
         if (NeedToWrite(buffer, length) &&
@@ -152,6 +160,7 @@ void VolumeBlockWriter::MainThread()
             ERRLOG("write %d bytes at %llu failed, error code = %u", length, writerOffset, errorCode);
             m_sharedContext->allocator->BlockFree(buffer);
             ++m_sharedContext->counter->blockesWriteFailed;
+            HandleWriteError(errorCode);
             // writer should not return (otherwise writer queue may block reader)
         }
 
@@ -166,4 +175,19 @@ void VolumeBlockWriter::MainThread()
     }
     INFOLOG("writer read terminated with status %s", GetStatusString().c_str());
     return;
+}
+
+void VolumeBlockWriter::HandleWriteError(ErrCodeType errorCode)
+{
+    m_failed = true;
+    ErrCodeType error = m_dataWriter->Error();
+    m_errorCode = error;
+#ifdef __linux__
+    if (error == EACCES || error == EPERM) {
+        m_errorCode = (m_targetType == TargetType::COPYFILE) ?
+        VOLUMEPROTECT_ERR_COPY_ACCESS_DENIED : VOLUMEPROTECT_ERR_VOLUME_ACCESS_DENIED;
+    } else if (m_targetType == TargetType::COPYFILE && error == ENOSPC) {
+        m_errorCode = VOLUMEPROTECT_ERR_NO_SPACE;
+    }
+#endif
 }

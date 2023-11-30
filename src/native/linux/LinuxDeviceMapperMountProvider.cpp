@@ -394,7 +394,8 @@ bool LinuxDeviceMapperUmountProvider::Umount()
 {
     bool success = true; // if error occurs, make every effort to clear the mount
     // umount the device first
-    if (fsapi::IsMountPoint(m_mountTargetPath) && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
+    if (fsapi::IsMountPoint(m_mountTargetPath) &&
+        ::umount2(m_mountTargetPath.c_str(), MNT_FORCE | MNT_DETACH) != 0) {
         RECORD_INNER_ERROR("failed to umount target %s, errno %u", m_mountTargetPath.c_str(), errno);
         success = false;
     }

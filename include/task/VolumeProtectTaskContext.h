@@ -9,6 +9,7 @@
 #ifndef VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 #define VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 
+#include "VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "BlockingQueue.h"
 
@@ -173,6 +174,7 @@ struct VolumeTaskSession {
     bool        IsTerminated() const;
     bool        IsFailed() const;
     void        Abort() const;
+    ErrCodeType GetErrorCode() const;
 };
 
 /**

@@ -5,7 +5,9 @@
  */
 
 #include "Logger.h"
+#include "VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
+#include "VolumeProtector.h"
 #include "native/FileSystemAPI.h"
 #include "VolumeBlockReader.h"
 #include "VolumeBlockWriter.h"
@@ -221,6 +223,19 @@ void VolumeTaskSession::Abort() const
     if (writerTask != nullptr) {
         writerTask->Abort();
     }
+}
+
+ErrCodeType VolumeTaskSession::GetErrorCode() const
+{
+    // we consider reader failure to be the root case of the session failure
+    if (readerTask != nullptr && readerTask->GetErrorCode() != VOLUMEPROTECT_ERR_SUCCESS) {
+        return readerTask->GetErrorCode();
+    }
+    // if only writer failed, set session error code to the writer error code
+    if (writerTask != nullptr && writerTask->GetErrorCode() != VOLUMEPROTECT_ERR_SUCCESS) {
+        return writerTask->GetErrorCode();
+    }
+    return VOLUMEPROTECT_ERR_SUCCESS;
 }
 
 // implement TaskStatisticTrait ...

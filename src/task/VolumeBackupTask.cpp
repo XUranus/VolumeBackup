@@ -265,6 +265,7 @@ void VolumeBackupTask::ThreadFunc()
             }
             if (session->IsFailed()) {
                 ERRLOG("backup session failed");
+                m_errorCode = session->GetErrorCode();
                 m_status = TaskStatus::FAILED;
                 return;
             }

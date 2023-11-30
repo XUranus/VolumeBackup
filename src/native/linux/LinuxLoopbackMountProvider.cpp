@@ -171,7 +171,7 @@ bool LinuxLoopbackUmountProvider::Umount()
     // 1. umount filesystem
     if (!m_mountTargetPath.empty()
         && fsapi::IsMountPoint(m_mountTargetPath)
-        && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE) != 0) {
+        && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE | MNT_DETACH) != 0) {
         RECORD_INNER_ERROR("failed to umount target %s, errno %u", m_mountTargetPath.c_str(), errno);
         return false;
     }

@@ -33,6 +33,13 @@ const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 
 const std::string DEFAULT_VOLUME_COPY_NAME = "volumeprotect";
 
+// define error codes used by backup/restore tasks
+const ErrCodeType VOLUMEPROTECT_ERR_SUCCESS                 = 0x00000000;   // no error
+const ErrCodeType VOLUMEPROTECT_ERR_VOLUME_ACCESS_DENIED    = 0x00114514;   // read/volume failed with permission error
+const ErrCodeType VOLUMEPROTECT_ERR_COPY_ACCESS_DENIED      = 0x00114515;   // read/write copy data access denied
+const ErrCodeType VOLUMEPROTECT_ERR_NO_SPACE                = 0x00114516;   // write copy data failed for no space left
+const ErrCodeType VOLUMEPROTECT_ERR_INVALID_VOLUME          = 0x00114517;   // not a valid volume block device
+
 /**
  * @brief Used to specify backup type : full backup or forever increment backup
  */
@@ -134,10 +141,14 @@ public:
     std::string GetStatusString() const;
     ///< Throw exception if current task is not started
     void        AssertTaskNotStarted();
+    ///< Get volume backup/restore task error code
+    ErrCodeType GetErrorCode() const;
 
 protected:
-    TaskStatus  m_status { TaskStatus::INIT };
-    bool        m_abort { false };
+    TaskStatus      m_status    { TaskStatus::INIT };
+    bool            m_abort     { false };  ///< Set this field `true` to terminate task into status `Aborted`
+    bool            m_failed    { false };  ///< Set this field `true` to terminate task into status `Failed`
+    ErrCodeType     m_errorCode { VOLUMEPROTECT_ERR_SUCCESS };
 };
 
 /**
@@ -232,6 +243,8 @@ VOLUMEPROTECT_API TaskStatistics_C    GetTaskStatistics(void* task);
 VOLUMEPROTECT_API void                AbortTask(void* task);
 
 VOLUMEPROTECT_API TaskStatus_C        GetTaskStatus(void* task);
+
+VOLUMEPROTECT_API int                 GetTaskErrorCode(void* task);
 
 VOLUMEPROTECT_API bool                IsTaskFailed(void* task);
 

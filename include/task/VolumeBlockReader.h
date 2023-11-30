@@ -69,6 +69,8 @@ private:
 
     bool ReadBlock(uint8_t* buffer, uint32_t& nBytesReaded);
 
+    void HandleReadError(ErrCodeType errorCode);
+
 private:
     // immutable fields
     SourceType  m_sourceType;

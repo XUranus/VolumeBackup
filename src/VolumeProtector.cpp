@@ -6,6 +6,7 @@
 
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
+#include "VolumeProtectMacros.h"
 #include "VolumeRestoreTask.h"
 #include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
@@ -179,6 +180,11 @@ void StatefulTask::AssertTaskNotStarted()
     (m_status != TaskStatus::INIT) ? throw std::runtime_error("task already started") : void();
 }
 
+ErrCodeType StatefulTask::GetErrorCode() const
+{
+    return m_errorCode;
+}
+
 TaskStatistics TaskStatistics::operator + (const TaskStatistics& statistic) const
 {
     TaskStatistics res;
@@ -261,6 +267,12 @@ TaskStatus_C GetTaskStatus(void* task)
 {
     TaskStatus taskStatus = reinterpret_cast<VolumeProtectTask*>(task)->GetStatus();
     return static_cast<TaskStatus_C>(taskStatus);
+}
+
+int GetTaskErrorCode(void* task)
+{
+    int errorCode = reinterpret_cast<VolumeProtectTask*>(task)->GetErrorCode();
+    return static_cast<int>(errorCode);
 }
 
 bool IsTaskFailed(void* task)

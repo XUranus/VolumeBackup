@@ -5,6 +5,7 @@
  */
 
 #include "Logger.h"
+#include "VolumeProtector.h"
 #include "native/RawIO.h"
 #include "VolumeBlockReader.h"
 
@@ -157,23 +158,23 @@ void VolumeBlockReader::MainThread()
             m_status = TaskStatus::SUCCEED;
             break;
         }
-
+        if (m_failed) {
+            m_status = TaskStatus::FAILED;
+            break;
+        }
         if (m_abort) {
             m_status = TaskStatus::ABORTED;
             break;
         }
-
         if (m_pause) {
             DBGLOG("reader is paused, waiting...");
             std::this_thread::sleep_for(std::chrono::seconds(1));
             continue;
         }
-
         if (SkipReadingBlock()) {
             RevertNextBlock();
             continue;
         }
-
         uint8_t* buffer = FetchBlockBuffer(std::chrono::seconds(60));
         if (buffer == nullptr) {
             m_status = TaskStatus::FAILED;
@@ -263,8 +264,22 @@ bool VolumeBlockReader::ReadBlock(uint8_t* buffer, uint32_t& nBytesToRead)
 
     if (!m_dataReader->Read(currentOffset, buffer, nBytesToRead, errorCode)) {
         ERRLOG("failed to read %u bytes, error code = %u", nBytesToRead, errorCode);
+        HandleReadError(errorCode);
         return false;
     }
     m_sharedContext->counter->bytesRead += static_cast<uint64_t>(nBytesToRead);
     return true;
+}
+
+void VolumeBlockReader::HandleReadError(ErrCodeType errorCode)
+{
+    m_failed = true;
+    ErrCodeType error = m_dataReader->Error();
+    m_errorCode = error;
+#ifdef __linux__
+    if (error == EACCES || error == EPERM) {
+        m_errorCode = (m_sourceType == SourceType::COPYFILE) ?
+        VOLUMEPROTECT_ERR_COPY_ACCESS_DENIED : VOLUMEPROTECT_ERR_VOLUME_ACCESS_DENIED;
+    }
+#endif
 }
