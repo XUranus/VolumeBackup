@@ -14,6 +14,7 @@
 #include <string>
 
 #include "GetOption.h"
+#include "VolumeProtectMacros.h"
 #include "native/FileSystemAPI.h"
 #include "VolumeProtector.h"
 #include "Logger.h"
@@ -151,6 +152,21 @@ static void PrintCliArgs(const CliArgs& cliArgs)
     std::cout << "CopyDataDirPath: " << cliArgs.copyDataDirPath << std::endl;
     std::cout << "CopyMetaDirPath: " << cliArgs.copyMetaDirPath << std::endl;
     std::cout << "PrevCopyMetaDirPath: " << cliArgs.prevCopyMetaDirPath << std::endl;
+}
+
+void PrintTaskErrorCodeMessage(ErrCodeType errorCode)
+{
+    const static std::map<ErrCodeType, std::string> errorMessageMap = {
+        { VOLUMEPROTECT_ERR_VOLUME_ACCESS_DENIED , "Volume Device Access Denied" },
+        { VOLUMEPROTECT_ERR_COPY_ACCESS_DENIED , "Volume Copy Data Access Denied" },
+        { VOLUMEPROTECT_ERR_NO_SPACE , "No Space left" },
+        { VOLUMEPROTECT_ERR_INVALID_VOLUME , "Invalid Volume Device" },
+    };
+    if (errorMessageMap.find(errorCode) != errorMessageMap.end()) {
+        std::cout << "ErrorCode: " << std::to_string(errorCode) << std::endl;
+    } else {
+        std::cout << errorMessageMap.find(errorCode)->second << std::endl;
+    }
 }
 
 static bool ValidateCliArgs(const CliArgs& cliArgs)
