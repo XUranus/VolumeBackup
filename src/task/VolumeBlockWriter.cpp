@@ -9,7 +9,6 @@
 #include "VolumeProtector.h"
 #include "native/RawIO.h"
 #include "VolumeBlockWriter.h"
-#include <asm-generic/errno-base.h>
 
 using namespace volumeprotect;
 using namespace volumeprotect::task;
@@ -171,7 +170,8 @@ void VolumeBlockWriter::MainThread()
     }
     if (m_status == TaskStatus::SUCCEED && m_sharedContext->counter->blockesWriteFailed != 0) {
         m_status = TaskStatus::FAILED;
-        ERRLOG("%llu blockes failed to write, set writer status to fail");
+        ERRLOG("%llu blockes failed to write, set writer status to fail",
+            m_sharedContext->counter->blockesWriteFailed.load());
     }
     INFOLOG("writer read terminated with status %s", GetStatusString().c_str());
     return;
@@ -180,13 +180,12 @@ void VolumeBlockWriter::MainThread()
 void VolumeBlockWriter::HandleWriteError(ErrCodeType errorCode)
 {
     m_failed = true;
-    ErrCodeType error = m_dataWriter->Error();
-    m_errorCode = error;
+    m_errorCode = errorCode;
 #ifdef __linux__
-    if (error == EACCES || error == EPERM) {
+    if (errorCode == EACCES || errorCode == EPERM) {
         m_errorCode = (m_targetType == TargetType::COPYFILE) ?
         VOLUMEPROTECT_ERR_COPY_ACCESS_DENIED : VOLUMEPROTECT_ERR_VOLUME_ACCESS_DENIED;
-    } else if (m_targetType == TargetType::COPYFILE && error == ENOSPC) {
+    } else if (m_targetType == TargetType::COPYFILE && errorCode == ENOSPC) {
         m_errorCode = VOLUMEPROTECT_ERR_NO_SPACE;
     }
 #endif

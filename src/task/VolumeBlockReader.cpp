@@ -274,10 +274,9 @@ bool VolumeBlockReader::ReadBlock(uint8_t* buffer, uint32_t& nBytesToRead)
 void VolumeBlockReader::HandleReadError(ErrCodeType errorCode)
 {
     m_failed = true;
-    ErrCodeType error = m_dataReader->Error();
-    m_errorCode = error;
+    m_errorCode = errorCode;
 #ifdef __linux__
-    if (error == EACCES || error == EPERM) {
+    if (errorCode == EACCES || errorCode == EPERM) {
         m_errorCode = (m_sourceType == SourceType::COPYFILE) ?
         VOLUMEPROTECT_ERR_COPY_ACCESS_DENIED : VOLUMEPROTECT_ERR_VOLUME_ACCESS_DENIED;
     }
