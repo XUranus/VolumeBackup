@@ -37,6 +37,7 @@ static const char* g_helpMessage =
 #endif
     "-d | --data=       \t  specify copy data directory\n"
     "-m | --meta=       \t  specify copy meta directory\n"
+    "-k | --checkpoint= \t  specify checkpoint directory"
     "-p | --prevmeta=   \t  specify previous copy meta directory\n"
     "-r | --restore     \t  used when performing restore operation\n"
     "-l | --loglevel=   \t  specify logger level [INFO, DEBUG]\n"
@@ -48,6 +49,7 @@ struct CliArgs {
     CopyFormat      copyFormat;
     std::string     copyDataDirPath;
     std::string     copyMetaDirPath;
+    std::string     checkpointDirPath;
     std::string     prevCopyMetaDirPath;
     LoggerLevel     logLevel             { LoggerLevel::DEBUG };
     bool            isRestore            { false };
@@ -107,8 +109,8 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
     CliArgs cliAgrs;
     GetOptionResult result = GetOption(
         argv + 1, argc - 1,
-        "v:n:f:d:m:p:h:r:l:",
-        {"--volume=", "--name=", "--format=", "--data=", "--meta=",
+        "v:n:f:d:m:k:p:h:r:l:",
+        {"--volume=", "--name=", "--format=", "--data=", "--meta=", "--checkpoint="
         "--prevmeta=", "--help", "--restore", "--loglevel="});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "v" || opt.option == "volume") {
@@ -121,6 +123,8 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
             cliAgrs.copyDataDirPath = opt.value;
         } else if (opt.option == "m" || opt.option == "meta") {
             cliAgrs.copyMetaDirPath = opt.value;
+        } else if (opt.option == "k" || opt.option == "checkpoint") {
+            cliAgrs.checkpointDirPath = opt.value;
         } else if (opt.option == "p" || opt.option == "prevmeta") {
             cliAgrs.prevCopyMetaDirPath = opt.value;
         } else if (opt.option == "r" || opt.option == "restore") {
@@ -151,6 +155,7 @@ static void PrintCliArgs(const CliArgs& cliArgs)
     std::cout << "CopyFormat: " << g_copyFormatStringTable[static_cast<int>(cliArgs.copyFormat)] << std::endl;
     std::cout << "CopyDataDirPath: " << cliArgs.copyDataDirPath << std::endl;
     std::cout << "CopyMetaDirPath: " << cliArgs.copyMetaDirPath << std::endl;
+    std::cout << "CheckpointDirPath: " << cliArgs.checkpointDirPath << std::endl;
     std::cout << "PrevCopyMetaDirPath: " << cliArgs.prevCopyMetaDirPath << std::endl;
 }
 
@@ -174,6 +179,7 @@ static bool ValidateCliArgs(const CliArgs& cliArgs)
     return !cliArgs.volumePath.empty()
         && !cliArgs.copyDataDirPath.empty()
         && !cliArgs.copyMetaDirPath.empty()
+        && !cliArgs.checkpointDirPath.empty()
         && !cliArgs.copyName.empty();
 }
 
@@ -207,6 +213,8 @@ static int ExecVolumeBackup(const CliArgs& cliArgs)
     backupConfig.prevCopyMetaDirPath = cliArgs.prevCopyMetaDirPath;
     backupConfig.outputCopyDataDirPath = cliArgs.copyDataDirPath;
     backupConfig.outputCopyMetaDirPath = cliArgs.copyMetaDirPath;
+    backupConfig.checkpointDirPath = cliArgs.checkpointDirPath;
+    backupConfig.clearCheckpointsOnSucceed = true;
     backupConfig.blockSize = DEFAULT_BLOCK_SIZE;
     backupConfig.sessionSize = 3 * ONE_GB;
     backupConfig.hasherNum = hasherWorkerNum;
@@ -250,6 +258,7 @@ static int ExecVolumeRestore(const CliArgs& cliAgrs)
     restoreConfig.volumePath = cliAgrs.volumePath;
     restoreConfig.copyDataDirPath = cliAgrs.copyDataDirPath;
     restoreConfig.copyMetaDirPath = cliAgrs.copyMetaDirPath;
+    restoreConfig.checkpointDirPath = cliAgrs.checkpointDirPath;
 
     std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildRestoreTask(restoreConfig);
     if (task == nullptr) {

@@ -75,7 +75,7 @@ std::string GetCopyDataFilePath(
 );
 
 std::string GetWriterBitmapFilePath(
-    const std::string&  copyMetaDirPath,
+    const std::string&  checkpointDirPath,
     const std::string&  copyName,
     int                 sessionIndex
 );

@@ -13,14 +13,6 @@ namespace {
 #else
     constexpr auto SEPARATOR = "/";
 #endif
-    constexpr auto VOLUME_COPY_META_JSON_FILENAME_EXTENSION = ".volumecopy.meta.json";
-    constexpr auto SHA256_CHECKSUM_BINARY_FILENAME_EXTENSION = ".sha256.meta.bin";
-    constexpr auto COPY_DATA_BIN_FILENAME_EXTENSION = ".copydata.bin";
-    constexpr auto COPY_DATA_BIN_PARTED_FILENAME_EXTENSION = ".copydata.bin.part";
-    constexpr auto COPY_DATA_IMAGE_FILENAME_EXTENSION = ".copydata.img";
-    constexpr auto COPY_DATA_VHD_FILENAME_EXTENSION = ".copydata.vhd";
-    constexpr auto COPY_DATA_VHDX_FILENAME_EXTENSION = ".copydata.vhdx";
-    constexpr auto WRITER_BITMAP_FILENAME_EXTENSION = ".checkpoint.bin";
 }
 
 using namespace volumeprotect;
@@ -59,12 +51,12 @@ std::string common::GetCopyDataFilePath(
 }
 
 std::string common::GetWriterBitmapFilePath(
-    const std::string&  copyMetaDirPath,
+    const std::string&  checkpointDirPath,
     const std::string&  copyName,
     int                 sessionIndex)
 {
     std::string filename = copyName + "." + std::to_string(sessionIndex) + WRITER_BITMAP_FILENAME_EXTENSION;
-    return common::PathJoin(copyMetaDirPath, filename);
+    return common::PathJoin(checkpointDirPath, filename);
 }
 
 std::string common::GetFileName(const std::string& fullpath)

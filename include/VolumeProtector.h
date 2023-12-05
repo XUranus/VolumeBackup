@@ -33,6 +33,15 @@ const uint32_t SHA256_CHECKSUM_SIZE = 32; // 256bits
 
 const std::string DEFAULT_VOLUME_COPY_NAME = "volumeprotect";
 
+const std::string VOLUME_COPY_META_JSON_FILENAME_EXTENSION = ".volumecopy.meta.json";
+const std::string SHA256_CHECKSUM_BINARY_FILENAME_EXTENSION = ".sha256.meta.bin";
+const std::string COPY_DATA_BIN_FILENAME_EXTENSION = ".copydata.bin";
+const std::string COPY_DATA_BIN_PARTED_FILENAME_EXTENSION = ".copydata.bin.part";
+const std::string COPY_DATA_IMAGE_FILENAME_EXTENSION = ".copydata.img";
+const std::string COPY_DATA_VHD_FILENAME_EXTENSION = ".copydata.vhd";
+const std::string COPY_DATA_VHDX_FILENAME_EXTENSION = ".copydata.vhdx";
+const std::string WRITER_BITMAP_FILENAME_EXTENSION = ".checkpoint.bin";
+
 // define error codes used by backup/restore tasks
 const ErrCodeType VOLUMEPROTECT_ERR_SUCCESS                 = 0x00000000;   // no error
 const ErrCodeType VOLUMEPROTECT_ERR_VOLUME_ACCESS_DENIED    = 0x00114514;   // read/volume failed with permission error
@@ -84,6 +93,8 @@ struct VOLUMEPROTECT_API VolumeBackupConfig {
     uint32_t        hasherNum       { DEFAULT_HASHER_NUM };  ///< hasher worker count, set to the num of processors
     bool            hasherEnabled   { true };                ///< if set to false, won't compute checksum
     bool            enableCheckpoint{ true };                ///< start from checkpoint if exists
+    std::string     checkpointDirPath;                       ///< directory path where checkpoint stores at
+    bool            clearCheckpointsOnSucceed { true };      ///< if clear checkpoint files on succeed
     bool            skipEmptyBlock  { false };               ///< use sparsefile and skip zero block to save storage
 };
 
@@ -96,6 +107,8 @@ struct VOLUMEPROTECT_API VolumeRestoreConfig {
     std::string	    copyDataDirPath;                                ///< directory path where copy data stores at
     std::string	    copyMetaDirPath;                                ///< directory path where copy meta stores at
     bool            enableCheckpoint { true };                      ///< start from checkpoint if exists
+    std::string     checkpointDirPath;                              ///< directory path where checkpoint stores at
+    bool            clearCheckpointsOnSucceed { true };             ///< if clear checkpoint files on succeed
 };
 
 /**

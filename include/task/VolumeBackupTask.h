@@ -35,6 +35,8 @@ private:
 
     void ThreadFunc();
 
+    bool WaitSessionTerminate(std::shared_ptr<VolumeTaskSession> session);
+
     bool StartBackupSession(std::shared_ptr<VolumeTaskSession> session) const;
 
     virtual bool InitBackupSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
@@ -58,13 +60,16 @@ private:
 
     virtual bool ValidateIncrementBackup() const;
 
+    void ClearAllCheckpoints() const;
+
 protected:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeBackupConfig>     m_backupConfig;
 
-    std::thread         m_thread;
-    SessionQueue        m_sessionQueue;
-    std::shared_ptr<TaskResourceManager> m_resourceManager;
+    std::thread                             m_thread;
+    SessionQueue                            m_sessionQueue;
+    std::shared_ptr<TaskResourceManager>    m_resourceManager;
+    std::vector<std::string>                m_checkpointFiles;
 };
 
 }

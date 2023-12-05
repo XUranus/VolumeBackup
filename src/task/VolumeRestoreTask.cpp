@@ -12,6 +12,7 @@
 #include "VolumeBlockWriter.h"
 #include "BlockingQueue.h"
 #include "VolumeRestoreTask.h"
+#include "native/FileSystemAPI.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::task;
@@ -93,6 +94,8 @@ bool VolumeRestoreTask::Prepare()
         INFOLOG("Size = %llu sessionOffset %d sessionSize %d", volumeSize, sessionOffset, sessionSize);
         std::string copyFilePath = common::GetCopyDataFilePath(
             m_restoreConfig->copyDataDirPath, m_volumeCopyMeta->copyName, copyFormat, sessionIndex);
+        std::string writerBitmapPath = common::GetWriterBitmapFilePath(
+            m_restoreConfig->checkpointDirPath, m_volumeCopyMeta->copyName, sessionIndex);
         VolumeTaskSession session {};
         session.sharedConfig = std::make_shared<VolumeTaskSharedConfig>();
         session.sharedConfig->copyFormat = static_cast<CopyFormat>(m_volumeCopyMeta->copyFormat);
@@ -102,8 +105,10 @@ bool VolumeRestoreTask::Prepare()
         session.sharedConfig->sessionOffset = sessionOffset;
         session.sharedConfig->sessionSize = sessionSize;
         session.sharedConfig->copyFilePath = copyFilePath;
+        session.sharedConfig->checkpointFilePath = writerBitmapPath;
         session.sharedConfig->checkpointEnabled = m_restoreConfig->enableCheckpoint;
         session.sharedConfig->skipEmptyBlock = false;
+        m_checkpointFiles.emplace_back(writerBitmapPath);
         m_sessionQueue.push(session);
     }
 
@@ -168,6 +173,35 @@ bool VolumeRestoreTask::StartRestoreSession(std::shared_ptr<VolumeTaskSession> s
     return true;
 }
 
+bool VolumeRestoreTask::WaitSessionTerminate(std::shared_ptr<VolumeTaskSession> session)
+{
+    // block the thread
+    while (true) {
+        if (m_abort) {
+            session->Abort();
+            m_status = TaskStatus::ABORTED;
+            return false;
+        }
+        if (session->IsFailed()) {
+            ERRLOG("session failed");
+            m_status = TaskStatus::FAILED;
+            m_errorCode = session->GetErrorCode();
+            return false;
+        }
+        if (session->IsTerminated())  {
+            break;
+        }
+        UpdateRunningSessionStatistics(session);
+        RefreshSessionCheckpoint(session);
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+    }
+    DBGLOG("restore session complete successfully");
+    FlushSessionWriter(session);
+    FlushSessionBitmap(session);
+    UpdateCompletedSessionStatistics(session);
+    return true;
+}
+
 void VolumeRestoreTask::ThreadFunc()
 {
     DBGLOG("start task main thread");
@@ -176,11 +210,9 @@ void VolumeRestoreTask::ThreadFunc()
             m_status = TaskStatus::ABORTED;
             return;
         }
-
         // pop a session from session queue to init a new session
         std::shared_ptr<VolumeTaskSession> session = std::make_shared<VolumeTaskSession>(m_sessionQueue.front());
         m_sessionQueue.pop();
-
         if (!InitRestoreSessionContext(session)) {
             m_status = TaskStatus::FAILED;
             return;
@@ -191,31 +223,24 @@ void VolumeRestoreTask::ThreadFunc()
             m_status = TaskStatus::FAILED;
             return;
         }
-        // block the thread
-        while (true) {
-            if (m_abort) {
-                session->Abort();
-                m_status = TaskStatus::ABORTED;
-                return;
-            }
-            if (session->IsFailed()) {
-                ERRLOG("session failed");
-                m_status = TaskStatus::FAILED;
-                m_errorCode = session->GetErrorCode();
-                return;
-            }
-            if (session->IsTerminated())  {
-                break;
-            }
-            UpdateRunningSessionStatistics(session);
-            RefreshSessionCheckpoint(session);
-            std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+        if (!WaitSessionTerminate(session)) {
+            // fail and exit
+            return;
         }
-        DBGLOG("session complete successfully");
-        FlushSessionWriter(session);
-        FlushSessionBitmap(session);
-        UpdateCompletedSessionStatistics(session);
     }
+    ClearAllCheckpoints();
     m_status = TaskStatus::SUCCEED;
     return;
+}
+
+void VolumeRestoreTask::ClearAllCheckpoints() const
+{
+    if (!m_restoreConfig->enableCheckpoint || !m_restoreConfig->clearCheckpointsOnSucceed) {
+        return;
+    }
+    INFOLOG("clear all checkpoints file for this restore task, copyName : %s", m_volumeCopyMeta->copyName.c_str());
+    for (const std::string& checkpointFile : m_checkpointFiles) {
+        INFOLOG("remove checkpoint file %s", checkpointFile.c_str());
+        fsapi::RemoveFile(checkpointFile);
+    }
 }

@@ -358,6 +358,19 @@ bool fsapi::RemoveFile(const std::string& dirPath, const std::string& filename)
 #endif
 }
 
+bool fsapi::RemoveFile(const std::string& filepath)
+{
+#ifdef POSIXAPI
+    if (::access(filepath.c_str(), F_OK) == 0 && ::unlink(filepath.c_str()) < 0) {
+        return false;
+    }
+    return true;
+#endif
+#ifdef _WIN32
+    return ::DeleteFileW(Utf8ToUtf16(filepath).c_str());
+#endif
+}
+
 uint32_t fsapi::ProcessorsNum()
 {
 #ifdef POSIXAPI

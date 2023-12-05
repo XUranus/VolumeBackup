@@ -40,18 +40,23 @@ private:
 
     bool StartRestoreSession(std::shared_ptr<VolumeTaskSession> session) const;
 
+    bool WaitSessionTerminate(std::shared_ptr<VolumeTaskSession> session);
+
     virtual bool InitRestoreSessionContext(std::shared_ptr<VolumeTaskSession> session) const;
 
     virtual bool InitRestoreSessionTaskExecutor(std::shared_ptr<VolumeTaskSession> session) const;
+
+    void ClearAllCheckpoints() const;
 
 protected:
     uint64_t                                m_volumeSize;
     std::shared_ptr<VolumeRestoreConfig>    m_restoreConfig;
     std::shared_ptr<VolumeCopyMeta>         m_volumeCopyMeta;
 
-    std::thread     m_thread;
-    SessionQueue    m_sessionQueue;
-    std::shared_ptr<TaskResourceManager> m_resourceManager;
+    std::thread                             m_thread;
+    SessionQueue                            m_sessionQueue;
+    std::shared_ptr<TaskResourceManager>    m_resourceManager;
+    std::vector<std::string>                m_checkpointFiles;
 };
 
 }

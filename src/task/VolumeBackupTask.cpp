@@ -116,6 +116,9 @@ bool VolumeBackupTask::Prepare()
             sessionSize
         });
         m_sessionQueue.push(NewVolumeTaskSession(sessionOffset, sessionSize, sessionIndex));
+        std::string writerBitmapPath = common::GetWriterBitmapFilePath(
+            m_backupConfig->checkpointDirPath, m_backupConfig->copyName, sessionIndex);
+        m_checkpointFiles.emplace_back(writerBitmapPath);
         sessionOffset += sessionSize;
         ++sessionIndex;
     }
@@ -135,7 +138,7 @@ VolumeTaskSession VolumeBackupTask::NewVolumeTaskSession(
     std::string copyFilePath = common::GetCopyDataFilePath(
         m_backupConfig->outputCopyDataDirPath, m_backupConfig->copyName, m_backupConfig->copyFormat, sessionIndex);
     std::string writerBitmapPath = common::GetWriterBitmapFilePath(
-        m_backupConfig->outputCopyMetaDirPath, m_backupConfig->copyName, sessionIndex);
+        m_backupConfig->checkpointDirPath, m_backupConfig->copyName, sessionIndex);
     // for increment backup, set previous checksum bin path
     std::string prevChecksumBinPath = "";
     if (IsIncrementBackup()) {
@@ -255,35 +258,45 @@ void VolumeBackupTask::ThreadFunc()
             m_status = TaskStatus::FAILED;
             return;
         }
-        // block the thread
-        auto counter = session->sharedContext->counter;
-        while (true) {
-            if (m_abort) {
-                session->Abort();
-                m_status = TaskStatus::ABORTED;
-                return;
-            }
-            if (session->IsFailed()) {
-                ERRLOG("backup session failed");
-                m_errorCode = session->GetErrorCode();
-                m_status = TaskStatus::FAILED;
-                return;
-            }
-            if (session->IsTerminated())  {
-                break;
-            }
-            UpdateRunningSessionStatistics(session);
-            RefreshSessionCheckpoint(session);
-            std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+        if (!WaitSessionTerminate(session)) {
+            // fail and exit
+            return;
         }
-        DBGLOG("session complete successfully");
-        FlushSessionLatestHashingTable(session);
-        FlushSessionWriter(session);
-        FlushSessionBitmap(session);
-        UpdateCompletedSessionStatistics(session);
     }
+    ClearAllCheckpoints();
     m_status = TaskStatus::SUCCEED;
     return;
+}
+
+bool VolumeBackupTask::WaitSessionTerminate(std::shared_ptr<VolumeTaskSession> session)
+{
+    // block the thread
+    auto counter = session->sharedContext->counter;
+    while (true) {
+        if (m_abort) {
+            session->Abort();
+            m_status = TaskStatus::ABORTED;
+            return false;
+        }
+        if (session->IsFailed()) {
+            ERRLOG("backup session failed");
+            m_errorCode = session->GetErrorCode();
+            m_status = TaskStatus::FAILED;
+            return false;
+        }
+        if (session->IsTerminated())  {
+            break;
+        }
+        UpdateRunningSessionStatistics(session);
+        RefreshSessionCheckpoint(session);
+        std::this_thread::sleep_for(TASK_CHECK_SLEEP_INTERVAL);
+    }
+    DBGLOG("backup session complete successfully");
+    FlushSessionLatestHashingTable(session);
+    FlushSessionWriter(session);
+    FlushSessionBitmap(session);
+    UpdateCompletedSessionStatistics(session);
+    return true;
 }
 
 bool VolumeBackupTask::InitHashingContext(std::shared_ptr<VolumeTaskSession> session) const
@@ -350,4 +363,16 @@ bool VolumeBackupTask::ValidateIncrementBackup() const
         return false;
     }
     return true;
+}
+
+void VolumeBackupTask::ClearAllCheckpoints() const
+{
+    if (!m_backupConfig->enableCheckpoint || !m_backupConfig->clearCheckpointsOnSucceed) {
+        return;
+    }
+    INFOLOG("clear all checkpoints file for this backup task, copyName : %s", m_backupConfig->copyName.c_str());
+    for (const std::string& checkpointFile : m_checkpointFiles) {
+        INFOLOG("remove checkpoint file %s", checkpointFile.c_str());
+        fsapi::RemoveFile(checkpointFile);
+    }
 }

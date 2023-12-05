@@ -307,6 +307,7 @@ TEST_F(VolumeBackupTest, VolumeBackTask_RunBackupSuccess)
     backupConfig.backupType = BackupType::FOREVER_INC;
     backupConfig.hasherEnabled = true;
     backupConfig.enableCheckpoint = true;
+    backupConfig.clearCheckpointsOnSucceed = false;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
     backupConfig.sessionSize = DEFAULT_MOCK_SESSION_SIZE;
     backupConfig.volumePath = "/dev/dummyVolume";
@@ -338,6 +339,7 @@ TEST_F(VolumeBackupTest, VolumeBackTask_RunBackupThenAbort)
     backupConfig.backupType = BackupType::FOREVER_INC;
     backupConfig.hasherEnabled = true;
     backupConfig.enableCheckpoint = false;
+    backupConfig.clearCheckpointsOnSucceed = false;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
     backupConfig.sessionSize = DEFAULT_MOCK_SESSION_SIZE;
     backupConfig.volumePath = "/dev/dummyVolume";
@@ -565,6 +567,7 @@ TEST_F(VolumeBackupTest, VolumeRestoreTask_RunRestoreSuccess)
     restoreConfig.copyMetaDirPath = "/dummy/dummyMeta";
     restoreConfig.volumePath = "/dev/dummy/dummyVolume";
     restoreConfig.enableCheckpoint = true;
+    restoreConfig.clearCheckpointsOnSucceed = false;
 
     auto restoreTaskMock = std::make_shared<VolumeRestoreTaskMock>(restoreConfig); // 2 session
 
@@ -619,6 +622,7 @@ TEST_F(VolumeBackupTest, BuildBackupOrRestoreTask_FailForInvalidVolumePath)
     backupConfig.backupType = BackupType::FOREVER_INC;
     backupConfig.hasherEnabled = true;
     backupConfig.enableCheckpoint = false;
+    backupConfig.clearCheckpointsOnSucceed = false;
     backupConfig.hasherNum = DEFAULT_MOCK_HASHER_NUM;
     backupConfig.sessionSize = DEFAULT_MOCK_SESSION_SIZE;
     backupConfig.volumePath = "/dev/dummy/dummyVolume";

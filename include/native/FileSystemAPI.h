@@ -46,6 +46,8 @@ bool        CreateEmptyFile(const std::string& dirPath, const std::string& filen
 
 bool        RemoveFile(const std::string& dirPath, const std::string& filename);
 
+bool        RemoveFile(const std::string& filepath);
+
 #ifdef __linux__
 uint64_t    ReadSectorSizeLinux(const std::string& devicePath);
 
