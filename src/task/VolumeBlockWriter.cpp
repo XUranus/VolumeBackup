@@ -5,7 +5,7 @@
  */
 
 #include "Logger.h"
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "native/RawIO.h"
 #include "VolumeBlockWriter.h"

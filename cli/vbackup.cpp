@@ -14,7 +14,7 @@
 #include <string>
 
 #include "GetOption.h"
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "native/FileSystemAPI.h"
 #include "VolumeProtector.h"
 #include "Logger.h"

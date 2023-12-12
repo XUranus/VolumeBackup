@@ -6,7 +6,7 @@
 
 #include "VolumeProtector.h"
 #include "VolumeBackupTask.h"
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "VolumeRestoreTask.h"
 #include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"

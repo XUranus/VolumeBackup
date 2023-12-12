@@ -177,58 +177,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_subdirectory("test")
 endif()
 
-# build executable tools
-add_executable (vbackup
-    "cli/vbackup.cpp"
-    "cli/GetOption.cpp"
-)
+# build executable cli tools
+add_subdirectory("cli")
 
-add_executable (vtools
-    "cli/vtools.cpp"
-    "cli/GetOption.cpp"
-)
-
-set_property(TARGET vbackup PROPERTY CXX_STANDARD 11)
-set_property(TARGET vtools PROPERTY CXX_STANDARD 11)
-
-# link vbackup executable
-if(${CMAKE_HOST_WIN32})
-    target_link_libraries(
-        vbackup
-        volumebackup_static
-        # third part dependency provided by XUranus
-        minijson_static
-        minilogger_static
-    )
-else()
-    # require linux-utils
-    target_link_libraries(
-        vbackup
-        volumebackup
-        pthread
-        # third part dependency provided by XUranus
-        minijson_static
-        minilogger_static
-    )
-endif()
-
-# build vtools executable
-target_link_libraries(
-    vtools
-)
-
-# build vcopymount executable
-add_executable (vcopymount
-    "cli/vcopymount.cpp"
-    "cli/GetOption.cpp"
-)
-
-set_property(TARGET vcopymount PROPERTY CXX_STANDARD 11)
-
-target_link_libraries(
-    vcopymount
-    volumebackup_static
-    # third part dependency provided by XUranus
-    minijson_static
-    minilogger_static
-)

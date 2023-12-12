@@ -2,7 +2,7 @@
  * ================================================================
  *   Copyright (C) 2023 XUranus All rights reserved.
  *
- *   File:         voltool.cpp
+ *   File:         vshow.cpp
  *   Author:       XUranus
  *   Date:         2023-07-01
  *   Description:  a command line tool to display volume info
@@ -46,7 +46,7 @@ namespace {
 }
 
 static const char* g_helpMessage =
-    "vtools [options...]    util for getting local volume information\n"
+    "vshow [options...]    util for getting local volume information\n"
     "[ -v | --volume= ]     query specified volume information\n"
     "[ -l | --list ]        list all local volumes\n"
     "[ -h | --help ]        show help\n";

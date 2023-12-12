@@ -1,7 +1,7 @@
 #ifndef VOLUMEBACKUP_BLOCK_WRITER_HEADER
 #define VOLUMEBACKUP_BLOCK_WRITER_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
 #include "native/RawIO.h"
 

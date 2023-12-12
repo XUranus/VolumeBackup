@@ -5,7 +5,7 @@
  */
 
 #include "Logger.h"
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "VolumeProtectTaskContext.h"
 #include "VolumeProtector.h"
 #include "native/FileSystemAPI.h"
@@ -424,6 +424,10 @@ bool VolumeTaskCheckpointTrait::FlushSessionWriter(std::shared_ptr<VolumeTaskSes
 
 bool VolumeTaskCheckpointTrait::FlushSessionBitmap(SessionPtr session) const
 {
+    if (!IsCheckpointEnabled(session)) {
+        DBGLOG("checkpoint not enabled, skip flush session bitmap");
+        return true;
+    }
     auto checkpointSnapshot = TakeSessionCheckpointSnapshot(session);
     std::string checkpointFilePath = session->sharedConfig->checkpointFilePath;
     if (!checkpointSnapshot->SaveTo(checkpointFilePath)) {

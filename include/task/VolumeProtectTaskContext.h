@@ -9,7 +9,7 @@
 #ifndef VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 #define VOLUMEBACKUP_PROTECT_TASK_CONTEXT_HEADER
 
-#include "VolumeProtectMacros.h"
+#include "common/VolumeProtectMacros.h"
 #include "VolumeProtector.h"
 #include "BlockingQueue.h"
 

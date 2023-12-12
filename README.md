@@ -27,7 +27,7 @@ clone this repository and it's dependency recusively:
 ```bash
 git clone git@github.com:XUranus/VolumeBackup.git --recursive
 ```
-build library `volumebackup` and executable cli tools `vbackup`,`vcopymount` and `vtools`:
+build library `volumebackup` and executable cli tools `vbackup`,`vcopymount` and `vshow`:
 ```bash
 mkdir build && cd build
 cmake .. && cmake --build .
@@ -51,9 +51,9 @@ cmake .. -DJNI_INCLUDE=your_jni_headers_directory_path && cmake --build .
 
 ## Cli Tools Usage
 `vtool`, `vbackup` and `vcopymount` is provided as cli tools to backup/restore a volume
-1. Use **vtools** to list and query volume info
+1. Use **vshow** to list and query volume info
 ```
-> vtools --list
+> vshow --list
 Name: \\?\Volume{a501f5cc-311e-423c-bc58-94a6c1b6b509}\
 Path: \\.\HarddiskVolume3
 C:\
@@ -64,7 +64,7 @@ Path: \\.\HarddiskVolume4
 Name: \\?\Volume{52ef083b-6ba4-4683-a73a-23a7290139b0}\
 Path: \\.\HarddiskVolume1
 
-> vtools --volume=\\.\HarddiskVolume3
+> vshow --volume=\\.\HarddiskVolume3
 VolumeName:             Windows
 VolumeSize:             254792433664
 VolumeSerialNumber:     3430564453
