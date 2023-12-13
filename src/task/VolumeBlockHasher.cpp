@@ -5,6 +5,7 @@
  */
 
 #include "VolumeProtector.h"
+#include <cstring>
 #include <openssl/evp.h>
 
 #include "Logger.h"
@@ -51,11 +52,12 @@ VolumeBlockHasher::VolumeBlockHasher(const VolumeBlockHasherParam& param)
     m_sharedConfig(param.sharedConfig),
     m_sharedContext(param.sharedContext)
 {
-    // // only the borrowed reference from BlockHashingContext, won't be free by VolumeBlockHasher
+    // only the borrowed reference from BlockHashingContext, won't be free by VolumeBlockHasher
     m_lastestChecksumTable = m_sharedContext->hashingContext->lastestTable;
     m_prevChecksumTable = m_sharedContext->hashingContext->previousTable;
     m_lastestChecksumTableSize = m_sharedContext->hashingContext->lastestSize;
     m_prevChecksumTableSize = m_sharedContext->hashingContext->previousSize;
+    DBGLOG("block hasher using checksum size %u", m_singleChecksumSize);
 }
 
 bool VolumeBlockHasher::Start()
@@ -105,12 +107,10 @@ void VolumeBlockHasher::WorkerThread(uint32_t workerID)
             m_singleChecksumSize);
 
         ++m_sharedContext->counter->blocksHashed;
-
+        uint32_t offset = m_singleChecksumSize * static_cast<uint32_t>(index);
         if (m_forwardMode == HasherForwardMode::DIFF) {
             // diff with previous hash
-            uint32_t previousHash = reinterpret_cast<uint32_t*>(m_prevChecksumTable)[index];
-            uint32_t lastestHash = reinterpret_cast<uint32_t*>(m_lastestChecksumTable)[index];
-            if (previousHash == lastestHash) {
+            if (::memcmp(m_prevChecksumTable + offset, m_lastestChecksumTable + offset, m_singleChecksumSize) == 0) {
                 // drop the block and free
                 DBGLOG("block[%llu] checksum remain unchanged, block dropped", index);
                 m_sharedContext->allocator->BlockFree(consumeBlock.ptr);
