@@ -134,7 +134,7 @@ struct VOLUMEPROTECT_API TaskStatistics {
     uint64_t bytesToWrite   { 0 };
     uint64_t bytesWritten   { 0 };
 
-    TaskStatistics operator+ (const TaskStatistics& taskStatistics) const;
+    TaskStatistics operator + (const TaskStatistics& statistic) const;
 };
 
 /**

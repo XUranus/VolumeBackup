@@ -52,6 +52,8 @@ struct VolumeCopyMountConfig {
     std::string     mountFsType;
     ///< Only used for *unix mount to sepecify mount options (option "-o", eg: "ro,loop,noatime")
     std::string     mountOptions;
+    ///< Only used for *unix mount, make the attached loop device and mounted copy readonly
+    bool            readOnly { true };
 };
 
 /**

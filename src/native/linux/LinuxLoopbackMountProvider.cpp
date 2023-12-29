@@ -21,6 +21,7 @@
 #include "Logger.h"
 #include "common/VolumeUtils.h"
 #include "native/linux/LinuxLoopbackMountProvider.h"
+#include "native/linux/LinuxMountUtils.h"
 
 using namespace volumeprotect;
 using namespace volumeprotect::common;
@@ -65,6 +66,7 @@ std::unique_ptr<LinuxLoopbackMountProvider> LinuxLoopbackMountProvider::Build(
         volumeCopyMountConfig.copyDataDirPath,
         volumeCopyMeta.segments.front().copyDataFile);
     params.mountTargetPath = volumeCopyMountConfig.mountTargetPath;
+    params.readOnly = volumeCopyMountConfig.readOnly;
     params.mountFsType = volumeCopyMountConfig.mountFsType;
     params.mountOptions = volumeCopyMountConfig.mountOptions;
     return exstd::make_unique<LinuxLoopbackMountProvider>(params);
@@ -75,6 +77,7 @@ LinuxLoopbackMountProvider::LinuxLoopbackMountProvider(const LinuxLoopbackMountP
     m_copyName(params.copyName),
     m_imageFilePath(params.imageFilePath),
     m_mountTargetPath(params.mountTargetPath),
+    m_readOnly(params.readOnly),
     m_mountFsType(params.mountFsType),
     m_mountOptions(params.mountOptions)
 {}
@@ -89,7 +92,7 @@ bool LinuxLoopbackMountProvider::Mount()
 {
     // 1. attach loopback device
     std::string loopDevicePath;
-    if (!loopback::Attach(m_imageFilePath, loopDevicePath, O_RDONLY)) {
+    if (!loopback::Attach(m_imageFilePath, loopDevicePath, m_readOnly ? O_RDONLY : O_RDWR)) {
         RECORD_INNER_ERROR("failed to attach read only loopback device from %s, errno %u",
             m_imageFilePath.c_str(), errno);
         return false;
@@ -102,11 +105,10 @@ bool LinuxLoopbackMountProvider::Mount()
     }
 
     // 2. mount block device as readonly
-    unsigned long mountFlags = MS_RDONLY;
-    if (::mount(loopDevicePath.c_str(), m_mountTargetPath.c_str(), m_mountFsType.c_str(),
-        mountFlags, m_mountOptions.c_str()) != 0) {
-        RECORD_INNER_ERROR("mount %s to %s failed, type %s, option %s, errno %u",
-            loopDevicePath.c_str(), m_mountTargetPath.c_str(), m_mountFsType.c_str(), m_mountOptions.c_str(), errno);
+    if (!linuxmountutil::Mount(loopDevicePath, m_mountTargetPath, m_mountFsType, m_mountOptions, m_readOnly)) {
+        RECORD_INNER_ERROR("mount %s to %s failed, type %s, option %s, read-only %u, errno %u",
+            loopDevicePath.c_str(), m_mountTargetPath.c_str(), m_mountFsType.c_str(),
+            m_mountOptions.c_str(), m_readOnly, errno);
         PosixLoopbackMountRollback(loopDevicePath);
         return false;
     }
@@ -133,7 +135,8 @@ bool LinuxLoopbackMountProvider::PosixLoopbackMountRollback(const std::string& l
 		// no loopback device attached, no mounts, return directly
 		return true;
     }
-    if (fsapi::IsMountPoint(m_mountTargetPath) && fsapi::GetMountDevicePath(m_mountTargetPath) != loopbackDevicePath) {
+    if (linuxmountutil::IsMountPoint(m_mountTargetPath)
+        && linuxmountutil::GetMountDevicePath(m_mountTargetPath) != loopbackDevicePath) {
     	// moint point used by other application, return directly
     	return true;
     }
@@ -170,8 +173,7 @@ bool LinuxLoopbackUmountProvider::Umount()
 {
     // 1. umount filesystem
     if (!m_mountTargetPath.empty()
-        && fsapi::IsMountPoint(m_mountTargetPath)
-        && ::umount2(m_mountTargetPath.c_str(), MNT_FORCE | MNT_DETACH) != 0) {
+        && !linuxmountutil::Umount(m_mountTargetPath, true)) {
         RECORD_INNER_ERROR("failed to umount target %s, errno %u", m_mountTargetPath.c_str(), errno);
         return false;
     }

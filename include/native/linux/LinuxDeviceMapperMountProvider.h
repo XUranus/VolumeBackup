@@ -19,6 +19,7 @@ struct LinuxDeviceMapperMountProviderParams {
     std::string                 copyName;
     std::vector<CopySegment>    segments;
     std::string                 mountTargetPath;
+    bool                        readOnly            { true };
     std::string                 mountFsType;
     std::string                 mountOptions;
 };
@@ -106,20 +107,15 @@ public:
     std::string GetMountRecordPath() const override;
 
 protected:
-    virtual bool MountReadOnlyDevice(
-        const std::string& devicePath,
-        const std::string& mountTargetPath,
-        const std::string& fsType,
-        const std::string& mountOptions);
-
-    virtual bool CreateReadOnlyDmDevice(
+    virtual bool CreateDmDevice(
         const std::vector<CopySliceTarget> copySlices,
         std::string& dmDeviceName,
-        std::string& dmDevicePath);
+        std::string& dmDevicePath,
+        bool readOnly);
 
     virtual bool RemoveDmDeviceIfExists(const std::string& dmDeviceName);
 
-    virtual bool AttachReadOnlyLoopDevice(const std::string& filePath, std::string& loopDevicePath);
+    virtual bool AttachDmLoopDevice(const std::string& filePath, std::string& loopDevicePath);
 
     virtual bool DetachLoopDeviceIfAttached(const std::string& loopDevicePath);
 
@@ -133,6 +129,7 @@ private:
     std::string     m_copyMetaDirPath;
     std::string     m_copyName;
     std::string     m_mountTargetPath;
+    bool            m_readOnly      { true };
     std::string     m_mountFsType;
     std::string     m_mountOptions;
     std::vector<CopySegment>    m_segments;

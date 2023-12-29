@@ -22,6 +22,7 @@ struct LinuxLoopbackMountProviderParams {
     std::string     copyName;
     std::string     imageFilePath;
     std::string     mountTargetPath;
+    bool            readOnly            { true };
     std::string     mountFsType;
     std::string     mountOptions;
 };
@@ -53,6 +54,7 @@ private:
     std::string     m_copyName;
     std::string     m_imageFilePath;
     std::string     m_mountTargetPath;
+    bool            m_readOnly          { true };
 
     // [optional] used for *nix system
     std::string     m_mountFsType;

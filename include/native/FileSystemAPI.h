@@ -50,10 +50,6 @@ bool        RemoveFile(const std::string& filepath);
 
 #ifdef __linux__
 uint64_t    ReadSectorSizeLinux(const std::string& devicePath);
-
-bool        IsMountPoint(const std::string& dirPath);
-// get the block device path of the mount point
-std::string GetMountDevicePath(const std::string& mountTargetPath);
 #endif
 
 }

@@ -28,7 +28,8 @@ static const char* g_helpMessage =
     "--output  <path>      output dir path to ouput checkpoint\n"
     "--target  <path>      dir target to mount to\n"
     "--type    <fs>        mount fs type, ex: ext4, xfs...\n"
-    "--option  <option>    mount fs option args\n";
+    "--option  <option>    mount fs option args\n"
+    "--readonly            mount as read-only";
 
 struct CliArgs {
     std::string     copyName;
@@ -39,6 +40,7 @@ struct CliArgs {
     std::string     mountFsType;
     std::string     mountOptions;
     std::string     mountRecordJsonFilePath;
+    bool            readOnly                    { false };
     bool            isMount                     { false };
     bool            isUmount                    { false };
     bool            printHelp                   { false };
@@ -57,6 +59,7 @@ static bool MountCopy(const VolumeCopyMountConfig& mountConfig)
     std::cout << "CopyDataDirPath " << mountConfig.copyDataDirPath << std::endl;
     std::cout << "MountTargetPath " << mountConfig.mountTargetPath << std::endl;
     std::cout << "OutputDirPath " << mountConfig.outputDirPath << std::endl;
+    std::cout << "ReadOnly " << mountConfig.readOnly << std::endl;
     std::cout << "MountFsType " << mountConfig.mountFsType << std::endl;
     std::cout << "MountOptions " << mountConfig.mountOptions << std::endl;
     std::cout << std::endl;
@@ -108,9 +111,9 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
     GetOptionResult result = GetOption(
         argv + 1,
         argc - 1,
-        "n:m:d:ht:o:",
+        "n:m:d:hrt:o:",
         {
-            "--name=", "--meta=","--data=", "--target=", "--help",
+            "--name=", "--meta=","--data=", "--target=", "--help", "--readonly",
             "--mount", "--umount=", "--output=", "--type=", "--option="});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "n" || opt.option == "name") {
@@ -134,6 +137,8 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
             cliArgs.mountOptions = opt.value;
         } else if (opt.option == "h" || opt.option == "help") {
             cliArgs.printHelp = true;
+        }  else if (opt.option == "r" || opt.option == "readonly") {
+            cliArgs.readOnly = true;
         }
     }
     return cliArgs;
@@ -149,15 +154,17 @@ int main(int argc, const char** argv)
         return 0;
     }
     if (cliArgs.isMount) {
-        return !MountCopy(VolumeCopyMountConfig {
-            cliArgs.outputDirPath,
-            cliArgs.copyName,
-            cliArgs.copyMetaDirPath,
-            cliArgs.copyDataDirPath,
-            cliArgs.mountTargetPath,
-            cliArgs.mountFsType,
-            cliArgs.mountOptions
-        });
+        VolumeCopyMountConfig mountConfig {};
+        mountConfig.outputDirPath = cliArgs.outputDirPath;
+        mountConfig.copyName = cliArgs.copyName;
+        mountConfig.copyMetaDirPath = cliArgs.copyMetaDirPath;
+        mountConfig.copyDataDirPath = cliArgs.copyDataDirPath;
+        mountConfig.mountTargetPath = cliArgs.mountTargetPath;
+        mountConfig.readOnly = cliArgs.readOnly;
+        mountConfig.mountFsType = cliArgs.mountFsType;
+        mountConfig.mountOptions = cliArgs.mountOptions;
+
+        return !MountCopy(mountConfig);
     }
     if (cliArgs.isUmount) {
         return !UmountCopy(cliArgs.mountRecordJsonFilePath);

@@ -56,10 +56,10 @@ void InnerErrorLoggerTrait::RecordError(const char* message, ...)
     va_list args;
     va_start(args, message);
     // Determine the length of the formatted string
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int length = std::vsnprintf(nullptr, 0, message, args_copy);
-    va_end(args_copy);
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+    int length = std::vsnprintf(nullptr, 0, message, argsCopy);
+    va_end(argsCopy);
     if (length <= 0) {
         va_end(args);
         ERRLOG("failed to compute str format buffer size, errno %u", errno);

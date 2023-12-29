@@ -55,8 +55,6 @@ using namespace volumeprotect::fsapi;
 namespace {
     constexpr auto DEFAULT_PROCESSORS_NUM = 4;
     constexpr auto DEFAULT_MKDIR_MASK = 0755;
-    const int MNTENT_BUFFER_MAX = 4096;
-    const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
 }
 
 #ifdef _WIN32
@@ -404,43 +402,4 @@ uint64_t fsapi::ReadSectorSizeLinux(const std::string& devicePath)
     return sectorSize;
 }
 
-bool fsapi::IsMountPoint(const std::string& dirPath)
-{
-	bool mounted = false;
-    FILE* mountsFile = ::setmntent(SYS_MOUNTS_ENTRY_PATH.c_str(), "r");
-    if (mountsFile == nullptr) {
-        ERRLOG("failed to open /proc/mounts, errno %u", errno);
-        return false;
-    }
-    struct mntent entry {};
-    char mntentBuffer[MNTENT_BUFFER_MAX] = { 0 };
-    while (::getmntent_r(mountsFile, &entry, mntentBuffer, MNTENT_BUFFER_MAX) != nullptr) {
-        if (std::string(entry.mnt_dir) == dirPath) {
-            mounted = true;
-            break;
-        }
-    }
-    ::endmntent(mountsFile);
-    return mounted;
-}
-
-std::string fsapi::GetMountDevicePath(const std::string& mountTargetPath)
-{
-	std::string devicePath;
-    FILE* mountsFile = ::setmntent(SYS_MOUNTS_ENTRY_PATH.c_str(), "r");
-    if (mountsFile == nullptr) {
-        ERRLOG("failed to open /proc/mounts, errno %u", errno);
-        return "";
-    }
-    struct mntent entry {};
-    char mntentBuffer[MNTENT_BUFFER_MAX] = { 0 };
-    while (::getmntent_r(mountsFile, &entry, mntentBuffer, MNTENT_BUFFER_MAX) != nullptr) {
-        if (std::string(entry.mnt_dir) == mountTargetPath) {
-            devicePath = entry.mnt_fsname;
-            break;
-        }
-    }
-    ::endmntent(mountsFile);
-    return devicePath;
-}
 #endif
