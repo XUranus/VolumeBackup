@@ -4,6 +4,8 @@
  * https://android.googlesource.com/platform/system/core/+/jb-mr1.1-dev-plus-aosp/toolbox/mount.c
  */
 
+#ifdef __linux__
+
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/mount.h>
@@ -322,6 +324,7 @@ bool linuxmountutil::Umount(const std::string& mountTargetPath, bool force)
         ::umount2(mountTargetPath.c_str(), flags) != 0) {
         return false;
     }
+    return true;
 }
 
 bool linuxmountutil::IsMountPoint(const std::string& dirPath)
@@ -363,3 +366,5 @@ std::string linuxmountutil::GetMountDevicePath(const std::string& mountTargetPat
     ::endmntent(mountsFile);
     return devicePath;
 }
+
+#endif

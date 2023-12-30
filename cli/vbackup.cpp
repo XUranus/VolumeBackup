@@ -110,7 +110,7 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
     GetOptionResult result = GetOption(
         argv + 1, argc - 1,
         "v:n:f:d:m:k:p:h:r:l:",
-        {"--volume=", "--name=", "--format=", "--data=", "--meta=", "--checkpoint="
+        {"--volume=", "--name=", "--format=", "--data=", "--meta=", "--checkpoint=",
         "--prevmeta=", "--help", "--restore", "--loglevel="});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "v" || opt.option == "volume") {
@@ -196,7 +196,6 @@ void InitLogger(const CliArgs& cliArgs)
 #else
     conf.logDirPath = "/tmp/LoggerTest";
 #endif
-    Logger::GetInstance()->SetLogLevel(LoggerLevel::DEBUG);
     if (!Logger::GetInstance()->Init(conf)) {
         std::cerr << "Init logger failed" << std::endl;
     }
