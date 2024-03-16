@@ -5,11 +5,13 @@
  */
 
 #include "VolumeProtector.h"
-#include "VolumeBackupTask.h"
 #include "common/VolumeProtectMacros.h"
+#include "VolumeBackupTask.h"
+#include "VolumeZeroCopyRestoreTask.h"
 #include "VolumeRestoreTask.h"
 #include "VolumeUtils.h"
 #include "native/FileSystemAPI.h"
+#include <memory>
 
 using namespace volumeprotect;
 using namespace volumeprotect::common;
@@ -101,7 +103,7 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildBackupTask(const Volu
         return nullptr;
     }
 
-    return std::unique_ptr<VolumeProtectTask>(new VolumeBackupTask(finalBackupConfig, volumeSize));
+    return exstd::make_unique<VolumeBackupTask>(finalBackupConfig, volumeSize);
 }
 
 std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const VolumeRestoreConfig& restoreConfig)
@@ -136,7 +138,15 @@ std::unique_ptr<VolumeProtectTask> VolumeProtectTask::BuildRestoreTask(const Vol
         return nullptr;
     }
 
-    return std::unique_ptr<VolumeProtectTask>(new VolumeRestoreTask(restoreConfig, volumeCopyMeta));
+    if (restoreConfig.enableZeroCopy) {
+        if (static_cast<CopyFormat>(volumeCopyMeta.copyFormat) != CopyFormat::IMAGE) {
+            ERRLOG("zero copy only supported by CopyFormat::IMAGE copy");
+            return nullptr;
+        }
+        return exstd::make_unique<VolumeZeroCopyRestoreTask>(restoreConfig, volumeCopyMeta);
+    }
+
+    return exstd::make_unique<VolumeRestoreTask>(restoreConfig, volumeCopyMeta);
 }
 
 void StatefulTask::Abort()

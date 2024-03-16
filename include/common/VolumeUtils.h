@@ -37,13 +37,23 @@ struct CopySegment {
 };
 
 struct VolumeCopyMeta {
+    /* basic meta */
     std::string                 copyName;
-    int                         backupType;     // cast BackupType to int
-    int                         copyFormat;     // cast CopyFormat to int
-    uint64_t                    volumeSize;     // volume size in bytes
-    uint32_t                    blockSize;      // block size in bytes
-    std::string                 volumePath;
+    int                         backupType;     ///< cast BackupType to int
+    int                         copyFormat;     ///< cast CopyFormat to int
+    uint64_t                    volumeSize;     ///< volume size in bytes
+    uint32_t                    blockSize;      ///< block size in bytes
     std::vector<CopySegment>    segments;
+
+    std::string                 volumePath;
+    std::string                 label;
+    std::string                 uuid;
+
+    /* meta of the snapshot of the volume */
+    // TODO:: intergate fs uuid detection and snapshot auto creation in later version
+    std::string                 snapshotPath;
+    std::string                 snapshotLabel;
+    std::string                 snapshotUUID;
 
     SERIALIZE_SECTION_BEGIN
     SERIALIZE_FIELD(copyName, copyName);

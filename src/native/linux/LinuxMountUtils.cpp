@@ -24,58 +24,52 @@ namespace {
     const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
 }
 
-// #include <sys/mount.h>
-// #include <sys/stat.h>
-// #include <fcntl.h>
-// #include <errno.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <unistd.h>
-// #include <linux/loop.h>
+#define ARRAY_SIZE(x)	(sizeof(x) / sizeof(x[0]))
+#define DEFAULT_LOOP_DEVICE "/dev/block/loop0"
+#define LOOPDEV_MAXLEN 64
 
-// #define ARRAY_SIZE(x)	(sizeof(x) / sizeof(x[0]))
-// #define DEFAULT_LOOP_DEVICE "/dev/block/loop0"
-// #define LOOPDEV_MAXLEN 64
-// struct mount_opts {
-// 	const char str[16];
-// 	unsigned long rwmask;
-// 	unsigned long rwset;
-// 	unsigned long rwnoset;
-// };
-// struct extra_opts {
-// 	char *str;
-// 	char *end;
-// 	int used_size;
-// 	int alloc_size;
-// };
-// /*
-//  * These options define the function of "mount(2)".
-//  */
-// #define MS_TYPE	(MS_REMOUNT|MS_BIND|MS_MOVE)
-// static const struct mount_opts options[] = {
-// 	/* name		mask		set		noset		*/
-// 	{ "async",	MS_SYNCHRONOUS,	0,		MS_SYNCHRONOUS	},
-// 	{ "atime",	MS_NOATIME,	0,		MS_NOATIME	},
-// 	{ "bind",	MS_TYPE,	MS_BIND,	0,		},
-// 	{ "dev",	MS_NODEV,	0,		MS_NODEV	},
-// 	{ "diratime",	MS_NODIRATIME,	0,		MS_NODIRATIME	},
-// 	{ "dirsync",	MS_DIRSYNC,	MS_DIRSYNC,	0		},
-// 	{ "exec",	MS_NOEXEC,	0,		MS_NOEXEC	},
-// 	{ "move",	MS_TYPE,	MS_MOVE,	0		},
-// 	{ "recurse",	MS_REC,		MS_REC,		0		},
-// 	{ "rec",	MS_REC,		MS_REC,		0		},
-// 	{ "remount",	MS_TYPE,	MS_REMOUNT,	0		},
-// 	{ "ro",		MS_RDONLY,	MS_RDONLY,	0		},
-// 	{ "rw",		MS_RDONLY,	0,		MS_RDONLY	},
-// 	{ "suid",	MS_NOSUID,	0,		MS_NOSUID	},
-// 	{ "sync",	MS_SYNCHRONOUS,	MS_SYNCHRONOUS,	0		},
-// 	{ "verbose",	MS_VERBOSE,	MS_VERBOSE,	0		},
-// 	{ "unbindable",	MS_UNBINDABLE,	MS_UNBINDABLE,	0		},
-// 	{ "private",	MS_PRIVATE,	MS_PRIVATE,	0		},
-// 	{ "slave",	MS_SLAVE,	MS_SLAVE,	0		},
-// 	{ "shared",	MS_SHARED,	MS_SHARED,	0		},
-// };
+struct MountOptionMapEntry {
+	const char str[16];
+	unsigned long rwmask;
+	unsigned long rwset;
+	unsigned long rwnoset;
+};
+
+struct MountExtraOption {
+	char *str;
+	char *end;
+	int usedSize;
+	int allocSize;
+};
+
+/*
+ * These options define the function of "mount(2)".
+ */
+#define MS_TYPE	(MS_REMOUNT | MS_BIND | MS_MOVE)
+
+static const struct MountOptionMapEntry options[] = {
+	/* name		mask		set		noset		*/
+	{ "async",	MS_SYNCHRONOUS,	0,		MS_SYNCHRONOUS	},
+	{ "atime",	MS_NOATIME,	0,		MS_NOATIME	},
+	{ "bind",	MS_TYPE,	MS_BIND,	0,		},
+	{ "dev",	MS_NODEV,	0,		MS_NODEV	},
+	{ "diratime",	MS_NODIRATIME,	0,		MS_NODIRATIME	},
+	{ "dirsync",	MS_DIRSYNC,	MS_DIRSYNC,	0		},
+	{ "exec",	MS_NOEXEC,	0,		MS_NOEXEC	},
+	{ "move",	MS_TYPE,	MS_MOVE,	0		},
+	{ "recurse",	MS_REC,		MS_REC,		0		},
+	{ "rec",	MS_REC,		MS_REC,		0		},
+	{ "remount",	MS_TYPE,	MS_REMOUNT,	0		},
+	{ "ro",		MS_RDONLY,	MS_RDONLY,	0		},
+	{ "rw",		MS_RDONLY,	0,		MS_RDONLY	},
+	{ "suid",	MS_NOSUID,	0,		MS_NOSUID	},
+	{ "sync",	MS_SYNCHRONOUS,	MS_SYNCHRONOUS,	0		},
+	{ "verbose",	MS_VERBOSE,	MS_VERBOSE,	0		},
+	{ "unbindable",	MS_UNBINDABLE,	MS_UNBINDABLE,	0		},
+	{ "private",	MS_PRIVATE,	MS_PRIVATE,	0		},
+	{ "slave",	MS_SLAVE,	MS_SLAVE,	0		},
+	{ "shared",	MS_SHARED,	MS_SHARED,	0		},
+};
 
 // static void add_extra_option(struct extra_opts *extra, char *s)
 // {
@@ -83,22 +77,22 @@ namespace {
 // 	int newlen;
 // 	if (extra->str)
 // 	       len++;			/* +1 for ',' */
-// 	newlen = extra->used_size + len;
-// 	if (newlen >= extra->alloc_size) {
+// 	newlen = extra->usedSize + len;
+// 	if (newlen >= extra->allocSize) {
 // 		char *new;
 // 		new = realloc(extra->str, newlen + 1);	/* +1 for NUL */
 // 		if (!new)
 // 			return;
 // 		extra->str = new;
-// 		extra->end = extra->str + extra->used_size;
-// 		extra->alloc_size = newlen + 1;
+// 		extra->end = extra->str + extra->usedSize;
+// 		extra->allocSize = newlen + 1;
 // 	}
-// 	if (extra->used_size) {
+// 	if (extra->usedSize) {
 // 		*extra->end = ',';
 // 		extra->end++;
 // 	}
 // 	strcpy(extra->end, s);
-// 	extra->used_size += len;
+// 	extra->usedSize += len;
 // }
 // static unsigned long
 // parse_mount_options(char *arg, unsigned long rwflag, struct extra_opts *extra, int* loop, char *loopdev)
@@ -306,7 +300,10 @@ bool linuxmountutil::Mount(
     const std::string& mountOptions,
     bool readOnly)
 {
-    unsigned long mountFlags = readOnly ? MS_RDONLY : 0; // TODO:: check mountOptions contains ro
+    unsigned long mountFlags = MS_VERBOSE;
+    if (readOnly) {
+        mountFlags |= MS_RDONLY; // TODO:: check mountOptions contains ro
+    }
     if (::mount(devicePath.c_str(),
         mountTargetPath.c_str(),
         fsType.c_str(),

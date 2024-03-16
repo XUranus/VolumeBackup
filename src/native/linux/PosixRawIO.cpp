@@ -4,6 +4,7 @@
  * @author XUranus(2257238649wdx@gmail.com)
  */
 
+#include "RawIO.h"
 #include "common/VolumeProtectMacros.h"
 
 #ifdef POSIXAPI
@@ -59,6 +60,11 @@ ErrCodeType PosixRawDataReader::Error()
     return static_cast<ErrCodeType>(errno);
 }
 
+HandleType PosixRawDataReader::Handle()
+{
+    return Ok() ? m_fd : -1;
+}
+
 PosixRawDataReader::~PosixRawDataReader()
 {
     if (m_fd < 0) {
@@ -93,6 +99,11 @@ bool PosixRawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, Err
 bool PosixRawDataWriter::Ok()
 {
     return m_fd > 0;
+}
+
+HandleType PosixRawDataWriter::Handle()
+{
+    return Ok() ? m_fd : -1;
 }
 
 bool PosixRawDataWriter::Flush()

@@ -13,6 +13,11 @@
 #include "VolumeProtector.h"
 #include <string>
 
+#ifdef _WIN32
+using HandleType = void*;
+#else
+using HandleType = int;
+#endif
 
 namespace volumeprotect {
 /**
@@ -32,6 +37,8 @@ public:
 
     virtual ErrCodeType Error() = 0;
 
+    virtual HandleType Handle() = 0;
+
     virtual ~RawDataReader() = default;
 };
 
@@ -48,6 +55,8 @@ public:
     virtual bool Flush() = 0;
 
     virtual ErrCodeType Error() = 0;
+
+    virtual HandleType Handle() = 0;
 
     virtual ~RawDataWriter() = default;
 };

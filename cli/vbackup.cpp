@@ -37,9 +37,10 @@ static const char* g_helpMessage =
 #endif
     "-d | --data=       \t  specify copy data directory\n"
     "-m | --meta=       \t  specify copy meta directory\n"
-    "-k | --checkpoint= \t  specify checkpoint directory"
+    "-k | --checkpoint= \t  specify checkpoint directory\n"
     "-p | --prevmeta=   \t  specify previous copy meta directory\n"
     "-r | --restore     \t  used when performing restore operation\n"
+    "-z | --zerocopy    \t  enable zero copy during restore\n"
     "-l | --loglevel=   \t  specify logger level [INFO, DEBUG]\n"
     "-h | --help        \t  print help\n";
 
@@ -51,8 +52,9 @@ struct CliArgs {
     std::string     copyMetaDirPath;
     std::string     checkpointDirPath;
     std::string     prevCopyMetaDirPath;
-    LoggerLevel     logLevel             { LoggerLevel::DEBUG };
+    LoggerLevel     logLevel             { LoggerLevel::INFO };
     bool            isRestore            { false };
+    bool            enableZeroCopy       { false };
     bool            printHelp            { false };
 };
 
@@ -109,9 +111,9 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
     CliArgs cliAgrs;
     GetOptionResult result = GetOption(
         argv + 1, argc - 1,
-        "v:n:f:d:m:k:p:h:r:l:",
+        "v:n:f:d:m:k:p:hzr:l:",
         {"--volume=", "--name=", "--format=", "--data=", "--meta=", "--checkpoint=",
-        "--prevmeta=", "--help", "--restore", "--loglevel="});
+        "--prevmeta=", "--help", "--zerocopy", "--restore", "--loglevel="});
     for (const OptionResult opt: result.opts) {
         if (opt.option == "v" || opt.option == "volume") {
             cliAgrs.volumePath = opt.value;
@@ -129,6 +131,8 @@ static CliArgs ParseCliArgs(int argc, const char** argv)
             cliAgrs.prevCopyMetaDirPath = opt.value;
         } else if (opt.option == "r" || opt.option == "restore") {
             cliAgrs.isRestore = true;
+        } else if (opt.option == "z" || opt.option == "zerocopy") {
+            cliAgrs.enableZeroCopy = true;
         } else if (opt.option == "l" || opt.option == "loglevel") {
             cliAgrs.logLevel = ParseLoggerLevel(opt.value);
         } else if (opt.option == "h" || opt.option == "help") {
@@ -176,11 +180,23 @@ void PrintTaskErrorCodeMessage(ErrCodeType errorCode)
 
 static bool ValidateCliArgs(const CliArgs& cliArgs)
 {
-    return !cliArgs.volumePath.empty()
-        && !cliArgs.copyDataDirPath.empty()
-        && !cliArgs.copyMetaDirPath.empty()
-        && !cliArgs.checkpointDirPath.empty()
-        && !cliArgs.copyName.empty();
+    if (cliArgs.volumePath.empty()) {
+        std::cerr << "Error: no volume path specified." << std::endl;
+        return false;
+    }
+    if (cliArgs.copyDataDirPath.empty()) {
+        std::cerr << "Error: no copy data path specified." << std::endl;
+        return false;
+    }
+    if (cliArgs.copyMetaDirPath.empty()) {
+        std::cerr << "Error: no copy meta path specified." << std::endl;
+        return false;
+    }
+    if (cliArgs.copyName.empty()) {
+        std::cerr << "Error: no volume copy name specified." << std::endl;
+        return false;
+    }
+    return true;
 }
 
 void InitLogger(const CliArgs& cliArgs)
@@ -192,9 +208,9 @@ void InitLogger(const CliArgs& cliArgs)
     conf.archiveFilesNumMax = 10;
     conf.fileName = "vbackup.log";
 #ifdef _WIN32
-    conf.logDirPath = R"(C:\LoggerTest)";
+    conf.logDirPath = R"(C:\)";
 #else
-    conf.logDirPath = "/tmp/LoggerTest";
+    conf.logDirPath = "/tmp";
 #endif
     if (!Logger::GetInstance()->Init(conf)) {
         std::cerr << "Init logger failed" << std::endl;
@@ -213,12 +229,12 @@ static int ExecVolumeBackup(const CliArgs& cliArgs)
     backupConfig.outputCopyDataDirPath = cliArgs.copyDataDirPath;
     backupConfig.outputCopyMetaDirPath = cliArgs.copyMetaDirPath;
     backupConfig.checkpointDirPath = cliArgs.checkpointDirPath;
+    backupConfig.enableCheckpoint = !cliArgs.checkpointDirPath.empty();
     backupConfig.clearCheckpointsOnSucceed = true;
     backupConfig.blockSize = DEFAULT_BLOCK_SIZE;
     backupConfig.sessionSize = 3 * ONE_GB;
     backupConfig.hasherNum = hasherWorkerNum;
     backupConfig.hasherEnabled = true;
-    backupConfig.enableCheckpoint = true;
 
     if (backupConfig.prevCopyMetaDirPath.empty()) {
         std::cout << "----- Perform Full Backup -----" << std::endl;
@@ -258,6 +274,12 @@ static int ExecVolumeRestore(const CliArgs& cliAgrs)
     restoreConfig.copyDataDirPath = cliAgrs.copyDataDirPath;
     restoreConfig.copyMetaDirPath = cliAgrs.copyMetaDirPath;
     restoreConfig.checkpointDirPath = cliAgrs.checkpointDirPath;
+    restoreConfig.enableCheckpoint = !cliAgrs.checkpointDirPath.empty();
+    restoreConfig.enableZeroCopy = cliAgrs.enableZeroCopy;
+
+    if (restoreConfig.enableZeroCopy) {
+        std::cout << "using zero copy optimization." << std::endl;
+    }
 
     std::shared_ptr<VolumeProtectTask> task = VolumeProtectTask::BuildRestoreTask(restoreConfig);
     if (task == nullptr) {

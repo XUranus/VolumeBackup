@@ -50,7 +50,7 @@ if(${CMAKE_HOST_WIN32})
         VOLUMEPROTECTPROTECT_SOURCES
         "src/*.cpp"
         "src/common/*.cpp"
-        "src/task*.cpp"
+        "src/task/*.cpp"
         "src/native/*.cpp"
         "src/native/win32/*.cpp"
     )
@@ -60,7 +60,7 @@ else()
         VOLUMEPROTECTPROTECT_SOURCES
         "src/*.cpp"
         "src/common/*.cpp"
-        "src/task*.cpp"
+        "src/task/*.cpp"
         "src/native/*.cpp"
         "src/native/linux/*.cpp"
     )

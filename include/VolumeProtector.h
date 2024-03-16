@@ -109,6 +109,7 @@ struct VOLUMEPROTECT_API VolumeRestoreConfig {
     bool            enableCheckpoint { true };                      ///< start from checkpoint if exists
     std::string     checkpointDirPath;                              ///< directory path where checkpoint stores at
     bool            clearCheckpointsOnSucceed { true };             ///< if clear checkpoint files on succeed
+    bool            enableZeroCopy { false };                       ///< use zero copy optimization for CopyFormat::IMAGE restore
 };
 
 /**

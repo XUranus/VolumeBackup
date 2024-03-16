@@ -27,6 +27,7 @@ public:
     ~PosixRawDataReader();
     bool Read(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
+    HandleType Handle() override;
     ErrCodeType Error() override;
 
 private:
@@ -42,6 +43,7 @@ public:
     ~PosixRawDataWriter();
     bool Write(uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode) override;
     bool Ok() override;
+    HandleType Handle() override;
     bool Flush() override;
     ErrCodeType Error() override;
 
