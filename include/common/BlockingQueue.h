@@ -1,7 +1,7 @@
 /**
  * @file BlockingQueue.h
  * @brief This file implement a blocking queue for concurrent access by mutiple tasks.
- * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @copyright Copyright 2023-2024 XUranus. All rights reserved.
  * @license This project is released under the Apache License.
  * @author XUranus(2257238649wdx@gmail.com)
  */

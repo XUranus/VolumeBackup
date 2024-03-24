@@ -1,7 +1,7 @@
 /**
  * @file TaskResourceManager.h
  * @brief Provide a set of interface to manage attachment and detachment for copy resource.
- * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @copyright Copyright 2023-2024 XUranus. All rights reserved.
  * @license This project is released under the Apache License.
  * @author XUranus(2257238649wdx@gmail.com)
  */

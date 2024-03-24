@@ -1,7 +1,7 @@
 /**
  * @file Win32VirtualDiskMountProvider.h
  * @brief This file defines the volume copy mount API for VHD/VHDX format on Windows.
- * @copyright Copyright 2023 XUranus. All rights reserved.
+ * @copyright Copyright 2023-2024 XUranus. All rights reserved.
  * @license This project is released under the Apache License.
  * @author XUranus(2257238649wdx@gmail.com)
  */

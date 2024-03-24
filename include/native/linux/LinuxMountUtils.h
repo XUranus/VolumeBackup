@@ -5,6 +5,7 @@
 
 #include <string>
 
+namespace volumeprotect {
 namespace linuxmountutil {
 
 bool Mount(
@@ -21,6 +22,7 @@ bool IsMountPoint(const std::string& dirPath);
 // get the block device path of the mount point
 std::string GetMountDevicePath(const std::string& mountTargetPath);
 
+}
 }
 
 #endif
