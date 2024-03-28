@@ -29,6 +29,7 @@ add_executable(${Project} ${Sources} ${Headers})
 
 target_link_libraries(${Project} PUBLIC
     volumebackup_static
+    ${VOLUMEPROTECT_LINK_LIBRARIES}
     GTest::gtest_main
     GTest::gmock_main
 )

@@ -24,6 +24,9 @@ namespace {
     const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
 }
 
+using namespace volumeprotect;
+using namespace volumeprotect::linuxmountutil;
+
 #define ARRAY_SIZE(x)	(sizeof(x) / sizeof(x[0]))
 #define DEFAULT_LOOP_DEVICE "/dev/block/loop0"
 #define LOOPDEV_MAXLEN 64
@@ -41,6 +44,11 @@ struct MountExtraOption {
 	int usedSize;
 	int allocSize;
 };
+
+/* War is peace. Verbosity is silence.*/
+#ifndef MS_VERBOSE
+#define MS_VERBOSE 32768
+#endif
 
 /*
  * These options define the function of "mount(2)".

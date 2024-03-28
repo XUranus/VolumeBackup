@@ -61,6 +61,7 @@ public:
     MOCK_METHOD(bool, Read, (uint64_t offset, uint8_t* buffer, int length, ErrCodeType& errorCode), (override));
     MOCK_METHOD(bool, Ok, (), (override));
     MOCK_METHOD(ErrCodeType, Error, (), (override));
+    MOCK_METHOD(HandleType, Handle, (), (override));
 };
 
 class DataWriterMock : public rawio::RawDataWriter {
@@ -69,6 +70,7 @@ public:
     MOCK_METHOD(bool, Ok, (), (override));
     MOCK_METHOD(bool, Flush, (), (override));
     MOCK_METHOD(ErrCodeType, Error, (), (override));
+    MOCK_METHOD(HandleType, Handle, (), (override));
 };
 
 class TaskResourceManagerMock : public TaskResourceManager {

@@ -15,6 +15,7 @@
 #include <iostream>
 #include <cstdint>
 #include <vector>
+#include <map>
 #include <string>
 #include <stdexcept>
 #include <exception>
@@ -33,6 +34,12 @@
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 #include <unistd.h>
+
+#include "native/linux/BlockProbeUtils.h"
+
+using namespace volumeprotect;
+using namespace volumeprotect::linuxmountutil;
+
 #endif
 
 using namespace xuranus::getopt;
@@ -73,12 +80,13 @@ private:
  *
  */
 struct VolumeInfo {
-    std::string     volumeName;
+    std::string     volumeName;             // volume 'name' or 'label'
     uint64_t        volumeSize;
-    uint32_t        serialNumber;
+    uint32_t        serialNumber;           // msdos vfat 8 bytes serial number
+    std::string     uuid;
     uint32_t        maximumComponentLength; // maximum length of filename the fs support
-    std::string     fileSystemName;
-    uint32_t        fileSystemFlags;
+    std::string     fileSystemName;         // 'fileSystemName' or 'fs_type' for *nix
+    uint32_t        fileSystemFlags;        // ntfs filesystem flags
 };
 
 #ifdef _WIN32
@@ -182,7 +190,7 @@ VolumeInfo GetVolumeInfoWin32(const std::string& volumePath)
         return volumeInfo;
     }
     // assign volume info struct
-    volumeInfo.volumeName = Utf16ToUtf8(volumeNameBuffer);
+    volumeInfo.label = Utf16ToUtf8(volumeNameBuffer);
     volumeInfo.serialNumber = volumeSerialNumber;
     volumeInfo.maximumComponentLength = maximumComponentLength;
     volumeInfo.fileSystemFlags = fileSystemFlags;
@@ -253,12 +261,20 @@ uint64_t GetVolumeSizeLinux(const std::string& devicePath) {
 VolumeInfo GetVolumeInfoLinux(const std::string& volumePath)
 {
     VolumeInfo volumeInfo {};
-    // TODO::implement reading linux volume info
     try {
         volumeInfo.volumeSize = GetVolumeSizeLinux(volumePath);
     } catch (const SystemApiException& e) {
         throw e;
     }
+    std::vector<std::string> tags {
+        linuxmountutil::BLKID_PROBE_TAG_LABEL,
+        linuxmountutil::BLKID_PROBE_TAG_TYPE,
+        linuxmountutil::BLKID_PROBE_TAG_UUID
+    };
+    std::map<std::string, std::string> blkidResult = linuxmountutil::BlockProbeLookup(volumePath, tags);
+    volumeInfo.fileSystemName = blkidResult[linuxmountutil::BLKID_PROBE_TAG_TYPE];
+    volumeInfo.uuid = blkidResult[linuxmountutil::BLKID_PROBE_TAG_UUID];
+    volumeInfo.volumeName = blkidResult[linuxmountutil::BLKID_PROBE_TAG_LABEL];
     return volumeInfo;
 }
 #endif
@@ -285,11 +301,12 @@ int PrintVolumeInfo(const std::string& volumePath)
         return 1;
     }
     std::cout << "VolumeName: " << volumeInfo.volumeName << std::endl;
-    std::cout << "VolumeSize: " << volumeInfo.volumeSize << std::endl;
-    std::cout << "VolumeSerialNumber: " << volumeInfo.serialNumber << std::endl;
-    std::cout << "MaximumComponentLength: " << volumeInfo.maximumComponentLength << std::endl;
-    std::cout << "FileSystemName: " << volumeInfo.fileSystemName << std::endl;
-    std::cout << "FileSystemFlags: " << volumeInfo.fileSystemFlags << std::endl;
+    std::cout << "Volume UUID: " << volumeInfo.uuid << std::endl;
+    std::cout << "Volume Size: " << volumeInfo.volumeSize << std::endl;
+    std::cout << "Volume Serial Number: " << volumeInfo.serialNumber << std::endl;
+    std::cout << "Maximum Component Length: " << volumeInfo.maximumComponentLength << std::endl;
+    std::cout << "Filesystem Name: " << volumeInfo.fileSystemName << std::endl;
+    std::cout << "Filesystem Flags: " << volumeInfo.fileSystemFlags << std::endl;
     for (const std::string& flagStr : ParseFileSystemFlagsOfVolume(volumeInfo.fileSystemFlags)) {
         std::cout << flagStr << std::endl;
     }

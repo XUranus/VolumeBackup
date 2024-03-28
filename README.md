@@ -25,6 +25,7 @@ Volume backup/restore library and cli tools for Windows and Linux
  - MSVC2015+/GCC4.9+
  - Windows/Linux
  - OpenSSL 3.0+
+ - `libblkid-dev`,`uuid-dev` for Linux
 
 ## Build
 clone this repository and it's dependency recusively:

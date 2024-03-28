@@ -25,6 +25,7 @@ set(
     ${CMAKE_PREFIX_PATH}
 )
 
+
 find_package(
     OpenSSL 3
     REQUIRED)
@@ -115,6 +116,7 @@ target_compile_definitions(
 )
 
 if (${CMAKE_HOST_WIN32})
+    message ("resolving 3rd dependencies for windows platform")
     set (VOLUMEPROTECT_LINK_LIBRARIES
         virtDisk
         setupapi
@@ -124,17 +126,21 @@ if (${CMAKE_HOST_WIN32})
         OpenSSL::Crypto
     )
 elseif(${CMAKE_HOST_LINUX})
+    message ("resolving 3rd dependencies for linux platform")
     set (VOLUMEPROTECT_LINK_LIBRARIES
         uuid
+        blkid
         OpenSSL::SSL
         OpenSSL::Crypto
     )
 else()
+message ("resolving 3rd dependencies for other platform")
     set (VOLUMEPROTECT_LINK_LIBRARIES
         OpenSSL::SSL
         OpenSSL::Crypto
     )
 endif()
+message("set VOLUMEPROTECT_LINK_LIBRARIES = ${VOLUMEPROTECT_LINK_LIBRARIES}")
 
 # link against dynamic libs
 target_link_libraries(

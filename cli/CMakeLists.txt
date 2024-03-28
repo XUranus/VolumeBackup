@@ -21,6 +21,7 @@ if(${CMAKE_HOST_WIN32})
     target_link_libraries(
         vbackup
         volumebackup_static
+        ${VOLUMEPROTECT_LINK_LIBRARIES}
         # third part dependency provided by XUranus
         minijson_static
         minilogger_static
@@ -30,7 +31,7 @@ else()
     target_link_libraries(
         vbackup
         volumebackup
-        pthread
+        ${VOLUMEPROTECT_LINK_LIBRARIES}
         # third part dependency provided by XUranus
         minijson_static
         minilogger_static
@@ -40,6 +41,8 @@ endif()
 # build vshow executable
 target_link_libraries(
     vshow
+    volumebackup_static
+    ${VOLUMEPROTECT_LINK_LIBRARIES}
 )
 
 # build vcopymount executable
@@ -51,8 +54,7 @@ add_executable (vcopymount
 # build vchecksum executable
 target_link_libraries(
     vchecksum
-    OpenSSL::SSL
-    OpenSSL::Crypto
+    ${VOLUMEPROTECT_LINK_LIBRARIES}
 )
 
 
@@ -61,6 +63,7 @@ set_property(TARGET vcopymount PROPERTY CXX_STANDARD 11)
 target_link_libraries(
     vcopymount
     volumebackup_static
+    ${VOLUMEPROTECT_LINK_LIBRARIES}
     # third part dependency provided by XUranus
     minijson_static
     minilogger_static
