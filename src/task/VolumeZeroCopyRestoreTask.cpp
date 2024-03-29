@@ -188,9 +188,9 @@ bool VolumeZeroCopyRestoreTask::PerformZeroCopyRestore(
             ERRLOG("sendfile (%llu, %llu) failed with errno %d", offset, len, errno);
             return false;
         }
-#endif
         m_currentSessionStatistics.bytesRead += ret;
         m_currentSessionStatistics.bytesWritten += ret;
+#endif
     }
 
 

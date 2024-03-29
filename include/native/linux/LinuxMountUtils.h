@@ -15,8 +15,16 @@ bool Mount(
     const std::string& mountOptions,
     bool readOnly);
 
+bool Mount2(
+    const std::string& devicePath,
+    const std::string& mountTargetPath,
+    const std::string& fsType,
+    const std::string& mountOptions,
+    bool readOnly);
+
 bool Umount(const std::string& mountTargetPath, bool force);
 
+// return if the directory path is a mount point
 bool IsMountPoint(const std::string& dirPath);
 
 // get the block device path of the mount point
