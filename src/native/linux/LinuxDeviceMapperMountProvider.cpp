@@ -393,6 +393,10 @@ bool LinuxDeviceMapperUmountProvider::Umount()
         RECORD_INNER_ERROR("failed to umount target %s, errno %u", m_mountTargetPath.c_str(), errno);
         success = false;
     }
+    if (!linuxmountutil::UmountAll(m_dmDeviceName)) {
+        RECORD_INNER_ERROR("failed to umount all mounts of %s", m_dmDeviceName.c_str());
+        success = false;
+    }
     // check if need to remove dm device
     if (!m_dmDeviceName.empty() && !devicemapper::RemoveDeviceIfExists(m_dmDeviceName)) {
         RECORD_INNER_ERROR("failed to remove devicemapper device %s, errno", m_dmDeviceName.c_str(), errno);

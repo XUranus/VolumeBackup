@@ -23,6 +23,7 @@ namespace {
     const int MNTENT_BUFFER_MAX = 4096;
     const std::string SYS_MOUNTS_ENTRY_PATH = "/proc/mounts";
     const int MAX_MOUNT_RETRY = 3;
+    const int MAX_UMOUNT_RETRY = 3;
 }
 
 using namespace volumeprotect;
@@ -209,6 +210,32 @@ bool linuxmountutil::Umount(const std::string& mountTargetPath, bool force)
     return true;
 }
 
+/**
+ * some linux desktop environment distro may running services like udisks2,
+ * that may mount the created loop device onto path /run/media/$user/uuid.
+ * To prevent residual mounts caused by such service, UmountAll() will try several
+ * times to try to umount all releated mounts of the device.
+*/
+bool linuxmountutil::UmountAll(const std::string& devicePath)
+{
+    std::vector<MountEntry> entries = linuxmountutil::GetAllMounts(devicePath);
+    int retry = 0;
+    while (!entries.empty() && retry < MAX_UMOUNT_RETRY) {
+        for (const auto& entry : entries) {
+            // this umount will not stucked
+            ::umount2(entry.mountTargetPath.c_str(), (MNT_FORCE | MNT_DETACH));
+        }
+        retry++;
+        entries = linuxmountutil::GetAllMounts(devicePath);
+    }
+    if (!entries.empty()) {
+        ERRLOG("%d mount entries remain mounted! failed to clean all mounts for %s",
+            entries.size(), devicePath.c_str());
+        return false;
+    }
+    return true;
+}
+
 bool linuxmountutil::IsMountPoint(const std::string& dirPath)
 {
     bool mounted = false;
@@ -247,6 +274,23 @@ std::string linuxmountutil::GetMountDevicePath(const std::string& mountTargetPat
     }
     ::endmntent(mountsFile);
     return devicePath;
+}
+
+std::vector<MountEntry> linuxmountutil::GetAllMounts(const std::string& devicePath)
+{
+    std::vector<MountEntry> entries {};
+    FILE* mountsFile = ::setmntent(SYS_MOUNTS_ENTRY_PATH.c_str(), "r");
+    if (mountsFile == nullptr) {
+        ERRLOG("failed to open /proc/mounts, errno %u", errno);
+        return {};
+    }
+    struct mntent entry {};
+    char mntentBuffer[MNTENT_BUFFER_MAX] = { 0 };
+    while (::getmntent_r(mountsFile, &entry, mntentBuffer, MNTENT_BUFFER_MAX) != nullptr) {
+        entries.emplace_back(MountEntry {entry.mnt_fsname, entry.mnt_dir, entry.mnt_type, entry.mnt_opts });
+    }
+    ::endmntent(mountsFile);
+    return entries;
 }
 
 #endif

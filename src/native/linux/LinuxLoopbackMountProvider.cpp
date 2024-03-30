@@ -177,6 +177,10 @@ bool LinuxLoopbackUmountProvider::Umount()
         RECORD_INNER_ERROR("failed to umount target %s, errno %u", m_mountTargetPath.c_str(), errno);
         return false;
     }
+    if (!linuxmountutil::UmountAll(m_loopbackDevicePath)) {
+        RECORD_INNER_ERROR("failed to umount all mounts of %s", m_loopbackDevicePath.c_str());
+        return false;
+    }
     // 2. detach loopback device
     if (!m_loopbackDevicePath.empty()
         && loopback::Attached(m_loopbackDevicePath)
