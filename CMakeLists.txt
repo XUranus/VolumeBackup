@@ -25,6 +25,13 @@ set(
     ${CMAKE_PREFIX_PATH}
 )
 
+# in order to be compatible with older cmake (<3.25) that CMAKE_HOST_LINUX not introduced
+message(STATUS "CMAKE_SYSTEM_NAME = ${CMAKE_SYSTEM_NAME}")
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    set(CMAKE_HOST_LINUX true)
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+    set(CMAKE_HOST_WIN32 true)
+endif()
 
 find_package(
     OpenSSL 3
@@ -76,8 +83,8 @@ file(
     "include/native/*.h"
 )
 
-message("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
-message("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
+# message("VOLUMEPROTECTPROTECT_SOURCES = ${VOLUMEPROTECTPROTECT_SOURCES}")
+# message("VOLUMEPROTECTPROTECT_HEADERS = ${VOLUMEPROTECTPROTECT_HEADERS}")
 
 include_directories(
     "include"

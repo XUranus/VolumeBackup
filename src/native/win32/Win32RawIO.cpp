@@ -210,6 +210,11 @@ bool Win32RawDataReader::Ok()
     return m_handle != INVALID_HANDLE_VALUE;
 }
 
+HandleType Win32RawDataReader::Handle()
+{
+    return m_handle;
+}
+
 ErrCodeType Win32RawDataReader::Error()
 {
     return static_cast<ErrCodeType>(::GetLastError());
@@ -260,6 +265,11 @@ bool Win32RawDataWriter::Write(uint64_t offset, uint8_t* buffer, int length, Err
 bool Win32RawDataWriter::Ok()
 {
     return m_handle != INVALID_HANDLE_VALUE;
+}
+
+HandleType Win32RawDataWriter::Handle()
+{
+    return m_handle;
 }
 
 bool Win32RawDataWriter::Flush()
@@ -402,6 +412,11 @@ bool Win32VirtualDiskVolumeRawDataReader::Ok()
     return (m_volumeReader == nullptr) ? false : m_volumeReader->Ok();
 }
 
+HandleType Win32VirtualDiskVolumeRawDataReader::Handle()
+{
+    return Ok() ? m_volumeReader->Handle() : NULL;
+}
+
 ErrCodeType Win32VirtualDiskVolumeRawDataReader::Error()
 {
     return (m_volumeReader == nullptr) ? ::GetLastError() : m_volumeReader->Error();
@@ -442,6 +457,11 @@ bool Win32VirtualDiskVolumeRawDataWriter::Write(uint64_t offset, uint8_t* buffer
 bool Win32VirtualDiskVolumeRawDataWriter::Ok()
 {
     return (m_volumeWriter == nullptr) ? false : m_volumeWriter->Ok();
+}
+
+HandleType Win32VirtualDiskVolumeRawDataWriter::Handle()
+{
+    return Ok() ? m_volumeWriter->Handle() : NULL;
 }
 
 bool Win32VirtualDiskVolumeRawDataWriter::Flush()
