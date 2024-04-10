@@ -190,7 +190,7 @@ VolumeInfo GetVolumeInfoWin32(const std::string& volumePath)
         return volumeInfo;
     }
     // assign volume info struct
-    volumeInfo.label = Utf16ToUtf8(volumeNameBuffer);
+    volumeInfo.volumeName = Utf16ToUtf8(volumeNameBuffer);
     volumeInfo.serialNumber = volumeSerialNumber;
     volumeInfo.maximumComponentLength = maximumComponentLength;
     volumeInfo.fileSystemFlags = fileSystemFlags;

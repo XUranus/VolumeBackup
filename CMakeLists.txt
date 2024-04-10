@@ -17,9 +17,6 @@ build_doxygen()
 set(
     CMAKE_PREFIX_PATH
     "C:/vcpkg/packages/openssl_x64-windows"
-    "C:/vcpkg/packages/openssl"
-    "C:/vcpkg/packages"
-    "C:/vcpkg"
     "/usr/local/Cellar/openssl@3"
     "/usr/local/Cellar/openssl@3/3.1.3"
     ${CMAKE_PREFIX_PATH}
